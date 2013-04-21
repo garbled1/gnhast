@@ -1,0 +1,171 @@
+# Config file for rrdcoll
+# Generated on Wed Apr 17 15:15:38 2013
+#
+
+gnhastd {
+  hostname = "127.0.0.1"
+  port = 2920
+  sslport = 2921
+}
+rrdcoll {
+  default_rrds = {"day_full", "day_hour", "week_day", "week_full", "week_5min", "month_30min", "year_1hour", "10year_1day"}
+}
+dev "10.4ED0A0020800" {
+  file = "10.4ED0A0020800.rrd"
+  ds = "BAQ_WallTemp"
+  type = "GAUGE"
+  heartbeat = 60
+  rrds = {"day_full", "day_hour", "week_day", "week_full", "week_5min", "month_30min", "year_1hour", "10year_1day"}
+}
+dev "28.D03262040000" {
+  file = "28.D03262040000.rrd"
+  ds = "BAQ_VentFan"
+  type = "GAUGE"
+  heartbeat = 60
+  rrds = {"day_full", "day_hour", "week_day", "week_full", "week_5min", "month_30min", "year_1hour", "10year_1day"}
+}
+dev "28.487862040000" {
+  file = "28.487862040000.rrd"
+  ds = "BAQ_LEDDRV_1"
+  type = "GAUGE"
+  heartbeat = 60
+  rrds = {"day_full", "day_hour", "week_day", "week_full", "week_5min", "month_30min", "year_1hour", "10year_1day"}
+}
+dev "28.F8E062040000" {
+  file = "28.F8E062040000.rrd"
+  ds = "BAQ_LEDDRV_3"
+  type = "GAUGE"
+  heartbeat = 60
+  rrds = {"day_full", "day_hour", "week_day", "week_full", "week_5min", "month_30min", "year_1hour", "10year_1day"}
+}
+dev "28.FC8062040000" {
+  file = "28.FC8062040000.rrd"
+  ds = "BAQ_LEDDRV_4"
+  type = "GAUGE"
+  heartbeat = 60
+  rrds = {"day_full", "day_hour", "week_day", "week_full", "week_5min", "month_30min", "year_1hour", "10year_1day"}
+}
+dev "28.AA3D62040000" {
+  file = "28.AA3D62040000.rrd"
+  ds = "BAQ_Intake_Fan"
+  type = "GAUGE"
+  heartbeat = 60
+  rrds = {"day_full", "day_hour", "week_day", "week_full", "week_5min", "month_30min", "year_1hour", "10year_1day"}
+}
+dev "28.7E6262040000" {
+  file = "28.7E6262040000.rrd"
+  ds = "BAQ_ACOUT"
+  type = "GAUGE"
+  heartbeat = 60
+  rrds = {"day_full", "day_hour", "week_day", "week_full", "week_5min", "month_30min", "year_1hour", "10year_1day"}
+}
+dev "28.FE7862040000" {
+  file = "28.FE7862040000.rrd"
+  ds = "BAQ_LEDDRV_2"
+  type = "GAUGE"
+  heartbeat = 60
+  rrds = {"day_full", "day_hour", "week_day", "week_full", "week_5min", "month_30min", "year_1hour", "10year_1day"}
+}
+dev "28.ED3462040000" {
+  file = "28.ED3462040000.rrd"
+  ds = "NH_ACIN"
+  type = "GAUGE"
+  heartbeat = 60
+  rrds = {"day_full", "day_hour", "week_day", "week_full", "week_5min", "month_30min", "year_1hour", "10year_1day"}
+}
+dev "28.1D4362040000" {
+  file = "28.1D4362040000.rrd"
+  ds = "BAQ_LEDDRV_5"
+  type = "GAUGE"
+  heartbeat = 60
+  rrds = {"day_full", "day_hour", "week_day", "week_full", "week_5min", "month_30min", "year_1hour", "10year_1day"}
+}
+dev "28.D77062040000" {
+  file = "28.D77062040000.rrd"
+  ds = "LR_HACabinet"
+  type = "GAUGE"
+  heartbeat = 60
+  rrds = {"day_full", "day_hour", "week_day", "week_full", "week_5min", "month_30min", "year_1hour", "10year_1day"}
+}
+dev "28.F7A962040000" {
+  file = "28.F7A962040000.rrd"
+  ds = "Garage_Temp"
+  type = "GAUGE"
+  heartbeat = 60
+  rrds = {"day_full", "day_hour", "week_day", "week_full", "week_5min", "month_30min", "year_1hour", "10year_1day"}
+}
+dev "26.BCA421010000" {
+  file = "26.BCA421010000.rrd"
+  ds = "BAQ_Humid"
+  type = "GAUGE"
+  heartbeat = 60
+  rrds = {"day_full", "day_hour", "week_day", "week_full", "week_5min", "month_30min", "year_1hour", "10year_1day"}
+}
+dev "10.A7BBA0020800" {
+  file = "10.A7BBA0020800.rrd"
+  ds = "Out_LUX_Temp"
+  type = "GAUGE"
+  heartbeat = 60
+  rrds = {"day_full", "day_hour", "week_day", "week_full", "week_5min", "month_30min", "year_1hour", "10year_1day"}
+}
+dev "26.A43328010000" {
+  file = "26.A43328010000.rrd"
+  ds = "Out_LUX"
+  type = "GAUGE"
+  heartbeat = 60
+  rrds = {"day_full", "day_hour", "week_day", "week_full", "week_5min", "month_30min", "year_1hour", "10year_1day"}
+}
+dev "1D.7EC20F000000-A" {
+  file = "1D.7EC20F000000-A.rrd"
+  ds = "LightStrikeA"
+  type = "COUNTER"
+  heartbeat = 60
+  rrds = {"day_full", "day_hour", "week_day", "week_full", "week_5min", "month_30min", "year_1hour", "10year_1day"}
+}
+dev "1D.7EC20F000000-B" {
+  file = "1D.7EC20F000000-B.rrd"
+  ds = "LightStrikeB"
+  type = "COUNTER"
+  heartbeat = 60
+  rrds = {"day_full", "day_hour", "week_day", "week_full", "week_5min", "month_30min", "year_1hour", "10year_1day"}
+}
+rrdrra "day_full" {
+  xff = 0.500000
+  steps = 1
+  rows = 1440
+}
+rrdrra "day_hour" {
+  xff = 0.500000
+  steps = 60
+  rows = 24
+}
+rrdrra "week_day" {
+  xff = 0.500000
+  steps = 1440
+  rows = 7
+}
+rrdrra "week_full" {
+  xff = 0.500000
+  steps = 1
+  rows = 10080
+}
+rrdrra "week_5min" {
+  xff = 0.500000
+  steps = 5
+  rows = 2016
+}
+rrdrra "month_30min" {
+  xff = 0.500000
+  steps = 30
+  rows = 1488
+}
+rrdrra "year_1hour" {
+  xff = 0.500000
+  steps = 60
+  rows = 8760
+}
+rrdrra "10year_1day" {
+  xff = 0.500000
+  steps = 1440
+  rows = 3650
+}
