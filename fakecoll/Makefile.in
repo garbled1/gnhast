@@ -67,7 +67,8 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_fakecoll_OBJECTS = common.$(OBJEXT) devices.$(OBJEXT) \
-	netparser.$(OBJEXT) gncoll.$(OBJEXT) collector.$(OBJEXT)
+	netparser.$(OBJEXT) gncoll.$(OBJEXT) confparser.$(OBJEXT) \
+	collector.$(OBJEXT)
 fakecoll_OBJECTS = $(am_fakecoll_OBJECTS)
 fakecoll_DEPENDENCIES =
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/common
@@ -217,6 +218,7 @@ fakecoll_SOURCES = \
 	../common/devices.c \
 	../common/netparser.c \
 	../common/gncoll.c \
+	../common/confparser.c \
 	collector.c
 
 fakecoll_LDADD = -L../libconfuse -lconfuse
@@ -312,6 +314,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/collector.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/common.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/confparser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/devices.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gncoll.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/netparser.Po@am__quote@
@@ -392,6 +395,20 @@ gncoll.obj: ../common/gncoll.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='../common/gncoll.c' object='gncoll.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o gncoll.obj `if test -f '../common/gncoll.c'; then $(CYGPATH_W) '../common/gncoll.c'; else $(CYGPATH_W) '$(srcdir)/../common/gncoll.c'; fi`
+
+confparser.o: ../common/confparser.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT confparser.o -MD -MP -MF $(DEPDIR)/confparser.Tpo -c -o confparser.o `test -f '../common/confparser.c' || echo '$(srcdir)/'`../common/confparser.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/confparser.Tpo $(DEPDIR)/confparser.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='../common/confparser.c' object='confparser.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o confparser.o `test -f '../common/confparser.c' || echo '$(srcdir)/'`../common/confparser.c
+
+confparser.obj: ../common/confparser.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT confparser.obj -MD -MP -MF $(DEPDIR)/confparser.Tpo -c -o confparser.obj `if test -f '../common/confparser.c'; then $(CYGPATH_W) '../common/confparser.c'; else $(CYGPATH_W) '$(srcdir)/../common/confparser.c'; fi`
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/confparser.Tpo $(DEPDIR)/confparser.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='../common/confparser.c' object='confparser.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o confparser.obj `if test -f '../common/confparser.c'; then $(CYGPATH_W) '../common/confparser.c'; else $(CYGPATH_W) '$(srcdir)/../common/confparser.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

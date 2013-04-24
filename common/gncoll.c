@@ -110,6 +110,8 @@ void gn_register_device(device_t *dev, struct bufferevent *out)
 void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 {
 	struct evbuffer *send;
+	double d;
+	uint32_t u;
 
 	/* Verify device sanity first */
 	if (dev->name == NULL || dev->uid == NULL) {
@@ -122,44 +124,23 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 		return;
 	}
 
-	/* The command to update is "upd" */
 	send = evbuffer_new();
 
 	/* special handling for cacti updates */
 	if (what & GNC_UPD_CACTI) {
 		evbuffer_add_printf(send, "%s:", dev->rrdname);
-		if (dev->type == DEVICE_DIMMER)
-			evbuffer_add_printf(send, "%f\n", dev->data.level);
-		switch (dev->subtype) {
-		case SUBTYPE_TEMP:
-			evbuffer_add_printf(send, "%f\n", dev->data.temp);
-			break;
-		case SUBTYPE_HUMID:
-			evbuffer_add_printf(send, "%f\n", dev->data.humid);
-			break;
-		case SUBTYPE_LUX:
-			evbuffer_add_printf(send, "%f\n", dev->data.lux);
-			break;
-		case SUBTYPE_COUNTER:
-			evbuffer_add_printf(send, "%d\n", dev->data.count);
-			break;
-		case SUBTYPE_PRESSURE:
-			evbuffer_add_printf(send, "%f\n", dev->data.pressure);
-			break;
-		case SUBTYPE_SPEED:
-			evbuffer_add_printf(send, "%f\n", dev->data.speed);
-			break;
-		case SUBTYPE_DIR:
-			evbuffer_add_printf(send, "%f\n", dev->data.dir);
-			break;
-		case SUBTYPE_SWITCH:
-			evbuffer_add_printf(send, "%d\n", dev->data.state);
-			break;
+		if (datatype_dev(dev) == DATATYPE_UINT) {
+			get_data_dev(dev, DATALOC_DATA, &u);
+			evbuffer_add_printf(send, "%d\n", u);
+		} else {
+			get_data_dev(dev, DATALOC_DATA, &d);
+			evbuffer_add_printf(send, "%f\n", d);
 		}
 		bufferevent_write_buffer(out, send);
 		evbuffer_free(send);
 		return;
 	}
+	/* The command to update is "upd" */
 	evbuffer_add_printf(send, "upd ");
 
 	/* fill in the details */
@@ -171,43 +152,14 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 		evbuffer_add_printf(send, "%s:%s ",  ARGNM(SC_RRDNAME),
 				    dev->rrdname);
 
-	if (dev->type == DEVICE_DIMMER)
-		evbuffer_add_printf(send, "%s:%f\n", ARGNM(SC_DIMMER),
-				    dev->data.level);
-	switch (dev->subtype) {
-	case SUBTYPE_TEMP:
-		evbuffer_add_printf(send, "%s:%f\n", ARGNM(SC_TEMP),
-				    dev->data.temp);
-		break;
-	case SUBTYPE_HUMID:
-		evbuffer_add_printf(send, "%s:%f\n", ARGNM(SC_HUMID),
-				    dev->data.humid);
-		break;
-	case SUBTYPE_LUX:
-		evbuffer_add_printf(send, "%s:%f\n", ARGNM(SC_LUX),
-				    dev->data.lux);
-		break;
-	case SUBTYPE_COUNTER:
-		evbuffer_add_printf(send, "%s:%d\n", ARGNM(SC_COUNT),
-				    dev->data.count);
-		break;
-	case SUBTYPE_PRESSURE:
-		evbuffer_add_printf(send, "%s:%f\n", ARGNM(SC_PRESSURE),
-				    dev->data.pressure);
-		break;
-	case SUBTYPE_SPEED:
-		evbuffer_add_printf(send, "%s:%f\n", ARGNM(SC_SPEED),
-				    dev->data.speed);
-		break;
-	case SUBTYPE_DIR:
-		evbuffer_add_printf(send, "%s:%f\n", ARGNM(SC_DIR),
-				    dev->data.dir);
-		break;
-	case SUBTYPE_SWITCH:
-		evbuffer_add_printf(send, "%s:%d\n", ARGNM(SC_SWITCH),
-				    dev->data.state);
-		break;
+	if (datatype_dev(dev) == DATATYPE_UINT) {
+		get_data_dev(dev, DATALOC_DATA, &u);
+		evbuffer_add_printf(send, "%s:%d\n", ARGDEV(dev), u);
+	} else {
+		get_data_dev(dev, DATALOC_DATA, &d);
+		evbuffer_add_printf(send, "%s:%f\n", ARGDEV(dev), d);
 	}
+
 	bufferevent_write_buffer(out, send);
 	evbuffer_free(send);
 }

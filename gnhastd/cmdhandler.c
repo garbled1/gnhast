@@ -114,6 +114,7 @@ int parsed_command(char *command, pargs_t *args, void *arg)
 int cmd_update(pargs_t *args, void *arg)
 {
 	int i;
+	double wlevel;
 	device_t *dev;
 	char *uid=NULL;
 	client_t *client = (client_t *)arg;
@@ -141,85 +142,28 @@ int cmd_update(pargs_t *args, void *arg)
 	for (i=0; args[i].cword != -1; i++) {
 		switch (args[i].cword) {
 		case SC_SWITCH:
-			if (dev->type != DEVICE_SWITCH)
-				LOG(LOG_ERROR, "Updating switch value on "
-				    "non-switch device %s/%s", dev->uid,
-				    dev->name);
-			else
-				dev->data.state = args[i].arg.i;
-			break;
-		case SC_TEMP:
-			if (dev->type != DEVICE_SENSOR ||
-			    dev->subtype != SUBTYPE_TEMP)
-				LOG(LOG_ERROR, "Updating temp value on "
-				    "non-temp device %s/%s", dev->uid,
-				    dev->name);
-			else
-				dev->data.temp = args[i].arg.d;
-			break;
-		case SC_HUMID:
-			if (dev->type != DEVICE_SENSOR ||
-			    dev->subtype != SUBTYPE_HUMID)
-				LOG(LOG_ERROR, "Updating humid value on "
-				    "non-humid device %s/%s", dev->uid,
-				    dev->name);
-			else
-				dev->data.humid = args[i].arg.d;
+			store_data_dev(dev, DATALOC_DATA, &args[i].arg.i);
 			break;
 		case SC_LUX:
-			if (dev->type != DEVICE_SENSOR ||
-			    dev->subtype != SUBTYPE_LUX)
-				LOG(LOG_ERROR, "Updating lux value on non-lux "
-				    "device %s/%s", dev->uid, dev->name);
-			else
-				dev->data.lux = args[i].arg.d;
-			break;
+		case SC_HUMID:
+		case SC_TEMP:
 		case SC_DIMMER:
-			if (dev->type != DEVICE_DIMMER)
-				LOG(LOG_ERROR, "Updating dimmer level value "
-				    "on non-dimmer device %s/%s",
-				    dev->uid, dev->name);
-			else
-				dev->data.level = args[i].arg.d;
-			break;
 		case SC_PRESSURE:
-			if (dev->type != DEVICE_SENSOR ||
-			    dev->subtype != SUBTYPE_PRESSURE)
-				LOG(LOG_ERROR, "Updating pressure value on "
-				    "non-pressure device %s/%s", dev->uid,
-				    dev->name);
-			else
-				dev->data.pressure = args[i].arg.d;
-			break;
 		case SC_SPEED:
-			if (dev->type != DEVICE_SENSOR ||
-			    dev->subtype != SUBTYPE_SPEED)
-				LOG(LOG_ERROR, "Updating speed value on "
-				    "non-speed device %s/%s", dev->uid,
-				    dev->name);
-			else
-				dev->data.speed = args[i].arg.d;
-			break;
 		case SC_DIR:
-			if (dev->type != DEVICE_SENSOR ||
-			    dev->subtype != SUBTYPE_DIR)
-				LOG(LOG_ERROR, "Updating direction value on "
-				    "non-direction device %s/%s", dev->uid,
-				    dev->name);
-			else
-				dev->data.dir = args[i].arg.d;
+		case SC_MOISTURE:
+		case SC_WETNESS:
+			store_data_dev(dev, DATALOC_DATA, &args[i].arg.d);
 			break;
 		case SC_COUNT:
-			if (dev->subtype != SUBTYPE_COUNTER)
-				LOG(LOG_ERROR, "Updating count value on "
-				    "non-count device %s/%s", dev->uid,
-				    dev->name);
-			else
-				dev->data.count = args[i].arg.u;
+			store_data_dev(dev, DATALOC_DATA, &args[i].arg.u);
 			break;
 		}
 	}
 	(void)time(&dev->last_upd);
+	if (dev->handler != NULL && device_watermark(dev) != 0) {
+		run_handler_dev(dev);
+	}
 	return(0);
 }
 

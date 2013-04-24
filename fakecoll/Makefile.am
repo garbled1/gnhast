@@ -7,6 +7,7 @@ fakecoll_SOURCES = \
 	../common/devices.c \
 	../common/netparser.c \
 	../common/gncoll.c \
+	../common/confparser.c \
 	collector.c
 
 fakecoll_LDADD = -L../libconfuse -lconfuse

@@ -47,9 +47,15 @@ int compare_command(const void *a, const void *b);
 device_t *find_device_byuid(char *uid);
 void add_wrapped_device(device_t *dev, client_t *client, int rate);
 void insert_device(device_t *dev);
-void init_devtable(void);
+void init_devtable(cfg_t *cfg, int readconf);
+void get_data_dev(device_t *dev, int where, void *data);
+void store_data_dev(device_t *dev, int where, void *data);
+int datatype_dev(device_t *dev);
+int device_watermark(device_t *dev);
 
 /* from confparser.c */
 cfg_t *parse_conf(const char *filename);
+int conf_parse_bool(cfg_t *cfg, cfg_opt_t *opt, const char *value,
+		    void *result);
 
 #endif /* _COMMON_H_ */

@@ -68,6 +68,8 @@ argtable_t argtable[] = {
 	{"speed", SC_SPEED, PTDOUBLE},
 	{"dir", SC_DIR, PTDOUBLE},
 	{"count", SC_COUNT, PTUINT},
+	{"wet", SC_WETNESS, PTDOUBLE},
+	{"moist", SC_MOISTURE, PTDOUBLE},
 };
 
 /** \brief size of the args table */ 
@@ -100,6 +102,12 @@ static int compare_argtable(const void *a, const void *b)
 	return strcmp(((argtable_t *)a)->name, ((argtable_t *)b)->name);
 }
 
+/**
+   \brief find an argument by id number
+   \param id ID number to find
+   \return entry number in argtable
+*/
+
 int find_arg_byid(int id)
 {
 	int i;
@@ -111,7 +119,33 @@ int find_arg_byid(int id)
 }
 
 /**
-	\brief initialize the argument table
+   \brief Given a device, return the appropriate argument
+   \param dev device
+   \return entry number in argtable
+*/
+int find_arg_bydev(device_t *dev)
+{
+	int i;
+
+	if (dev->type == DEVICE_DIMMER)
+		return find_arg_byid(SC_DIMMER);
+	switch (dev->subtype) {
+	case SUBTYPE_TEMP: return find_arg_byid(SC_TEMP); break;
+	case SUBTYPE_HUMID: return find_arg_byid(SC_HUMID); break;
+	case SUBTYPE_LUX: return find_arg_byid(SC_LUX); break;
+	case SUBTYPE_COUNTER: return find_arg_byid(SC_COUNT); break;
+	case SUBTYPE_PRESSURE: return find_arg_byid(SC_PRESSURE); break;
+	case SUBTYPE_SPEED: return find_arg_byid(SC_SPEED); break;
+	case SUBTYPE_DIR: return find_arg_byid(SC_DIR); break;
+	case SUBTYPE_SWITCH: return find_arg_byid(SC_SWITCH); break;
+	case SUBTYPE_WETNESS: return find_arg_byid(SC_WETNESS); break;
+	case SUBTYPE_MOISTURE: return find_arg_byid(SC_MOISTURE); break;
+	}
+	return -1;
+}
+
+/**
+   \brief initialize the argument table
 */
 void init_argcomm(void)
 {

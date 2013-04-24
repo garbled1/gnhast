@@ -261,7 +261,7 @@ int cmd_endldevs(pargs_t *args, void *arg)
 	TAILQ_FOREACH(dev, &alldevs, next_all) {
 		dc = new_rrdconf_from_dev(cfg, dev);
 	}
-	dump_conf(cfg, dumpconf);
+	dump_conf(cfg, 0, dumpconf);
 	exit(0);
 }
 
@@ -945,7 +945,7 @@ int main(int argc, char **argv)
 	init_argcomm();
 	init_commands();
 	/* Initialize the device table */
-	init_devtable();
+	init_devtable(cfg, 0);
 	loopnr = 0;
 
 	/* process command line arguments */

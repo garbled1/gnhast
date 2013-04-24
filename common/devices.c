@@ -44,6 +44,7 @@
 
 #include "gnhast.h"
 #include "common.h"
+#include "confparser.h"
 
 int nrofdevs;
 rb_tree_t devices;
@@ -119,12 +120,230 @@ void insert_device(device_t *dev)
 }
 
 
-/** \brief Initialize the devicetable */
+/**
+   \brief Initialize the devicetable
+   \param readconf if true, read the device conf file
+*/
 
-void init_devtable(void)
+void init_devtable(cfg_t *cfg, int readconf)
 {
-	/*XXX*/
-	/* For now, nothing, later, read from a config file and initialize */
+	device_t *dev;
+	cfg_t *devconf;
+	int i;
+
 	nrofdevs = 0;
 	rb_tree_init(&devices, &device__alltree_ops);
+
+	if (readconf == 0)
+		return;
+
+	for (i=0; i < cfg_size(cfg, "device"); i++) {
+		devconf = cfg_getnsec(cfg, "device", i);
+		dev = new_dev_from_conf(cfg, (char *)cfg_title(devconf));
+		insert_device(dev);
+		LOG(LOG_DEBUG, "Loaded device %s from config file", dev->uid);
+	}
+
+}
+
+/**
+   \brief get data from a device
+   \param dev what device
+   \param where where to store, see DATALOC_*
+   \param pointer to data to be stored
+*/
+
+void get_data_dev(device_t *dev, int where, void *data)
+{
+	data_t *store;
+
+	switch (where) {
+	case DATALOC_DATA:
+		store = &dev->data;
+		break;
+	case DATALOC_MIN:
+		store = &dev->min;
+		break;
+	case DATALOC_MAX:
+		store = &dev->max;
+		break;
+	case DATALOC_AVG:
+		store = &dev->avg;
+		break;
+	case DATALOC_LOWAT:
+		store = &dev->lowat;
+		break;
+	case DATALOC_HIWAT:
+		store = &dev->hiwat;
+		break;
+	}
+
+	switch (dev->type) {
+	case DEVICE_SWITCH:
+		*((uint8_t *)data) = store->state;
+		break;
+	case DEVICE_DIMMER:
+		*((double *)data) = store->level;
+		break;
+	case DEVICE_SENSOR:
+	{
+		switch (dev->subtype) {
+		case SUBTYPE_TEMP:
+			*((double *)data) = store->temp;
+			break;
+		case SUBTYPE_HUMID:
+			*((double *)data) = store->humid;
+			break;
+		case SUBTYPE_COUNTER:
+			*((uint32_t *)data) = store->count;
+			break;
+		case SUBTYPE_PRESSURE:
+			*((double *)data) = store->pressure;
+			break;
+		case SUBTYPE_SPEED:
+			*((double *)data) = store->speed;
+			break;
+		case SUBTYPE_DIR:
+			*((double *)data) = store->dir;
+			break;
+		case SUBTYPE_MOISTURE:
+			*((double *)data) = store->moisture;
+			break;
+		case SUBTYPE_WETNESS:
+			*((double *)data) = store->wetness;
+			break;
+		case SUBTYPE_LUX:
+			*((double *)data) = store->lux;
+			break;
+		}
+		break;
+	}
+	}
+}
+
+/**
+   \brief Store data in a device in the proper location
+   \param dev what device
+   \param where where to store, see DATALOC_*
+   \param pointer to data
+*/
+
+void store_data_dev(device_t *dev, int where, void *data)
+{
+	data_t *store;
+
+	switch (where) {
+	case DATALOC_DATA:
+		store = &dev->data;
+		break;
+	case DATALOC_MIN:
+		store = &dev->min;
+		break;
+	case DATALOC_MAX:
+		store = &dev->max;
+		break;
+	case DATALOC_AVG:
+		store = &dev->avg;
+		break;
+	case DATALOC_LOWAT:
+		store = &dev->lowat;
+		break;
+	case DATALOC_HIWAT:
+		store = &dev->hiwat;
+		break;
+	}
+
+	switch (dev->type) {
+	case DEVICE_SWITCH:
+		store->state = *((uint8_t *)data);
+		break;
+	case DEVICE_DIMMER:
+		store->level = *((double *)data);
+		break;
+	case DEVICE_SENSOR:
+	{
+		switch (dev->subtype) {
+		case SUBTYPE_TEMP:
+			store->temp = *((double *)data);
+			break;
+		case SUBTYPE_HUMID:
+			store->humid = *((double *)data);
+			break;
+		case SUBTYPE_COUNTER:
+			store->count = *((uint32_t *)data);
+			break;
+		case SUBTYPE_PRESSURE:
+			store->pressure = *((double *)data);
+			break;
+		case SUBTYPE_SPEED:
+			store->speed = *((double *)data);
+			break;
+		case SUBTYPE_DIR:
+			store->dir = *((double *)data);
+			break;
+		case SUBTYPE_MOISTURE:
+			store->moisture = *((double *)data);
+			break;
+		case SUBTYPE_WETNESS:
+			store->wetness = *((double *)data);
+			break;
+		case SUBTYPE_LUX:
+			store->lux = *((double *)data);
+			break;
+		}
+		break;
+	}
+	}
+}
+
+/**
+   \brief Return the DATATYPE_ of a device
+   \param dev device
+   \return DATATYPE_*
+*/
+
+int datatype_dev(device_t *dev)
+{
+	if (dev->subtype == SUBTYPE_SWITCH)
+		return DATATYPE_UINT;
+	if (dev->subtype == SUBTYPE_COUNTER)
+		return DATATYPE_UINT;
+	if (dev->subtype == SUBTYPE_OUTLET)
+		return DATATYPE_UINT;
+	return DATATYPE_DOUBLE;
+}
+
+/**
+   \brief Is a device beyond the watermark?
+   \param dev device
+   \return 0 no, 1 above hiwat, -1 below lowat, 2 no watermark
+*/
+
+int device_watermark(device_t *dev)
+{
+	double lwd, hwd, dd;
+	uint32_t lwu, hwu, du;
+
+	if (datatype_dev(dev) == DATATYPE_UINT) {
+		get_data_dev(dev, DATALOC_LOWAT, &lwu);
+		get_data_dev(dev, DATALOC_HIWAT, &hwu);
+		get_data_dev(dev, DATALOC_DATA, &du);
+		if (lwu == 0 && hwu == 0)
+			return 2;
+		if (du < lwu)
+			return -1;
+		if (du > hwu)
+			return 1;
+	} else {
+		get_data_dev(dev, DATALOC_LOWAT, &lwd);
+		get_data_dev(dev, DATALOC_HIWAT, &hwd);
+		get_data_dev(dev, DATALOC_DATA, &dd);
+		if (lwd == 0.0 && hwd == 0.0)
+			return 2;
+		if (dd < lwd)
+			return -1;
+		if (dd > hwd)
+			return 1;
+	}
+	return 0;
 }

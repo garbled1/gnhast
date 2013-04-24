@@ -168,7 +168,7 @@ void accept_cb(struct evconnlistener *serv, int sock, struct sockaddr *sa,
 	client->fd = sock;
 
 	client->ev = bufferevent_socket_new(base, sock,
-            BEV_OPT_CLOSE_ON_FREE|BEV_OPT_THREADSAFE);
+            BEV_OPT_CLOSE_ON_FREE);
 
 	LOG(LOG_NOTICE, "Connection on insecure port from %s",
 	    inet_ntoa(client_addr->sin_addr));
@@ -192,7 +192,7 @@ void sslaccept_cb(struct evconnlistener *serv, int sock, struct sockaddr *sa,
 
 	client->ev = bufferevent_openssl_socket_new(base, sock,
 	    client->cli_ctx, BUFFEREVENT_SSL_ACCEPTING,
-            BEV_OPT_CLOSE_ON_FREE|BEV_OPT_THREADSAFE);
+            BEV_OPT_CLOSE_ON_FREE);
 
 	LOG(LOG_NOTICE, "Connection on secure port from %s",
 	    inet_ntoa(client_addr->sin_addr));
@@ -279,22 +279,26 @@ void init_netloop(void)
 		inet_aton(cfg_getstr(network, "listen"), &sin.sin_addr);
 	sin.sin_port = htons(cfg_getint(network, "sslport"));
 
-	listener = evconnlistener_new_bind(base, sslaccept_cb, (void *)ctx,
-	    LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, 1024,
-	    (struct sockaddr *)&sin, sizeof(sin));
+	if (cfg_getint(network, "usessl")) {
+		    listener = evconnlistener_new_bind(base, sslaccept_cb,
+		       (void *)ctx, LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE,
+		       1024, (struct sockaddr *)&sin, sizeof(sin));
 
-	LOG(LOG_NOTICE, "Listening with SSL on %s:%d",
-	    cfg_getstr(network, "listen"), cfg_getint(network, "sslport"));
+		    LOG(LOG_NOTICE, "Listening with SSL on %s:%d",
+			cfg_getstr(network, "listen"),
+			cfg_getint(network, "sslport"));
+	}
 
 	/* now listen on non-secure port */
+	if (cfg_getint(network, "usenonssl")) {
+		sin.sin_port = htons(cfg_getint(network, "port"));
 
-	sin.sin_port = htons(cfg_getint(network, "port"));
-
-	listen_nossl = evconnlistener_new_bind(base, accept_cb, NULL,
-	    LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, 1024,
-	    (struct sockaddr *)&sin, sizeof(sin));
-	LOG(LOG_NOTICE, "Listening without SSL on %s:%d",
-	    cfg_getstr(network, "listen"), cfg_getint(network, "port"));
-
+		listen_nossl = evconnlistener_new_bind(base, accept_cb, NULL,
+		    LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, 1024,
+		    (struct sockaddr *)&sin, sizeof(sin));
+		LOG(LOG_NOTICE, "Listening without SSL on %s:%d",
+		    cfg_getstr(network, "listen"),
+		    cfg_getint(network, "port"));
+	}
 	return;
 }

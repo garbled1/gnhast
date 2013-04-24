@@ -64,6 +64,12 @@ extern argtable_t argtable[];
 /** The event base */
 struct event_base *base;
 
+/* empty options to satisfy confparser */
+cfg_opt_t options[] = {
+	CFG_END(),
+};
+
+
 /**
 	\brief A read callback, got data from server
 	\param in The bufferevent that fired

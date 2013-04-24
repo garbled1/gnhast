@@ -135,7 +135,7 @@ cfg_opt_t options[] = {
 	CFG_SEC("owsrvcoll", owsrvcoll_opts, CFGF_NONE),
 	CFG_SEC("device", device_opts, CFGF_MULTI | CFGF_TITLE),
 	CFG_END(),
-};      
+};
 
 /*****
       OWS Functions
@@ -352,7 +352,7 @@ void ows_handle_dirall(connection_t *conn, char *buf)
 	if (dumpconf != NULL) {
 		LOG(LOG_NOTICE, "Dumping config file to %s and exiting",
 		    dumpconf);
-		dump_conf(cfg, dumpconf);
+		dump_conf(cfg, 0, dumpconf);
 		exit(0);
 	}
 }
@@ -728,7 +728,7 @@ int main(int argc, char **argv)
 	/* Initialize the argtable */
 	init_argcomm();
 	/* Initialize the device table */
-	init_devtable();
+	init_devtable(cfg, 0);
 	loopnr = 0;
 
 	/* process command line arguments */

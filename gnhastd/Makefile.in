@@ -68,7 +68,8 @@ am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_gnhastd_OBJECTS = common.$(OBJEXT) devices.$(OBJEXT) \
 	netparser.$(OBJEXT) confparser.$(OBJEXT) gncoll.$(OBJEXT) \
-	netloop.$(OBJEXT) cmdhandler.$(OBJEXT) gnhastd.$(OBJEXT)
+	netloop.$(OBJEXT) cmdhandler.$(OBJEXT) \
+	script_handler.$(OBJEXT) gnhastd.$(OBJEXT)
 gnhastd_OBJECTS = $(am_gnhastd_OBJECTS)
 gnhastd_DEPENDENCIES =
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/common
@@ -221,6 +222,7 @@ gnhastd_SOURCES = \
 	../common/gncoll.c \
 	netloop.c \
 	cmdhandler.c \
+	script_handler.c \
 	gnhastd.c
 
 gnhastd_LDADD = -L../libconfuse -lconfuse
@@ -322,6 +324,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gnhastd.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/netloop.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/netparser.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/script_handler.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

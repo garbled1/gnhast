@@ -41,6 +41,7 @@ typedef struct _commands_t {
 } commands_t;
 
 #define ARGNM(foo)	argtable[find_arg_byid(foo)].name
+#define ARGDEV(foo)	argtable[find_arg_bydev(foo)].name
 
 enum PT_TYPES {
 	PTDOUBLE,
@@ -70,6 +71,8 @@ enum SC_COMMANDS {
 	SC_COUNT,	/**< \brief count */
 	SC_SPEED,	/**< \brief speed */
 	SC_DIR,		/**< \brief direction */
+	SC_WETNESS,	/**< \brief wetness */
+	SC_MOISTURE,	/**< \brief moisture */
 };
 
 /* commands */
@@ -83,5 +86,6 @@ void init_argcomm(void);
 pargs_t *parse_command(char **words, int count); 
 char **parse_netcommand(char *buf, int *arg_count);
 int find_arg_by_id(pargs_t *args, int id);
+int find_arg_bydev(device_t *dev);
 
 #endif /*_COMMAND_H_*/

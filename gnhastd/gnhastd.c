@@ -42,12 +42,14 @@
 #include "gnhast.h"
 #include "gnhastd.h"
 #include "common.h"
+#include "confparser.h"
 
 /* Globals */
 FILE *logfile = NULL;
 extern int debugmode;
 cfg_t *cfg;
 struct event_base *base;	/**< The primary event base */
+extern TAILQ_HEAD(, _device_t) alldevs;
 
 /* debugging */
 _malloc_options = "AJ";
@@ -61,14 +63,38 @@ cfg_opt_t network_opts[] = {
 	CFG_INT("port", 2920, CFGF_NONE),
 	CFG_STR("certchain", "cert", CFGF_NONE),
 	CFG_STR("privkey", "pkey", CFGF_NONE),
+	CFG_INT_CB("usessl", 0, CFGF_NONE, conf_parse_bool),
+	CFG_INT_CB("usenonssl", 1, CFGF_NONE, conf_parse_bool),
 	CFG_END(),
 };
 
 cfg_opt_t options[] = {
 	CFG_SEC("network", network_opts, CFGF_NONE),
 	CFG_SEC("device", device_opts, CFGF_MULTI | CFGF_TITLE),
+	CFG_STR("devconf", "devices.conf", CFGF_NONE),
+	CFG_INT("devconf_update", 300, CFGF_NONE),
 	CFG_END(),
 };
+
+/**
+   \brief Timer callback to update the device conf file
+   \param nada used for file descriptor
+   \param what why did we fire?
+   \param arg unused
+*/
+
+void devconf_dump_cb(int nada, short what, void *arg)
+{
+	device_t *dev;
+	cfg_t *dc;
+
+	TAILQ_FOREACH(dev, &alldevs, next_all) {
+		dc = new_conf_from_dev(cfg, dev);
+	}
+	LOG(LOG_DEBUG, "Writing device conf file %s",
+	    cfg_getstr(cfg, "devconf"));
+	dump_conf(cfg, CONF_DUMP_DEVONLY, cfg_getstr(cfg, "devconf"));
+}
 
 /** \brief main, um, duh */
 
@@ -79,6 +105,8 @@ int main(int argc, char **argv)
 	extern int optind;
 	int ch;
 	char *conffile = GNHASTD_CONFIG_FILE;
+	struct timeval secs = {0, 0};
+	struct event *ev;
 
 	while ((ch = getopt(argc, argv, "?c:d")) != -1)
 		switch (ch) {
@@ -110,9 +138,17 @@ int main(int argc, char **argv)
 	/* Setup the network loop */
 	init_netloop();
 
-	init_devtable();
+	init_devtable(cfg, 1);
 	init_argcomm();
 	init_commands();
+
+	/* schedule periodic rewrites of devices.conf */
+	if (cfg_getint(cfg, "devconf_update") > 0) {
+		secs.tv_sec = cfg_getint(cfg, "devconf_update");
+		ev = event_new(base, -1, EV_PERSIST, devconf_dump_cb,
+					NULL);
+		event_add(ev, &secs);
+	}
 
 	/* Go forth and destroy */
 	LOG(LOG_NOTICE, "Entering main network loop");

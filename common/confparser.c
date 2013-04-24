@@ -40,6 +40,7 @@
 #include <string.h>
 #include <unistd.h>  
 #include <stdlib.h>
+#include <math.h>
 
 #include "confuse.h"
 #include "config.h"
@@ -66,6 +67,8 @@ cfg_opt_t device_opts[] = {
 	CFG_INT_CB("proto", 0, CFGF_NODEFAULT, conf_parse_proto),
 	CFG_STR("multimodel", 0, CFGF_NODEFAULT),
 	CFG_STR("handler", 0, CFGF_NODEFAULT),
+	CFG_FLOAT("hiwat", 0.0, CFGF_NONE),
+	CFG_FLOAT("lowat", 0.0, CFGF_NONE),
 	CFG_END(),
 };
 
@@ -111,18 +114,40 @@ int conf_validate_rrdname(cfg_t *cfg, cfg_opt_t *opt)
 }
 
 /**
+   \brief parse a bool
+*/
+int conf_parse_bool(cfg_t *cfg, cfg_opt_t *opt, const char *value,
+		    void *result)
+{
+	if (strcasecmp(value, "yes") == 0)
+		*(int *)result = 1;
+	else if (strcasecmp(value, "true") == 0)
+		*(int *)result = 1;
+	else if (strcasecmp(value, "no") == 0)
+		*(int *)result = 0;
+	else if (strcasecmp(value, "false") == 0)
+		*(int *)result = 0;
+	else {
+		cfg_error(cfg, "invalid bool value for option '%s': %s",
+		    cfg_opt_name(opt), value);
+		return -1;
+	}
+	return 0;
+}
+
+/**
    \brief parse a protocol
 */
 static int conf_parse_proto(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 			      void *result)
 {
-	if (strcmp(value,"insteon-v1") == 0)
+	if (strcmp(value, "insteon-v1") == 0)
 		*(int *)result = PROTO_INSTEON_V1;
-	else if (strcmp(value,"insteon-v2") == 0)
+	else if (strcmp(value, "insteon-v2") == 0)
 		*(int *)result = PROTO_INSTEON_V2;
-	else if (strcmp(value,"insteon-v2cs") == 0)
+	else if (strcmp(value, "insteon-v2cs") == 0)
 		*(int *)result = PROTO_INSTEON_V2CS;
-	else if (strcmp(value,"sensor-owfs") == 0)
+	else if (strcmp(value, "sensor-owfs") == 0)
 		*(int *)result = PROTO_SENSOR_OWFS;
 	else {
 		cfg_error(cfg, "invalid value for option '%s': %s",
@@ -181,6 +206,28 @@ static int conf_parse_type(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		return -1;
 	}
 	return 0;
+}
+
+/**
+   \brief Used to print bool values
+   \param opt option structure
+   \param index number of option to print
+   \param fp passed FILE
+*/
+
+static void conf_print_bool(cfg_opt_t *opt, unsigned int index, FILE *fp)
+{
+	switch (cfg_opt_getnint(opt, index)) {
+	case 0:
+		fprintf(fp, "no");
+		break;
+	case 1:
+		fprintf(fp, "yes");
+		break;
+	default:
+		fprintf(fp, "no");
+		break;
+	}
 }
 
 /**
@@ -251,6 +298,7 @@ static int conf_parse_subtype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 	}
 	return 0;
 }
+
 
 /**
 	\brief Used to print subtypes
@@ -341,6 +389,8 @@ device_t *new_dev_from_conf(cfg_t *cfg, char *uid)
 {
 	device_t *dev;
 	cfg_t *devconf;
+	double d;
+	uint32_t u;
 
 	devconf = find_devconf_byuid(cfg, uid);
 	if (devconf == NULL)
@@ -357,6 +407,8 @@ device_t *new_dev_from_conf(cfg_t *cfg, char *uid)
 		dev->name = strdup(cfg_getstr(devconf, "name"));
 	if (cfg_getstr(devconf, "rrdname") != NULL)
 		dev->rrdname = strdup(cfg_getstr(devconf, "rrdname"));
+	if (cfg_getstr(devconf, "handler") != NULL)
+		dev->handler = strdup(cfg_getstr(devconf, "handler"));
 	dev->proto = cfg_getint(devconf, "proto");
 	dev->type = cfg_getint(devconf, "type");
 	dev->subtype = cfg_getint(devconf, "subtype");
@@ -366,6 +418,17 @@ device_t *new_dev_from_conf(cfg_t *cfg, char *uid)
 	     dev->subtype == SUBTYPE_PRESSURE ||
 	     dev->subtype == SUBTYPE_COUNTER))
 		dev->localdata = (void *)strdup(cfg_getstr(devconf, "multimodel"));
+	if (datatype_dev(dev) == DATATYPE_UINT) {
+		u = (uint32_t)lrint(cfg_getfloat(devconf, "lowat"));
+		store_data_dev(dev, DATALOC_LOWAT, &u);
+		u = (uint32_t)lrint(cfg_getfloat(devconf, "hiwat"));
+		store_data_dev(dev, DATALOC_HIWAT, &u);
+	} else {
+		d = cfg_getfloat(devconf, "lowat");
+		store_data_dev(dev, DATALOC_LOWAT, &d);
+		d = cfg_getfloat(devconf, "hiwat");
+		store_data_dev(dev, DATALOC_HIWAT, &d);
+	}
 
 	return dev;
 }
@@ -381,27 +444,54 @@ cfg_t *new_conf_from_dev(cfg_t *cfg, device_t *dev)
 {
 	cfg_opt_t *option;
 	cfg_t *devconf;
+	double d;
+	uint32_t u;
 
-	option = cfg_getopt(cfg, "device");
-	cfg_setopt(cfg, option, dev->uid);
 	devconf = find_devconf_byuid(cfg, dev->uid);
-	cfg_setstr(devconf, "loc", dev->loc);
+	if (devconf == NULL) {
+		option = cfg_getopt(cfg, "device");
+		cfg_setopt(cfg, option, dev->uid);
+		devconf = find_devconf_byuid(cfg, dev->uid);
+	}
+	if (devconf == NULL)
+		return NULL;
+	if (dev->loc != NULL)
+		cfg_setstr(devconf, "loc", dev->loc);
+	if (dev->name != NULL)
+		cfg_setstr(devconf, "name", dev->name);
+	if (dev->rrdname != NULL)
+		cfg_setstr(devconf, "rrdname", dev->rrdname);
+	if (dev->handler != NULL)
+		cfg_setstr(devconf, "handler", dev->handler);
 	if (dev->subtype)
 		cfg_setint(devconf, "subtype", dev->subtype);
 	if (dev->type)
 		cfg_setint(devconf, "type", dev->type);
 	if (dev->proto)
 		cfg_setint(devconf, "proto", dev->proto);
+	if (datatype_dev(dev) == DATATYPE_UINT) {
+		get_data_dev(dev, DATALOC_LOWAT, &u);
+		cfg_setfloat(devconf, "lowat", (double)u);
+		get_data_dev(dev, DATALOC_HIWAT, &u);
+		cfg_setfloat(devconf, "hiwat", (double)u);
+	} else {
+		get_data_dev(dev, DATALOC_LOWAT, &d);
+		cfg_setfloat(devconf, "lowat", d);
+		get_data_dev(dev, DATALOC_HIWAT, &d);
+		cfg_setfloat(devconf, "hiwat", d);
+	}
+
 	return devconf;
 }
 
 /**
 	\brief Dump the current config file out
 	\param cfg the config pointer
+	\param flags print flags CONF_DUMP_XXX
 	\param filename filename to dump to
 */
 
-cfg_t *dump_conf(cfg_t *cfg, const char *filename)
+cfg_t *dump_conf(cfg_t *cfg, int flags, const char *filename)
 {
 	FILE *fp;
 	cfg_opt_t *a;
@@ -422,11 +512,16 @@ cfg_t *dump_conf(cfg_t *cfg, const char *filename)
 		cfg_opt_set_print_func(a, conf_print_type);
 		a = cfg_getopt(section, "proto");
 		cfg_opt_set_print_func(a, conf_print_proto);
+		if (flags & CONF_DUMP_DEVONLY) {
+			fprintf(fp, "device \"%s\" {\n", cfg_title(section));
+			cfg_print_indent(section, fp, 2);
+			fprintf(fp, "}\n");
+		}
 	}
-	cfg_print(cfg, fp);
+	if (!(flags & CONF_DUMP_DEVONLY))
+		cfg_print(cfg, fp);
 	fclose(fp);
 }
-
 
 /**
 	\brief Parse a config file

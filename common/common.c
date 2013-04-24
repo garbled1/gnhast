@@ -217,10 +217,11 @@ int lcm(int a,int b)
 	return temp;
 }
 
-/** brief find the greatest common divisor
-    \param a first int
-    \param b second int
-    \return gcd
+/**
+   \brief find the greatest common divisor
+   \param a first int
+   \param b second int
+   \return gcd
 */
 
 int gcd(int a, int b)

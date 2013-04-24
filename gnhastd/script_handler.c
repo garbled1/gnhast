@@ -93,9 +93,10 @@ void run_handler_dev(device_t *dev)
 			bailout();
 
 		/* Now setup args for the handler */
-		cmd = calloc(2, sizeof(char *));
-		cmd[0] = strdup(dev->uid);
-		cmd[1] = (char *)0;
+		cmd = calloc(3, sizeof(char *));
+		cmd[0] = strdup(dev->handler);
+		cmd[1] = strdup(dev->uid);
+		cmd[2] = (char *)0;
 		execvp(dev->handler, cmd);
 		bailout(); /* if we got here, execvp failed */
 	} /* end switch, now we are back in parent */

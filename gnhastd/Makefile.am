@@ -10,6 +10,7 @@ gnhastd_SOURCES = \
 	../common/gncoll.c \
 	netloop.c \
 	cmdhandler.c \
+	script_handler.c \
 	gnhastd.c
 
 gnhastd_LDADD = -L../libconfuse -lconfuse

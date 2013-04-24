@@ -34,6 +34,7 @@ AC_CHECK_LIB(event_core, event_base_new,, AC_MSG_ERROR(["Unable to find libevent
 AC_CHECK_LIB(event_extra, evdns_base_new,, AC_MSG_ERROR(["Unable to find libevent2 extra"]))
 AC_CHECK_LIB(event_openssl, bufferevent_get_openssl_error,, AC_MSG_ERROR(["Unable to find libevent2 openssl"]))
 AC_CHECK_LIB(ssl, SSL_CTX_new,,AC_MSG_ERROR(["Unable to find openSSL library"]))
+AC_CHECK_LIB(m, lrint,,AC_MSG_ERROR(["Unable to find math library"]))
 #AC_CHECK_LIB(rrd, rrd_create,,AC_MSG_ERROR(["Unable to find rrd library"]))
 #AC_CHECK_LIB(event_pthreads, evthread_use_pthreads,, AC_MSG_ERROR(["Unable to find libevent2 pthreads"]))
 #AC_CHECK_LIB(pthread, pthread_mutex_lock,,AC_MSG_ERROR(["Unable to find pthread library"]))

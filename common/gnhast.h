@@ -110,6 +110,37 @@ typedef struct _client_t {
 	SSL *cli_ctx;		/**< \brief client context */
 } client_t;
 
+/* matches struct device */
+enum DATALOC_TYPES {
+	DATALOC_DATA,
+	DATALOC_MIN,
+	DATALOC_MAX,
+	DATALOC_AVG,
+	DATALOC_LOWAT,
+	DATALOC_HIWAT,
+};
+
+/* matches data_t */
+enum DATATYPE_TYPES {
+	DATATYPE_UINT,
+	DATATYPE_DOUBLE,
+};
+
+/** data union */
+typedef union _data_t {
+	uint8_t state;	/**< \brief on or off */
+	uint32_t count; /**< \brief counter */
+	double temp;	/**< \brief Temperature */
+	double humid;	/**< \brief Humidity */
+	double lux;	/**< \brief Lux */
+	double pressure;/**< \brief Pressure */
+	double speed;   /**< \brief speed (wind) */
+	double dir;     /**< \brief direction (wind) */
+	double level;	/**< \brief level (for dimmers) */
+	double wetness;	/**< \brief wetness */
+	double moisture;/**< \brief moisture level */
+} data_t;
+
 /** The device structure */
 typedef struct _device_t {
 	char *uid;		/**< \brief Unique Identifier */
@@ -119,17 +150,12 @@ typedef struct _device_t {
 	uint8_t proto;		/**< \brief protocol */
 	uint8_t type;		/**< \brief Type */
 	uint8_t subtype;	/**< \brief sub-type */
-	union {
-		uint8_t state;	/**< \brief on or off */
-		uint32_t count; /**< \brief counter */
-		double temp;	/**< \brief Temperature */
-		double humid;	/**< \brief Humidity */
-		double lux;	/**< \brief Lux */
-		double pressure;/**< \brief Pressure */
-		double speed;   /**< \brief speed (wind) */
-		double dir;     /**< \brief direction (wind) */
-		double level;	/**< \brief level (for dimmers) */
-	} data, min, max, avg;	/**< \brief data is cur, min/max/avg for historical if avail */
+	data_t data;		/**< \brief data is current */
+	data_t min;		/**< \brief 24h min */
+	data_t max;		/**< \brief 24h max */
+	data_t avg;		/**< \brief 24h avg */
+	data_t lowat;		/**< \brief low water mark */
+	data_t hiwat;		/**< \brief high water mark */
 	client_t *collector;	/**< \brief The collector that serves this data up */
 	char *handler;		/**< \brief our external handler */
 	void *localdata;	/**< \brief pointer to program-specific data */
