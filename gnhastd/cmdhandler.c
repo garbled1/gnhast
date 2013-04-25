@@ -153,10 +153,14 @@ int cmd_update(pargs_t *args, void *arg)
 		case SC_DIR:
 		case SC_MOISTURE:
 		case SC_WETNESS:
+		case SC_VOLTAGE:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.d);
 			break;
 		case SC_COUNT:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.u);
+			break;
+		case SC_WATTSEC:
+			store_data_dev(dev, DATALOC_DATA, &args[i].arg.ll);
 			break;
 		}
 	}

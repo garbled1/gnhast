@@ -112,6 +112,7 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 	struct evbuffer *send;
 	double d;
 	uint32_t u;
+	int64_t ll;
 
 	/* Verify device sanity first */
 	if (dev->name == NULL || dev->uid == NULL) {
@@ -132,6 +133,9 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 		if (datatype_dev(dev) == DATATYPE_UINT) {
 			get_data_dev(dev, DATALOC_DATA, &u);
 			evbuffer_add_printf(send, "%d\n", u);
+		} else if (datatype_dev(dev) == DATATYPE_LL) {
+			get_data_dev(dev, DATALOC_DATA, &ll);
+			evbuffer_add_printf(send, "%j\n", ll);
 		} else {
 			get_data_dev(dev, DATALOC_DATA, &d);
 			evbuffer_add_printf(send, "%f\n", d);
@@ -155,6 +159,9 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 	if (datatype_dev(dev) == DATATYPE_UINT) {
 		get_data_dev(dev, DATALOC_DATA, &u);
 		evbuffer_add_printf(send, "%s:%d\n", ARGDEV(dev), u);
+	} else if (datatype_dev(dev) == DATATYPE_LL) {
+		get_data_dev(dev, DATALOC_DATA, &ll);
+		evbuffer_add_printf(send, "%s:%j\n", ARGDEV(dev), ll);
 	} else {
 		get_data_dev(dev, DATALOC_DATA, &d);
 		evbuffer_add_printf(send, "%s:%f\n", ARGDEV(dev), d);

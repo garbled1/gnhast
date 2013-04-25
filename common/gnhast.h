@@ -67,6 +67,8 @@ enum PROTO_TYPES {
 	PROTO_INSTEON_V2,
 	PROTO_INSTEON_V2CS,
 	PROTO_SENSOR_OWFS,
+	PROTO_SENSOR_BRULTECH_GEM,
+	PROTO_SENSOR_BRULTECH_ECM1240,
 };
 #define PROTO_MAX PROTO_SENSOR_OWFS
 
@@ -84,6 +86,8 @@ enum SUBTYPE_TYPES {
 	SUBTYPE_WETNESS,
 	SUBTYPE_HUB,
 	SUBTYPE_LUX,
+	SUBTYPE_VOLTAGE,
+	SUBTYPE_WATTSEC,
 	SUBTYPE_BOOL,
 };
 #define SUBTYPE_MAX SUBTYPE_BOOL
@@ -124,12 +128,14 @@ enum DATALOC_TYPES {
 enum DATATYPE_TYPES {
 	DATATYPE_UINT,
 	DATATYPE_DOUBLE,
+	DATATYPE_LL,
 };
 
 /** data union */
 typedef union _data_t {
 	uint8_t state;	/**< \brief on or off */
 	uint32_t count; /**< \brief counter */
+	int64_t wattsec;/**< \brief wattseconds */
 	double temp;	/**< \brief Temperature */
 	double humid;	/**< \brief Humidity */
 	double lux;	/**< \brief Lux */
@@ -139,6 +145,7 @@ typedef union _data_t {
 	double level;	/**< \brief level (for dimmers) */
 	double wetness;	/**< \brief wetness */
 	double moisture;/**< \brief moisture level */
+	double volts;	/**< \brief voltage */
 } data_t;
 
 /** The device structure */

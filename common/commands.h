@@ -21,6 +21,7 @@ typedef struct _pargs_t {
 		int i;		/**< \brief PTINT */
 		long l;		/**< \brief PTLONG */
 		uint32_t u;	/**< \brief PTUINT */
+		int64_t ll;	/**< \brief PTLL */
 	} arg;			/**< \brief argument data */
 } pargs_t;
 
@@ -50,6 +51,7 @@ enum PT_TYPES {
 	PTINT,
 	PTLONG,
 	PTUINT,
+	PTLL,
 };
 
 /* subcommands */
@@ -73,6 +75,8 @@ enum SC_COMMANDS {
 	SC_DIR,		/**< \brief direction */
 	SC_WETNESS,	/**< \brief wetness */
 	SC_MOISTURE,	/**< \brief moisture */
+	SC_VOLTAGE,	/**< \brief voltage */
+	SC_WATTSEC,	/**< \brief watt seconds */
 };
 
 /* commands */

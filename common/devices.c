@@ -215,6 +215,12 @@ void get_data_dev(device_t *dev, int where, void *data)
 		case SUBTYPE_LUX:
 			*((double *)data) = store->lux;
 			break;
+		case SUBTYPE_WATTSEC:
+			*((int64_t *)data) = store->wattsec;
+			break;
+		case SUBTYPE_VOLTAGE:
+			*((double *)data) = store->volts;
+			break;
 		}
 		break;
 	}
@@ -290,6 +296,12 @@ void store_data_dev(device_t *dev, int where, void *data)
 		case SUBTYPE_LUX:
 			store->lux = *((double *)data);
 			break;
+		case SUBTYPE_VOLTAGE:
+			store->volts = *((double *)data);
+			break;
+		case SUBTYPE_WATTSEC:
+			store->wattsec = *((int64_t *)data);
+			break;
 		}
 		break;
 	}
@@ -310,6 +322,8 @@ int datatype_dev(device_t *dev)
 		return DATATYPE_UINT;
 	if (dev->subtype == SUBTYPE_OUTLET)
 		return DATATYPE_UINT;
+	if (dev->subtype == SUBTYPE_WATTSEC)
+		return DATATYPE_LL;
 	return DATATYPE_DOUBLE;
 }
 
@@ -323,6 +337,7 @@ int device_watermark(device_t *dev)
 {
 	double lwd, hwd, dd;
 	uint32_t lwu, hwu, du;
+	int64_t lwj, hwj, dj;
 
 	if (datatype_dev(dev) == DATATYPE_UINT) {
 		get_data_dev(dev, DATALOC_LOWAT, &lwu);
@@ -333,6 +348,16 @@ int device_watermark(device_t *dev)
 		if (du < lwu)
 			return -1;
 		if (du > hwu)
+			return 1;
+	} else if (datatype_dev(dev) == DATATYPE_LL) {
+		get_data_dev(dev, DATALOC_LOWAT, &lwj);
+		get_data_dev(dev, DATALOC_HIWAT, &hwj);
+		get_data_dev(dev, DATALOC_DATA, &dj);
+		if (lwj == 0 && hwj == 0)
+			return 2;
+		if (dj < lwj)
+			return -1;
+		if (dj > hwj)
 			return 1;
 	} else {
 		get_data_dev(dev, DATALOC_LOWAT, &lwd);

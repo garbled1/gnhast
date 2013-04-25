@@ -70,6 +70,8 @@ argtable_t argtable[] = {
 	{"count", SC_COUNT, PTUINT},
 	{"wet", SC_WETNESS, PTDOUBLE},
 	{"moist", SC_MOISTURE, PTDOUBLE},
+	{"wsec", SC_WATTSEC, PTLL},
+	{"volts", SC_VOLTAGE, PTDOUBLE},
 };
 
 /** \brief size of the args table */ 
@@ -140,6 +142,8 @@ int find_arg_bydev(device_t *dev)
 	case SUBTYPE_SWITCH: return find_arg_byid(SC_SWITCH); break;
 	case SUBTYPE_WETNESS: return find_arg_byid(SC_WETNESS); break;
 	case SUBTYPE_MOISTURE: return find_arg_byid(SC_MOISTURE); break;
+	case SUBTYPE_VOLTAGE: return find_arg_byid(SC_VOLTAGE); break;
+	case SUBTYPE_WATTSEC: return find_arg_byid(SC_WATTSEC); break;
 	}
 	return -1;
 }
@@ -215,7 +219,15 @@ pargs_t *parse_command(char  **words, int count)
 				args[cur].arg.i = atoi(tmp);
 				break;
 			case PTUINT:
-				args[cur].arg.u = strtoul(tmp, (char **)NULL, 10);
+				args[cur].arg.u =
+					strtoul(tmp, (char **)NULL, 10);
+				break;
+			case PTLONG:
+				args[cur].arg.l =
+					strtol(tmp, (char **)NULL, 10);
+			case PTLL:
+				args[cur].arg.ll =
+					strtoll(tmp, (char **)NULL, 10);
 				break;
 			}
 			cur++;
