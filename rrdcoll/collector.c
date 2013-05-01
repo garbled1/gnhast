@@ -374,84 +374,31 @@ int cmd_update(pargs_t *args, void *arg)
 	for (i=0; args[i].cword != -1; i++) {
 		switch (args[i].cword) {
 		case SC_SWITCH:
-			if (dev->type != DEVICE_SWITCH)
-				LOG(LOG_ERROR, "Updating switch value on "
-				    "non-switch device %s/%s", dev->uid,
-				    dev->name);
-			else
-				dev->data.state = args[i].arg.i;
-			break;
-		case SC_TEMP:
-			if (dev->type != DEVICE_SENSOR ||
-			    dev->subtype != SUBTYPE_TEMP)
-				LOG(LOG_ERROR, "Updating temp value on "
-				    "non-temp device %s/%s", dev->uid,
-				    dev->name);
-			else
-				dev->data.temp = args[i].arg.d;
-			break;
-		case SC_HUMID:
-			if (dev->type != DEVICE_SENSOR ||
-			    dev->subtype != SUBTYPE_HUMID)
-				LOG(LOG_ERROR, "Updating humid value on "
-				    "non-humid device %s/%s", dev->uid,
-				    dev->name);
-			else
-				dev->data.humid = args[i].arg.d;
+			store_data_dev(dev, DATALOC_DATA, &args[i].arg.i);
 			break;
 		case SC_LUX:
-			if (dev->type != DEVICE_SENSOR ||
-			    dev->subtype != SUBTYPE_LUX)
-				LOG(LOG_ERROR, "Updating lux value on non-lux "
-				    "device %s/%s", dev->uid, dev->name);
-			else
-				dev->data.lux = args[i].arg.d;
-			break;
+		case SC_HUMID:
+		case SC_TEMP:
 		case SC_DIMMER:
-			if (dev->type != DEVICE_DIMMER)
-				LOG(LOG_ERROR, "Updating dimmer level value "
-				    "on non-dimmer device %s/%s",
-				    dev->uid, dev->name);
-			else
-				dev->data.level = args[i].arg.d;
-			break;
 		case SC_PRESSURE:
-			if (dev->type != DEVICE_SENSOR ||
-			    dev->subtype != SUBTYPE_PRESSURE)
-				LOG(LOG_ERROR, "Updating pressure value on "
-				    "non-pressure device %s/%s", dev->uid,
-				    dev->name);
-			else
-				dev->data.pressure = args[i].arg.d;
-			break;
 		case SC_SPEED:
-			if (dev->type != DEVICE_SENSOR ||
-			    dev->subtype != SUBTYPE_SPEED)
-				LOG(LOG_ERROR, "Updating speed value on "
-				    "non-speed device %s/%s", dev->uid,
-				    dev->name);
-			else
-				dev->data.speed = args[i].arg.d;
-			break;
 		case SC_DIR:
-			if (dev->type != DEVICE_SENSOR ||
-			    dev->subtype != SUBTYPE_DIR)
-				LOG(LOG_ERROR, "Updating direction value on "
-				    "non-direction device %s/%s", dev->uid,
-				    dev->name);
-			else
-				dev->data.dir = args[i].arg.d;
+		case SC_MOISTURE:
+		case SC_WETNESS:
+		case SC_VOLTAGE:
+		case SC_WATT:
+		case SC_AMPS:
+			store_data_dev(dev, DATALOC_DATA, &args[i].arg.d);
 			break;
 		case SC_COUNT:
-			if (dev->subtype != SUBTYPE_COUNTER)
-				LOG(LOG_ERROR, "Updating count value on "
-				    "non-count device %s/%s", dev->uid,
-				    dev->name);
-			else
-				dev->data.count = args[i].arg.u;
+			store_data_dev(dev, DATALOC_DATA, &args[i].arg.u);
+			break;
+		case SC_WATTSEC:
+			store_data_dev(dev, DATALOC_DATA, &args[i].arg.ll);
 			break;
 		}
 	}
+
 	(void)time(&dev->last_upd);
 	rrd_update_dev(dev);
 	return(0);
@@ -563,44 +510,28 @@ void rrd_update_dev(device_t *dev)
 {
 	char *rrdparams[4];
 	cfg_t *devconf;
+	uint32_t u;
+	double d;
+	int64_t ll;
 	extern int optind, opterr;
 
 	devconf = find_rrddevconf_byuid(cfg, dev->uid);
 	rrdparams[0] = "rrdupdate";
 	rrdparams[1] = cfg_getstr(devconf, "file");
 	rrdparams[2] = safer_malloc(64);
-	switch (dev->subtype) {
-	case SUBTYPE_TEMP:
-		sprintf(rrdparams[2], "%jd:%f", (intmax_t)dev->last_upd,
-			dev->data.temp);
+
+	switch (datatype_dev(dev)) {
+	case DATATYPE_UINT:
+		get_data_dev(dev, DATALOC_DATA, &u);
+		sprintf(rrdparams[2], "%jd:%d", (intmax_t)dev->last_upd, u);
 		break;
-	case SUBTYPE_HUMID:
-		sprintf(rrdparams[2], "%jd:%f", (intmax_t)dev->last_upd,
-			dev->data.humid);
+	case DATATYPE_DOUBLE:
+		get_data_dev(dev, DATALOC_DATA, &d);
+		sprintf(rrdparams[2], "%jd:%f", (intmax_t)dev->last_upd, d);
 		break;
-	case SUBTYPE_LUX:
-		sprintf(rrdparams[2], "%jd:%f", (intmax_t)dev->last_upd,
-			dev->data.lux);
-		break;
-	case SUBTYPE_COUNTER:
-		sprintf(rrdparams[2], "%jd:%d", (intmax_t)dev->last_upd,
-			dev->data.count);
-		break;
-	case SUBTYPE_PRESSURE:
-		sprintf(rrdparams[2], "%jd:%f", (intmax_t)dev->last_upd,
-			dev->data.pressure);
-		break;
-	case SUBTYPE_SPEED:
-		sprintf(rrdparams[2], "%jd:%f", (intmax_t)dev->last_upd,
-			dev->data.speed);
-		break;
-	case SUBTYPE_DIR:
-		sprintf(rrdparams[2], "%jd:%f", (intmax_t)dev->last_upd,
-			dev->data.dir);
-		break;
-	case SUBTYPE_SWITCH:
-		sprintf(rrdparams[2], "%jd:%d", (intmax_t)dev->last_upd,
-			dev->data.state);
+	case DATATYPE_LL:
+		get_data_dev(dev, DATALOC_DATA, &ll);
+		sprintf(rrdparams[2], "%jd:%jd", (intmax_t)dev->last_upd, ll);
 		break;
 	}
 	rrdparams[3] = NULL;
