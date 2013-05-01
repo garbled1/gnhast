@@ -98,7 +98,7 @@ void add_wrapped_device(device_t *dev, client_t *client, int rate)
 	wrap->rate = rate;
 	if (TAILQ_EMPTY(&client->wdevices))
 		    TAILQ_INIT(&client->wdevices);
-	if (!wrap->onq & DEVONQ_CLIENT) {
+	if (!(wrap->onq & DEVONQ_CLIENT)) {
 		TAILQ_INSERT_TAIL(&client->wdevices, wrap, next);
 		wrap->onq |= DEVONQ_CLIENT;
 	}
@@ -119,7 +119,7 @@ void insert_device(device_t *dev)
 	nrofdevs++;
 
 	/* throw it in the all device TAILQ */
-	if (!dev->onq & DEVONQ_ALL) {
+	if (!(dev->onq & DEVONQ_ALL)) {
 		TAILQ_INSERT_TAIL(&alldevs, dev, next_all);
 		dev->onq |= DEVONQ_ALL;
 	}

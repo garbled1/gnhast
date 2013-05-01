@@ -249,7 +249,7 @@ int cmd_register(pargs_t *args, void *arg)
 		TAILQ_INIT(&client->devices);
 		client->provider = 1; /* this client is a provider */
 	}
-	if (!dev->onq & DEVONQ_CLIENT) {
+	if (!(dev->onq & DEVONQ_CLIENT)) {
 		TAILQ_INSERT_TAIL(&client->devices, dev, next_client);
 		dev->onq |= DEVONQ_CLIENT;
 	}

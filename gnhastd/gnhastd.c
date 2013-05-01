@@ -73,6 +73,8 @@ cfg_opt_t options[] = {
 	CFG_SEC("device", device_opts, CFGF_MULTI | CFGF_TITLE),
 	CFG_STR("devconf", "devices.conf", CFGF_NONE),
 	CFG_INT("devconf_update", 300, CFGF_NONE),
+	CFG_FUNC("include", cfg_include),
+	CFG_STR("logfile", 0, CFGF_NONE),
 	CFG_END(),
 };
 
@@ -125,12 +127,14 @@ int main(int argc, char **argv)
 			break;
 		}
 
-	/* Fire up logging */
-	//logfile = openlog("log");
-	LOG(LOG_NOTICE, "Starting gnhastd version %s", VERSION);
 
 	/* Parse the config file */
 	cfg = parse_conf(conffile);
+
+	/* Fire up logging */
+	if (cfg_getstr(cfg, "logfile") != NULL)
+		logfile = openlog(cfg_getstr(cfg, "logfile"));
+	LOG(LOG_NOTICE, "Starting gnhastd version %s", VERSION);
 
 	/* Initialize the event loop */
 	base = event_base_new();

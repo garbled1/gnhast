@@ -136,6 +136,7 @@ cfg_opt_t options[] = {
 	CFG_SEC("device", device_opts, CFGF_MULTI | CFGF_TITLE),
 	CFG_SEC("dev", dev_opts, CFGF_MULTI | CFGF_TITLE),
 	CFG_SEC("rrdrra", rrd_rra_opts, CFGF_MULTI | CFGF_TITLE),
+	CFG_STR("logfile", 0, CFGF_NONE),
 	CFG_END(),
 };      
 
@@ -974,6 +975,8 @@ int main(int argc, char **argv)
 
 	cfg = parse_conf(conffile);
 
+	if (cfg_getstr(cfg, "logfile") != NULL)
+		logfile = openlog(cfg_getstr(cfg, "logfile"));
 
 	/* Now, parse the details of connecting to the gnhastd server */
 
