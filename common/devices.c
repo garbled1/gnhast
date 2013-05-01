@@ -98,7 +98,10 @@ void add_wrapped_device(device_t *dev, client_t *client, int rate)
 	wrap->rate = rate;
 	if (TAILQ_EMPTY(&client->wdevices))
 		    TAILQ_INIT(&client->wdevices);
-	TAILQ_INSERT_TAIL(&client->wdevices, wrap, next);
+	if (!wrap->onq & DEVONQ_CLIENT) {
+		TAILQ_INSERT_TAIL(&client->wdevices, wrap, next);
+		wrap->onq |= DEVONQ_CLIENT;
+	}
 }
 
 /**
@@ -116,7 +119,10 @@ void insert_device(device_t *dev)
 	nrofdevs++;
 
 	/* throw it in the all device TAILQ */
-	TAILQ_INSERT_TAIL(&alldevs, dev, next_all);
+	if (!dev->onq & DEVONQ_ALL) {
+		TAILQ_INSERT_TAIL(&alldevs, dev, next_all);
+		dev->onq |= DEVONQ_ALL;
+	}
 }
 
 
@@ -221,6 +227,12 @@ void get_data_dev(device_t *dev, int where, void *data)
 		case SUBTYPE_VOLTAGE:
 			*((double *)data) = store->volts;
 			break;
+		case SUBTYPE_WATT:
+			*((double *)data) = store->watts;
+			break;
+		case SUBTYPE_AMPS:
+			*((double *)data) = store->amps;
+			break;
 		}
 		break;
 	}
@@ -301,6 +313,12 @@ void store_data_dev(device_t *dev, int where, void *data)
 			break;
 		case SUBTYPE_WATTSEC:
 			store->wattsec = *((int64_t *)data);
+			break;
+		case SUBTYPE_WATT:
+			store->watts = *((double *)data);
+			break;
+		case SUBTYPE_AMPS:
+			store->amps = *((double *)data);
 			break;
 		}
 		break;

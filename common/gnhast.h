@@ -70,7 +70,7 @@ enum PROTO_TYPES {
 	PROTO_SENSOR_BRULTECH_GEM,
 	PROTO_SENSOR_BRULTECH_ECM1240,
 };
-#define PROTO_MAX PROTO_SENSOR_OWFS
+#define PROTO_MAX PROTO_SENSOR_BRULTECH_ECM1240
 
 enum SUBTYPE_TYPES {
 	SUBTYPE_NONE,
@@ -88,6 +88,8 @@ enum SUBTYPE_TYPES {
 	SUBTYPE_LUX,
 	SUBTYPE_VOLTAGE,
 	SUBTYPE_WATTSEC,
+	SUBTYPE_WATT,
+	SUBTYPE_AMPS,
 	SUBTYPE_BOOL,
 };
 #define SUBTYPE_MAX SUBTYPE_BOOL
@@ -131,6 +133,10 @@ enum DATATYPE_TYPES {
 	DATATYPE_LL,
 };
 
+#define DEVONQ_CLIENT	(1<<1)
+#define DEVONQ_PEER	(1<<2)
+#define DEVONQ_ALL	(1<<3)
+
 /** data union */
 typedef union _data_t {
 	uint8_t state;	/**< \brief on or off */
@@ -146,6 +152,8 @@ typedef union _data_t {
 	double wetness;	/**< \brief wetness */
 	double moisture;/**< \brief moisture level */
 	double volts;	/**< \brief voltage */
+	double watts;	/**< \brief watts */
+	double amps;	/**< \brief amps */
 } data_t;
 
 /** The device structure */
@@ -168,6 +176,7 @@ typedef struct _device_t {
 	void *localdata;	/**< \brief pointer to program-specific data */
 	time_t last_upd;	/**< \brief time of last update */
 	struct rb_node rbn;	/**< \brief red black node */
+	uint32_t onq;		/**< \brief I am on a queue */
 	TAILQ_ENTRY(_device_t) next_client;	/**< \brief Next device in client */
 	TAILQ_ENTRY(_device_t) next_peer;	/**< \brief Next peer in devgroup */
 	TAILQ_ENTRY(_device_t) next_all;	/**< \brief Next in global devlist */
@@ -175,9 +184,10 @@ typedef struct _device_t {
 
 /** A wrapper device structure */
 typedef struct _wrap_device_t {
-	int rate;
-	device_t *dev;
-	time_t last_fired;
+	int rate;		/**< \brief rate of fire */
+	device_t *dev;		/**< \brief wrapped device */
+	time_t last_fired;	/**< \brief last time fired */
+	uint32_t onq;		/**< \brief I am on a queue */
 	TAILQ_ENTRY(_wrap_device_t) next; /**< \brief next device */
 } wrap_device_t;
 
@@ -186,6 +196,7 @@ typedef struct _device_group_t {
 	char *uid;		/**< \brief Unique group id */
 	char *name;		/**< \brief group name */
 	struct _device_group_t *parent;	/**< \brief parent devgroup */
+	uint32_t onq;		/**< \brief I am on a queue */
 	TAILQ_HEAD(, _device_t) members; /**< \brief group members, ties to next_peer in device_t */
 	TAILQ_HEAD(, _device_group_t) children; /**< \brief child groups */
 	TAILQ_ENTRY(_device_group_t) next;	/**< \brief my siblings */

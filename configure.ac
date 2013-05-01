@@ -56,6 +56,7 @@ AC_CONFIG_FILES([Makefile \
 		 fakecoll/Makefile \
 		 owsrvcoll/Makefile \
 		 rrdcoll/Makefile \
+		 brulcoll/Makefile \
 		 libconfuse/Makefile])
 
 AC_OUTPUT

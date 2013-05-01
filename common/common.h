@@ -30,6 +30,12 @@
 #define LOG_ERROR	4
 #define LOG_FATAL	5
 
+#define LITTLE_E (*(char *)(void *)&indian)
+
+#define LETOH32(x)	((LITTLE_E) ? x : bswap32(x))
+#define LETOH16(x)	((LITTLE_E) ? x : bswap16(x))
+#define BETOH32(x)	((LITTLE_E) ? bswap32(x) : x)
+#define BETOH16(x)	((LITTLE_E) ? bswap16(x) : x)
 
 /* from common.c */
 FILE *openlog(char *logf);

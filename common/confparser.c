@@ -149,6 +149,10 @@ static int conf_parse_proto(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		*(int *)result = PROTO_INSTEON_V2CS;
 	else if (strcmp(value, "sensor-owfs") == 0)
 		*(int *)result = PROTO_SENSOR_OWFS;
+	else if (strcmp(value, "brultech-gem") == 0)
+		*(int *)result = PROTO_SENSOR_BRULTECH_GEM;
+	else if (strcmp(value, "brultech-ecm1240") == 0)
+		*(int *)result = PROTO_SENSOR_BRULTECH_ECM1240;
 	else {
 		cfg_error(cfg, "invalid value for option '%s': %s",
 		    cfg_opt_name(opt), value);
@@ -181,6 +185,12 @@ static void conf_print_proto(cfg_opt_t *opt, unsigned int index, FILE *fp)
 		break;
 	case PROTO_SENSOR_OWFS:
 		fprintf(fp, "sensor-owfs");
+		break;
+	case PROTO_SENSOR_BRULTECH_GEM:
+		fprintf(fp, "brultech-gem");
+		break;
+	case PROTO_SENSOR_BRULTECH_ECM1240:
+		fprintf(fp, "brultech-ecm1240");
 		break;
 	default:
 		fprintf(fp, "NONE");
@@ -291,6 +301,14 @@ static int conf_parse_subtype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		*(int *)result = SUBTYPE_WETNESS;
 	else if (strcmp(value, "hub") == 0)
 		*(int *)result = SUBTYPE_HUB;
+	else if (strcmp(value, "voltage") == 0)
+		*(int *)result = SUBTYPE_VOLTAGE;
+	else if (strcmp(value, "wattsec") == 0)
+		*(int *)result = SUBTYPE_WATTSEC;
+	else if (strcmp(value, "watt") == 0)
+		*(int *)result = SUBTYPE_WATT;
+	else if (strcmp(value, "amps") == 0)
+		*(int *)result = SUBTYPE_AMPS;
 	else {
 		cfg_error(cfg, "invalid value for option '%s': %s",
 		    cfg_opt_name(opt), value);
@@ -351,6 +369,18 @@ static void conf_print_subtype(cfg_opt_t *opt, unsigned int index, FILE *fp)
 		break;
 	case SUBTYPE_HUB:
 		fprintf(fp, "hub");
+		break;
+	case SUBTYPE_VOLTAGE:
+		fprintf(fp, "voltage");
+		break;
+	case SUBTYPE_WATTSEC:
+		fprintf(fp, "wattsec");
+		break;
+	case SUBTYPE_WATT:
+		fprintf(fp, "watt");
+		break;
+	case SUBTYPE_AMPS:
+		fprintf(fp, "amps");
 		break;
 	default:
 		fprintf(fp, "NONE");

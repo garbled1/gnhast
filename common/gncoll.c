@@ -135,7 +135,7 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 			evbuffer_add_printf(send, "%d\n", u);
 		} else if (datatype_dev(dev) == DATATYPE_LL) {
 			get_data_dev(dev, DATALOC_DATA, &ll);
-			evbuffer_add_printf(send, "%j\n", ll);
+			evbuffer_add_printf(send, "%jd\n", ll);
 		} else {
 			get_data_dev(dev, DATALOC_DATA, &d);
 			evbuffer_add_printf(send, "%f\n", d);
@@ -161,7 +161,7 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 		evbuffer_add_printf(send, "%s:%d\n", ARGDEV(dev), u);
 	} else if (datatype_dev(dev) == DATATYPE_LL) {
 		get_data_dev(dev, DATALOC_DATA, &ll);
-		evbuffer_add_printf(send, "%s:%j\n", ARGDEV(dev), ll);
+		evbuffer_add_printf(send, "%s:%jd\n", ARGDEV(dev), ll);
 	} else {
 		get_data_dev(dev, DATALOC_DATA, &d);
 		evbuffer_add_printf(send, "%s:%f\n", ARGDEV(dev), d);

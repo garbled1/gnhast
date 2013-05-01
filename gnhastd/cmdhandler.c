@@ -154,6 +154,8 @@ int cmd_update(pargs_t *args, void *arg)
 		case SC_MOISTURE:
 		case SC_WETNESS:
 		case SC_VOLTAGE:
+		case SC_WATT:
+		case SC_AMPS:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.d);
 			break;
 		case SC_COUNT:
@@ -247,7 +249,10 @@ int cmd_register(pargs_t *args, void *arg)
 		TAILQ_INIT(&client->devices);
 		client->provider = 1; /* this client is a provider */
 	}
-	TAILQ_INSERT_TAIL(&client->devices, dev, next_client);
+	if (!dev->onq & DEVONQ_CLIENT) {
+		TAILQ_INSERT_TAIL(&client->devices, dev, next_client);
+		dev->onq |= DEVONQ_CLIENT;
+	}
 	dev->collector = client;
 	
 	if (new)

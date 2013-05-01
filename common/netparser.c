@@ -72,6 +72,8 @@ argtable_t argtable[] = {
 	{"moist", SC_MOISTURE, PTDOUBLE},
 	{"wsec", SC_WATTSEC, PTLL},
 	{"volts", SC_VOLTAGE, PTDOUBLE},
+	{"watt", SC_WATT, PTDOUBLE},
+	{"amps", SC_AMPS, PTDOUBLE},
 };
 
 /** \brief size of the args table */ 
@@ -144,6 +146,8 @@ int find_arg_bydev(device_t *dev)
 	case SUBTYPE_MOISTURE: return find_arg_byid(SC_MOISTURE); break;
 	case SUBTYPE_VOLTAGE: return find_arg_byid(SC_VOLTAGE); break;
 	case SUBTYPE_WATTSEC: return find_arg_byid(SC_WATTSEC); break;
+	case SUBTYPE_WATT: return find_arg_byid(SC_WATT); break;
+	case SUBTYPE_AMPS: return find_arg_byid(SC_AMPS); break;
 	}
 	return -1;
 }

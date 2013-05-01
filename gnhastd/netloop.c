@@ -139,20 +139,21 @@ void buf_error_cb(struct bufferevent *ev, short what, void *arg)
 			LOG(LOG_ERROR,
 			    "SSL Error: %s", ERR_error_string(err, NULL));
 	}
+	LOG(LOG_NOTICE, "Closing connection");
 	bufferevent_free(client->ev);
 	if (client->tev)
 		event_free(client->tev);
 	close(client->fd);
 	/* remove all the tailq entries on the device list */
 	if (client->provider)
-		while (TAILQ_FIRST(&client->devices) != NULL) {
-			dev = TAILQ_FIRST(&client->devices);
+		while (dev = TAILQ_FIRST(&client->devices)) {
 			dev->collector = NULL;
 			TAILQ_REMOVE(&client->devices, dev, next_client);
+			dev->onq &= ~(DEVONQ_CLIENT);
 		}
-	while (TAILQ_FIRST(&client->wdevices) != NULL) {
-		wrap = TAILQ_FIRST(&client->wdevices);
+	while (wrap = TAILQ_FIRST(&client->wdevices)) {
 		TAILQ_REMOVE(&client->wdevices, wrap, next);
+		wrap->onq &= ~(DEVONQ_CLIENT);
 		free(wrap);
 	}
 	free(client);

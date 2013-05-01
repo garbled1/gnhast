@@ -77,6 +77,8 @@ enum SC_COMMANDS {
 	SC_MOISTURE,	/**< \brief moisture */
 	SC_VOLTAGE,	/**< \brief voltage */
 	SC_WATTSEC,	/**< \brief watt seconds */
+	SC_WATT,	/**< \brief wattage */
+	SC_AMPS,	/**< \brief amperage */
 };
 
 /* commands */
