@@ -75,6 +75,9 @@ int secure = 0;
  
 #define RRDCOLL_CONFIG_FILE "rrdcoll.conf"
 
+/* debugging */
+//_malloc_options = "AJ";
+
 /** Need the argtable in scope, so we can generate proper commands
     for the server */
 extern argtable_t argtable[];
@@ -603,10 +606,10 @@ void rrd_rrdcreate(cfg_t *cfg)
 		nparams = (cfg_size(devconf, "rrds") * 3) + 7;
 		rrdparams = safer_malloc(sizeof(char *) * nparams);
 		rrdparams[0] = "rrdcreate";
-		rrdparams[1] = filename;
-		rrdparams[2] = "--step";
-		rrdparams[3] = safer_malloc(64);
-		sprintf(rrdparams[3], "%d", cfg_getint(devconf, "heartbeat"));
+		rrdparams[1] = "--step";
+		rrdparams[2] = safer_malloc(16);
+		sprintf(rrdparams[2], "%d", cfg_getint(devconf, "heartbeat"));
+		rrdparams[3] = filename;
 		rrdparams[4] = safer_malloc(64);
 		sprintf(rrdparams[4], "DS:%s:%s:%d:U:U", ds,
 			cfg_getstr(devconf, "type"),
@@ -635,10 +638,13 @@ void rrd_rrdcreate(cfg_t *cfg)
 		optind = 0;
 		opterr = 0;
 		rrd_clear_error();
+		/* WARNING, rrd_create swaps parameters around on exit!! */
 		rrd_create(nparams-1, rrdparams);
 		if (rrd_test_error())
 			LOG(LOG_ERROR, "%s", rrd_get_error());
-		for (k=3; k < j-1; k++)
+
+		free(rrdparams[2]);
+		for (k=4; k < j-1; k++)
 			free(rrdparams[k]);
 		free(rrdparams);
 	}
