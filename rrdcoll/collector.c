@@ -72,6 +72,7 @@ uint32_t loopnr; /**< \brief the number of loops we've made */
 char *dumpconf = NULL;
 int need_rereg = 0;
 int secure = 0;
+int usecache = 0;
  
 #define RRDCOLL_CONFIG_FILE "rrdcoll.conf"
 
@@ -93,6 +94,7 @@ typedef struct _connection_t {
 	int type;
 	int lastcmd;
 	char *host;
+	char *server;
 	struct bufferevent *bev;
 	device_t *current_dev;
 	time_t lastdata;
@@ -102,6 +104,7 @@ typedef struct _connection_t {
 
 /** The connection streams for our two connections */
 connection_t *gnhastd_conn;
+connection_t *rrdc_conn;
 
 /* Configuration file setup */
 
@@ -116,6 +119,9 @@ cfg_opt_t gnhastd_opts[] = {
 
 cfg_opt_t rrdcoll_opts[] = {
 	CFG_STR_LIST("default_rrds", 0, CFGF_NODEFAULT),
+	CFG_INT_CB("userrdcached", 0, CFGF_NONE, conf_parse_bool),
+	CFG_STR("rrdc_hostname", "127.0.0.1", CFGF_NONE),
+	CFG_INT("rrdc_port", 42217, CFGF_NONE),
 	CFG_END(),
 };
 
@@ -516,6 +522,7 @@ void rrd_update_dev(device_t *dev)
 	uint32_t u;
 	double d;
 	int64_t ll;
+	struct evbuffer *send;
 	extern int optind, opterr;
 
 	devconf = find_rrddevconf_byuid(cfg, dev->uid);
@@ -539,12 +546,19 @@ void rrd_update_dev(device_t *dev)
 	}
 	rrdparams[3] = NULL;
 
-	optind = opterr = 0;
-	rrd_clear_error();
-	rrd_update(3, rrdparams);
-
-	if (rrd_test_error())
-		LOG(LOG_ERROR, "%s", rrd_get_error());
+	if (usecache) {
+		send = evbuffer_new();
+		evbuffer_add_printf(send, "UPDATE %s %s\n", rrdparams[1],
+				    rrdparams[2]);
+		bufferevent_write_buffer(rrdc_conn->bev, send);
+		evbuffer_free(send);
+	} else {
+		optind = opterr = 0;
+		rrd_clear_error();
+		rrd_update(3, rrdparams);
+		if (rrd_test_error())
+			LOG(LOG_ERROR, "%s", rrd_get_error());
+	}
 
 	free(rrdparams[2]);
 }
@@ -650,6 +664,32 @@ void rrd_rrdcreate(cfg_t *cfg)
 	}
 }
 
+/**
+   \brief A read callback, got data from server
+   \param in The bufferevent that fired
+   \param arg optional arg
+*/
+
+void rrdc_read_cb(struct bufferevent *in, void *arg)
+{
+	char *data;
+	struct evbuffer *evbuf;
+	size_t len;
+	connection_t *conn = (connection_t *)arg;
+
+	/* loop as long as we have data to read */
+	while (1) {
+		evbuf = bufferevent_get_input(in);
+		data = evbuffer_readln(evbuf, &len, EVBUFFER_EOL_CRLF);
+
+		if (data == NULL || len < 1)
+			return;
+
+		LOG(LOG_DEBUG, "Got data from %s: %s", conn->server, data);
+		free(data);
+	}
+}
+
 /*****
       General routines/gnhastd connection stuff
 *****/
@@ -682,13 +722,16 @@ void buf_read_cb(struct bufferevent *in, void *arg)
 
 		words = parse_netcommand(data, &numwords);
 
-		if (words == NULL || words[0] == NULL)
+		if (words == NULL || words[0] == NULL) {
+			free(data);
 			goto out;
+		}
 
 		cmdword = strdup(words[0]);
 		args = parse_command(words, numwords);
 		parsed_command(cmdword, args, arg);
 		free(cmdword);
+		free(data);
 	}
 
 out:
@@ -699,9 +742,7 @@ out:
 		free(args);
 		args=NULL;
 	}
-	free(data);
 }
-
 
 /**
    \brief A write callback, if we need to tell server something
@@ -750,13 +791,17 @@ void connect_server_cb(int nada, short what, void *arg)
 	device_t *dev;
 
 	conn->bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
-	bufferevent_setcb(conn->bev, buf_read_cb, NULL,
-			  connect_event_cb, conn);
+	if (strcmp(conn->server, "gnhastd") == 0)
+		bufferevent_setcb(conn->bev, buf_read_cb, NULL,
+				  connect_event_cb, conn);
+	else
+		bufferevent_setcb(conn->bev, rrdc_read_cb, NULL,
+				  connect_event_cb, conn);
 	bufferevent_enable(conn->bev, EV_READ|EV_WRITE);
 	bufferevent_socket_connect_hostname(conn->bev, dns_base, AF_UNSPEC,
 					    conn->host, conn->port);
-	LOG(LOG_NOTICE, "Attempting to connect to gnhastd @ %s:%d",
-	    conn->host, conn->port);
+	LOG(LOG_NOTICE, "Attempting to connect to %s @ %s:%d",
+	    conn->server, conn->host, conn->port);
 
 	if (need_rereg) {
 		rrd_rrdcreate(cfg); /* ask for feeds */
@@ -784,8 +829,8 @@ void ssl_connect_server_cb(int nada, short what, void *arg)
 	bufferevent_enable(conn->bev, EV_READ|EV_WRITE);
 	bufferevent_socket_connect_hostname(conn->bev, dns_base, AF_UNSPEC,
 					    conn->host, conn->port);
-	LOG(LOG_NOTICE, "Attempting to connect to gnhastd @ %s:%d",
-	    conn->host, conn->port);
+	LOG(LOG_NOTICE, "Attempting to connect to %s @ %s:%d",
+	    conn->server, conn->host, conn->port);
 
 	if (need_rereg) {
 		rrd_rrdcreate(cfg); /* ask for feeds */
@@ -808,30 +853,30 @@ void connect_event_cb(struct bufferevent *ev, short what, void *arg)
 	struct timeval secs = { 30, 0 }; /* retry in 30 seconds */
 
 	if (what & BEV_EVENT_CONNECTED) {
-		LOG(LOG_NOTICE, "Connected to gnhastd");
+		LOG(LOG_NOTICE, "Connected to %s", conn->server);
 	} else if (what & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
 		if (what & BEV_EVENT_ERROR) {
 			err = bufferevent_socket_get_dns_error(ev);
 			if (err)
 				LOG(LOG_FATAL,
-				    "DNS Failure connecting to gnhastd: %s",
-				    strerror(err));
+				    "DNS Failure connecting to %s: %s",
+				    conn->server, strerror(err));
 			err = bufferevent_get_openssl_error(ev);
 			if (err)
 				LOG(LOG_FATAL,
 				    "SSL Error: %s", ERR_error_string(err, NULL));
 		}
-		LOG(LOG_NOTICE, "Lost connection to gnhastd, closing");
+		LOG(LOG_NOTICE, "Lost connection to %s, closing", conn->server);
 		bufferevent_free(ev);
 
 		/* we need to reconnect! */
 		need_rereg = 1;
-		if (secure)
+		if (secure && strcmp(conn->server, "gnhastd") == 0)
 			tev = evtimer_new(base, ssl_connect_server_cb, conn);
 		else
 			tev = evtimer_new(base, connect_server_cb, conn);
 		evtimer_add(tev, &secs); /* XXX this leaks, doesn't it? Consider event_base_once? */
-		LOG(LOG_NOTICE, "Attempting reconnection to gnhastd @ %s:%d in %d seconds",
+		LOG(LOG_NOTICE, "Attempting reconnection to conn->server @ %s:%d in %d seconds",
 		    conn->host, conn->port, secs.tv_sec);
 	}
 }
@@ -929,6 +974,7 @@ int main(int argc, char **argv)
 		gnhastd_conn->port = cfg_getint(gnhastd_c, "port");
 
 	gnhastd_conn->host = cfg_getstr(gnhastd_c, "hostname");
+	gnhastd_conn->server = strdup("gnhastd");
 
 	if (secure) {
 		/* Initialize the OpenSSL library */
@@ -949,6 +995,16 @@ int main(int argc, char **argv)
 		ssl_connect_server_cb(0, 0, gnhastd_conn);
 	else
 		connect_server_cb(0, 0, gnhastd_conn);
+
+	rrdcoll_c = cfg_getsec(cfg, "rrdcoll");
+	if (cfg_getint(rrdcoll_c, "userrdcached")) {
+		usecache = 1;
+		rrdc_conn = smalloc(connection_t);
+		rrdc_conn->host = cfg_getstr(rrdcoll_c, "rrdc_hostname");
+		rrdc_conn->port = cfg_getint(rrdcoll_c, "rrdc_port");
+		rrdc_conn->server = strdup("rrdcached");
+		connect_server_cb(0, 0, rrdc_conn);
+	}
 
 	parse_devices(cfg);
 	rra_default_rras(cfg);
