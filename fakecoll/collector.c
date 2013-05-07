@@ -64,6 +64,8 @@ extern argtable_t argtable[];
 /** The event base */
 struct event_base *base;
 
+cfg_t *cfg;
+
 /* empty options to satisfy confparser */
 cfg_opt_t options[] = {
 	CFG_END(),

@@ -14,7 +14,6 @@
 #include "commands.h"
 #include "confuse.h"
 
-
 /** \brief A quick and simple safer malloc */
 #define smalloc(foo) _safer_malloc(sizeof(foo), __FILE__, __LINE__)
 
@@ -45,6 +44,8 @@ void _bailout(char *file, int line);
 void *_safer_malloc(size_t size, char *file, int line);
 int lcm(int a,int b);
 int gcd(int a, int b);
+void writepidfile(char *filename);
+void cb_sighup(int fd, short what, void *arg);
 
 /* from netparser.c */
 int compare_command(const void *a, const void *b);

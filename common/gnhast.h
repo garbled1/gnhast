@@ -49,9 +49,6 @@
 
 /* General defines */
 
-#define GNHASTD_CONFIG_FILE	"gnhastd.conf"
-#define GNHASTD_LOG_FILE	"gnhastd.log"
-
 /* Basic device types */
 enum DEV_TYPES {
 	DEVICE_NONE,

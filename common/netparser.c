@@ -180,7 +180,8 @@ pargs_t *parse_command(char  **words, int count)
 	if (words == NULL || words[0] == NULL) {
 		for (i=0; i < count && words[i] != NULL; i++)
 			free(words[i]);
-		free(words);
+		if (words != NULL)
+			free(words);
 		return(NULL);
 	}
 

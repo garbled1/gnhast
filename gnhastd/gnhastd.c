@@ -34,6 +34,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <sys/queue.h>
 #include <event2/event.h>
 
@@ -71,10 +72,11 @@ cfg_opt_t network_opts[] = {
 cfg_opt_t options[] = {
 	CFG_SEC("network", network_opts, CFGF_NONE),
 	CFG_SEC("device", device_opts, CFGF_MULTI | CFGF_TITLE),
-	CFG_STR("devconf", "devices.conf", CFGF_NONE),
+	CFG_STR("devconf", GNHASTD_DEVICE_FILE, CFGF_NONE),
 	CFG_INT("devconf_update", 300, CFGF_NONE),
 	CFG_FUNC("include", cfg_include),
-	CFG_STR("logfile", 0, CFGF_NONE),
+	CFG_STR("logfile", GNHASTD_LOG_FILE, CFGF_NONE),
+	CFG_STR("pidfile", GNHASTD_PID_FILE, CFGF_NONE),
 	CFG_END(),
 };
 
@@ -89,13 +91,32 @@ void devconf_dump_cb(int nada, short what, void *arg)
 {
 	device_t *dev;
 	cfg_t *dc;
+	char *p, *buf;
+	int madebuf=0;
+
+	p = cfg_getstr(cfg, "devconf");
+	buf = NULL;
+	if (strlen(p) >= 2) {
+		if (p[0] == '.' && p[1] == '/')
+			buf = cfg_getstr(cfg, "devconf");
+		if (p[0] == '/')
+			buf = cfg_getstr(cfg, "devconf");
+	}
+	/* ok, not an absolute/relative path, set it up */
+
+	if (buf == NULL) {
+		buf = safer_malloc(64 + strlen(p));
+		sprintf(buf, "%s/%s", SYSCONFDIR, cfg_getstr(cfg, "devconf"));
+		madebuf++;
+	}
 
 	TAILQ_FOREACH(dev, &alldevs, next_all) {
 		dc = new_conf_from_dev(cfg, dev);
 	}
-	LOG(LOG_DEBUG, "Writing device conf file %s",
-	    cfg_getstr(cfg, "devconf"));
-	dump_conf(cfg, CONF_DUMP_DEVONLY, cfg_getstr(cfg, "devconf"));
+	LOG(LOG_DEBUG, "Writing device conf file %s", buf);
+	dump_conf(cfg, CONF_DUMP_DEVONLY, buf);
+	if (madebuf)
+		free(buf);
 }
 
 /** \brief main, um, duh */
@@ -106,9 +127,10 @@ int main(int argc, char **argv)
 	extern char *optarg;
 	extern int optind;
 	int ch;
-	char *conffile = GNHASTD_CONFIG_FILE;
+	char *conffile = SYSCONFDIR "/" GNHASTD_CONFIG_FILE;
 	struct timeval secs = {0, 0};
 	struct event *ev;
+	pid_t pid;
 
 	while ((ch = getopt(argc, argv, "?c:d")) != -1)
 		switch (ch) {
@@ -127,13 +149,18 @@ int main(int argc, char **argv)
 			break;
 		}
 
+	if (!debugmode)
+		if (daemon(0, 0) == -1)
+			LOG(LOG_FATAL, "Failed to daemonize: %s",
+			    strerror(errno));
 
 	/* Parse the config file */
 	cfg = parse_conf(conffile);
 
-	/* Fire up logging */
-	if (cfg_getstr(cfg, "logfile") != NULL)
+	/* Fire up logging if not debugging */
+	if (!debugmode)
 		logfile = openlog(cfg_getstr(cfg, "logfile"));
+
 	LOG(LOG_NOTICE, "Starting gnhastd version %s", VERSION);
 
 	/* Initialize the event loop */
@@ -154,8 +181,15 @@ int main(int argc, char **argv)
 		event_add(ev, &secs);
 	}
 
+	/* setup signal handlers */
+	ev = evsignal_new(base, SIGHUP, cb_sighup, conffile);
+	event_add(ev, NULL);
+
+	pid = getpid();
+	writepidfile(cfg_getstr(cfg, "pidfile"));
+
 	/* Go forth and destroy */
-	LOG(LOG_NOTICE, "Entering main network loop");
+	LOG(LOG_NOTICE, "Entering main network loop. Pid: %d", pid);
 	event_base_dispatch(base);
 
 	/* Close it all down */

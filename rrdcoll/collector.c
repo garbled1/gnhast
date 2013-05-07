@@ -38,6 +38,7 @@
 #include <string.h>
 #include <errno.h>
 #include <time.h>
+#include <signal.h>
 #include <event2/dns.h>
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
@@ -74,7 +75,9 @@ int need_rereg = 0;
 int secure = 0;
 int usecache = 0;
  
-#define RRDCOLL_CONFIG_FILE "rrdcoll.conf"
+#define RRDCOLL_CONFIG_FILE	"rrdcoll.conf"
+#define RRDCOLL_LOG_FILE	"rrdcoll.log"
+#define RRDCOLL_PID_FILE	"rrdcoll.pid"
 
 /* debugging */
 //_malloc_options = "AJ";
@@ -145,7 +148,8 @@ cfg_opt_t options[] = {
 	CFG_SEC("device", device_opts, CFGF_MULTI | CFGF_TITLE),
 	CFG_SEC("dev", dev_opts, CFGF_MULTI | CFGF_TITLE),
 	CFG_SEC("rrdrra", rrd_rra_opts, CFGF_MULTI | CFGF_TITLE),
-	CFG_STR("logfile", 0, CFGF_NONE),
+	CFG_STR("logfile", RRDCOLL_LOG_FILE, CFGF_NONE),
+	CFG_STR("pidfile", RRDCOLL_PID_FILE, CFGF_NONE),
 	CFG_END(),
 };      
 
@@ -915,21 +919,10 @@ int main(int argc, char **argv)
 	extern int optind;
 	int ch;
 	char *buf;
-	char *conffile = RRDCOLL_CONFIG_FILE;
+	char *conffile = SYSCONFDIR "/" RRDCOLL_CONFIG_FILE;
 	struct timeval secs = { 0, 0 };
 	struct event *ev;
 	struct evbuffer *send;
-
-	/* Initialize the event system */
-	base = event_base_new();
-	dns_base = evdns_base_new(base, 1);
-
-	/* Initialize the argtable */
-	init_argcomm();
-	init_commands();
-	/* Initialize the device table */
-	init_devtable(cfg, 0);
-	loopnr = 0;
 
 	/* process command line arguments */
 	while ((ch = getopt(argc, argv, "?c:dm:s")) != -1)
@@ -955,10 +948,30 @@ int main(int argc, char **argv)
 			break;
 		}
 
+	if (!debugmode)
+		if (daemon(0, 0) == -1)
+			LOG(LOG_FATAL, "Failed to daemonize: %s",
+			    strerror(errno));
+
+
+	/* Initialize the event system */
+	base = event_base_new();
+	dns_base = evdns_base_new(base, 1);
+
+	/* Initialize the argtable */
+	init_argcomm();
+	init_commands();
+
+	/* Initialize the device table */
+	init_devtable(cfg, 0);
+	loopnr = 0;
+
 	cfg = parse_conf(conffile);
 
 	if (cfg_getstr(cfg, "logfile") != NULL)
 		logfile = openlog(cfg_getstr(cfg, "logfile"));
+
+	writepidfile(cfg_getstr(cfg, "pidfile"));
 
 	/* Now, parse the details of connecting to the gnhastd server */
 
@@ -1012,6 +1025,10 @@ int main(int argc, char **argv)
 	rrd_rrdcreate(cfg);
 
 	request_devlist(gnhastd_conn);
+
+	/* setup signal handlers */
+	ev = evsignal_new(base, SIGHUP, cb_sighup, conffile);
+	event_add(ev, NULL);
 
 	/* go forth and destroy */
 	event_base_dispatch(base);

@@ -37,6 +37,7 @@
 #include <string.h>
 #include <errno.h>
 #include <time.h>
+#include <signal.h>
 #include <event2/dns.h>
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
@@ -67,8 +68,11 @@ cfg_t *cfg, *gnhastd_c, *owserver_c, *owsrvcoll_c;
 uint32_t loopnr; /**< \brief the number of loops we've made */
 char *dumpconf = NULL;
 int need_rereg = 0;
+int timer_pending = 0;
  
-#define OWSRVCOLL_CONFIG_FILE "owsrvcoll.conf"
+#define OWSRVCOLL_CONFIG_FILE	"owsrvcoll.conf"
+#define OWSRVCOLL_LOG_FILE	"owsrvcoll.log"
+#define OWSRVCOLL_PID_FILE	"owsrvcoll.pid"
 
 /** Need the argtable in scope, so we can generate proper commands
     for the server */
@@ -134,7 +138,8 @@ cfg_opt_t options[] = {
 	CFG_SEC("gnhastd", gnhastd_opts, CFGF_NONE),
 	CFG_SEC("owsrvcoll", owsrvcoll_opts, CFGF_NONE),
 	CFG_SEC("device", device_opts, CFGF_MULTI | CFGF_TITLE),
-	CFG_STR("logfile", 0, CFGF_NONE),
+	CFG_STR("logfile", OWSRVCOLL_LOG_FILE, CFGF_NONE),
+	CFG_STR("pidfile", OWSRVCOLL_PID_FILE, CFGF_NONE),
 	CFG_END(),
 };
 
@@ -260,9 +265,13 @@ schedcbout:
 			conn->current_dev = NULL;
 		else
 			conn->current_dev = TAILQ_FIRST(&alldevs);
-		secs.tv_sec = cfg_getint(owsrvcoll_c, "update");
-		tev = evtimer_new(base, ows_timer_cb, conn);
-		evtimer_add(tev, &secs); /* XXX this leaks, doesn't it? */
+		if (!timer_pending) {
+			secs.tv_sec = cfg_getint(owsrvcoll_c, "update");
+			tev = evtimer_new(base, ows_timer_cb, conn);
+			/* XXX this leaks, doesn't it? */
+			evtimer_add(tev, &secs);
+			timer_pending++;
+		}
 	} else {
 		conn->current_dev = dev;
 		goto schedtop; /* and try again */
@@ -482,9 +491,13 @@ readcbout:
 			conn->current_dev = NULL;
 		else
 			conn->current_dev = TAILQ_FIRST(&alldevs);
-		secs.tv_sec = cfg_getint(owsrvcoll_c, "update");
-		tev = evtimer_new(base, ows_timer_cb, conn);
-		evtimer_add(tev, &secs); /* XXX this leaks, doesn't it? */
+		if (!timer_pending) {
+			secs.tv_sec = cfg_getint(owsrvcoll_c, "update");
+			tev = evtimer_new(base, ows_timer_cb, conn);
+			/* XXX this leaks, doesn't it? */
+			evtimer_add(tev, &secs);
+			timer_pending++;
+		}
 	} else
 		ows_schedule_devread(dev, conn);
 	return;
@@ -502,6 +515,7 @@ void ows_timer_cb(int nada, short what, void *arg)
 {
 	connection_t *conn = (connection_t *)arg;
 
+	timer_pending = 0;
 	if (conn->current_dev == NULL)
 		ows_schedule_dirall(conn);
 	else
@@ -522,7 +536,7 @@ void ows_watchdog_cb(int nada, short what, void *arg)
 	now = time(NULL);
 	if ((conn->lastdata + (cfg_getint(owsrvcoll_c, "update") * 3)) < now) {
 		/* we haven't fired in too long! schedule a dirall */
-		LOG(LOG_NOTICE, "Watchdog detected no updates, rescheduling DIRALL");
+		LOG(LOG_NOTICE, "Watchdog detected no updates, rescheduling DIRALL, timer_pending = %d", timer_pending);
 		ows_schedule_dirall(conn);
 	}
 }
@@ -718,19 +732,9 @@ int main(int argc, char **argv)
 	extern int optind;
 	int ch;
 	char *buf;
-	char *conffile = OWSRVCOLL_CONFIG_FILE;
+	char *conffile = SYSCONFDIR "/" OWSRVCOLL_CONFIG_FILE;
 	struct timeval secs = { 0, 0 };
 	struct event *ev;
-
-	/* Initialize the event system */
-	base = event_base_new();
-	dns_base = evdns_base_new(base, 1);
-
-	/* Initialize the argtable */
-	init_argcomm();
-	/* Initialize the device table */
-	init_devtable(cfg, 0);
-	loopnr = 0;
 
 	/* process command line arguments */
 	while ((ch = getopt(argc, argv, "?c:dm:")) != -1)
@@ -753,10 +757,27 @@ int main(int argc, char **argv)
 			break;
 		}
 
+	if (!debugmode)
+		if (daemon(0, 0) == -1)
+			LOG(LOG_FATAL, "Failed to daemonize: %s",
+			    strerror(errno));
+
+	/* Initialize the event system */
+	base = event_base_new();
+	dns_base = evdns_base_new(base, 1);
+
+	/* Initialize the argtable */
+	init_argcomm();
+	/* Initialize the device table */
+	init_devtable(cfg, 0);
+	loopnr = 0;
+
 	cfg = parse_conf(conffile);
 
-	if (cfg_getstr(cfg, "logfile") != NULL)
+	if (!debugmode)
 		logfile = openlog(cfg_getstr(cfg, "logfile"));
+
+	writepidfile(cfg_getstr(cfg, "pidfile"));
 
 	/* First, parse the owsrvcoll section */
 
@@ -811,6 +832,10 @@ int main(int argc, char **argv)
 	secs.tv_sec = cfg_getint(owsrvcoll_c, "update");
 	ev = event_new(base, -1, EV_PERSIST, ows_watchdog_cb, owserver_conn);
 	event_add(ev, &secs);
+
+	/* setup signal handlers */
+	ev = evsignal_new(base, SIGHUP, cb_sighup, conffile);
+	event_add(ev, NULL);
 
 	parse_devices(cfg);
 

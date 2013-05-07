@@ -1,5 +1,6 @@
 # $Id$
 
+AM_CPPFLAGS = -DLOCALSTATEDIR=\"$(localstatedir)\" -DSYSCONFDIR=\"$(sysconfdir)\"
 bin_PROGRAMS = fakecoll
 
 fakecoll_SOURCES = \

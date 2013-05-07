@@ -77,7 +77,7 @@ void buf_read_cb(struct bufferevent *in, void *arg)
 {
 	char *data;
 	char **words, *cmdword;
-	int numwords, i;
+	int numwords, i, ret;
 	pargs_t *args=NULL;
 	struct evbuffer *evbuf;
 	size_t len;
@@ -94,24 +94,26 @@ void buf_read_cb(struct bufferevent *in, void *arg)
 
 		words = parse_netcommand(data, &numwords);
 
-		if (words == NULL || words[0] == NULL)
-			goto out;
+		if (words == NULL || words[0] == NULL) {
+			free(data);
+			return;
+		}
 
 		cmdword = strdup(words[0]);
 		args = parse_command(words, numwords);
-		parsed_command(cmdword, args, arg);
+		ret = parsed_command(cmdword, args, arg);
+		if (ret != 0)
+			LOG(LOG_DEBUG, "Command failed or invalid: %s", cmdword);
 		free(cmdword);
+		free(data);
+		if (args) {
+			for (i=0; args[i].cword != -1; i++)
+				if (args[i].type == PTCHAR)
+					free(args[i].arg.c);
+			free(args);
+			args=NULL;
+		}
 	}
-
-out:
-	if (args) {
-		for (i=0; args[i].cword != -1; i++)
-			if (args[i].type == PTCHAR)
-				free(args[i].arg.c);
-		free(args);
-		args=NULL;
-	}
-	free(data);
 }
 
 void buf_write_cb(struct bufferevent *out, void *arg)
@@ -260,9 +262,11 @@ void init_netloop(void)
 			LOG(LOG_FATAL, "Error reading config file");
 	}
 
-	ctx = evssl_init();
-	if (ctx == NULL)
-		LOG(LOG_FATAL, "Could not init openssl");
+	if (cfg_getint(network, "usessl")) {
+		ctx = evssl_init();
+		if (ctx == NULL)
+			LOG(LOG_FATAL, "Could not init openssl");
+	}
 
 	/* setup socket */
 	lsock = socket(PF_INET, SOCK_STREAM, 0);

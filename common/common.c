@@ -45,8 +45,10 @@
 
 #include "common.h"
 
-extern char *logname;
+char *stored_logname = NULL;
 extern FILE *logfile;
+extern cfg_t *cfg;
+
 int debugmode = 0;
 
 const char *loglevels[LOG_FATAL+1] = {
@@ -65,11 +67,37 @@ const char *loglevels[LOG_FATAL+1] = {
 FILE *openlog(char *logname)
 {
 	FILE *l;
+	char *p, *buf;
+	int madebuf=0;
 
-	l = fopen(logname, "a");
+	if (logname == NULL)
+		return NULL;
+
+	if (stored_logname == NULL)
+		stored_logname = strdup(logname);
+
+	p = logname;
+	buf = NULL;
+	if (strlen(p) >= 2) {
+		if (p[0] == '.' && p[1] == '/')
+			buf = logname;
+		if (p[0] == '/')
+			buf = logname;
+	}
+	/* ok, not an absolute/relative path, set it up */
+
+	if (buf == NULL) {
+		buf = safer_malloc(64 + strlen(logname));
+		sprintf(buf, "%s/log/%s", LOCALSTATEDIR, logname);
+		madebuf++;
+	}
+
+	l = fopen(buf, "a");
 	if (l == NULL)
 		LOG(LOG_WARNING, "Cannot open logfile: %s, %s\n", 
-		    logname, strerror(errno));
+		    buf, strerror(errno));
+	if (madebuf)
+		free(buf);
 	return l;
 }
 
@@ -78,7 +106,8 @@ FILE *openlog(char *logname)
 */
 void closelog(void)
 {
-	fclose(logfile);
+	if (logfile != NULL)
+		fclose(logfile);
 }
 
 /**
@@ -229,4 +258,68 @@ int gcd(int a, int b)
   if (a==0)
 	  return b;
   return gcd ( b%a, a );
+}
+
+/**
+   \brief write out a pidfile
+   \param filename filename to create
+*/
+
+void writepidfile(char *filename)
+{
+	FILE *l;
+	pid_t mypid;
+	char *buf;
+        char *p;
+	int madebuf=0;
+
+	p = filename;
+	buf = NULL;
+	if (strlen(filename) >= 2) {
+		if (p[0] == '.' && p[1] == '/')
+			buf = filename;
+		if (p[0] == '/')
+			buf = filename;
+	}
+	/* ok, not an absolute/relative path, set it up */
+
+	if (buf == NULL) {
+		buf = safer_malloc(64 + strlen(filename));
+		sprintf(buf, "%s/run/%s", LOCALSTATEDIR, filename);
+		madebuf++;
+	}
+
+	l = fopen(buf, "w");
+	if (l == NULL) {
+		LOG(LOG_WARNING, "Cannot open pidfile: %s, %s\n", 
+		    buf, strerror(errno));
+		return;
+	}
+	mypid = getpid();
+	fprintf(l, "%d", mypid);
+	fclose(l);
+	if (madebuf)
+		free(buf);
+}
+
+/**
+   \brief A sighup handler
+   \param fd unused
+   \param what what happened?
+   \param arg pointer to conffile name
+*/
+
+void cb_sighup(int fd, short what, void *arg)
+{
+	char *conffile = (char *)arg;
+
+	if (!(what & EV_SIGNAL))
+		return;
+
+	LOG(LOG_NOTICE, "Got sighup, re-reading conf file and re-opening log");
+
+	cfg = parse_conf(conffile);
+	closelog();
+	openlog(stored_logname);
+	LOG(LOG_NOTICE, "Logfile re-opened");
 }

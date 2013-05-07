@@ -37,6 +37,7 @@
 #include <string.h>
 #include <errno.h>
 #include <time.h>
+#include <signal.h>
 #include <event2/dns.h>
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
@@ -78,7 +79,9 @@ int indian = 1;
 bruldata_t bruldata[2];	/**< \brief Prev and current data, converted */
 brulconf_t brulconf;
  
-#define BRULCOLL_CONFIG_FILE "brulcoll.conf"
+#define BRULCOLL_CONFIG_FILE	"brulcoll.conf"
+#define BRULCOLL_LOG_FILE	"brulcoll.log"
+#define BRULCOLL_PID_FILE	"brulcoll.pid"
 
 /** Need the argtable in scope, so we can generate proper commands
     for the server */
@@ -117,8 +120,7 @@ connection_t *gnhastd_conn, *brulnet_conn;
 extern cfg_opt_t device_opts[];
 
 cfg_opt_t brultech_opts[] = {
-/*	CFG_STR("hostname", "127.0.0.1", CFGF_NONE), */
-	CFG_STR("hostname", "wezen", CFGF_NONE),
+	CFG_STR("hostname", "127.0.0.1", CFGF_NONE),
 	CFG_INT("port", 80, CFGF_NONE),
 	CFG_INT_CB("model", BRUL_MODEL_GEM, CFGF_NONE, conf_parse_brul_model),
 	CFG_INT_CB("connection", BRUL_COMM_NET, CFGF_NONE, conf_parse_brul_conn),
@@ -144,7 +146,8 @@ cfg_opt_t options[] = {
 	CFG_SEC("gnhastd", gnhastd_opts, CFGF_NONE),
 	CFG_SEC("brulcoll", brulcoll_opts, CFGF_NONE),
 	CFG_SEC("device", device_opts, CFGF_MULTI | CFGF_TITLE),
-	CFG_STR("logfile", 0, CFGF_NONE),
+	CFG_STR("logfile", BRULCOLL_LOG_FILE, CFGF_NONE),
+	CFG_STR("pidfile", BRULCOLL_PID_FILE, CFGF_NONE),
 	CFG_END(),
 };
 
@@ -1011,17 +1014,8 @@ int main(int argc, char **argv)
 	extern int optind;
 	int ch;
 	char *buf;
-	char *conffile = BRULCOLL_CONFIG_FILE;
-
-	/* Initialize the event system */
-	base = event_base_new();
-	dns_base = evdns_base_new(base, 1);
-
-	/* Initialize the argtable */
-	init_argcomm();
-	/* Initialize the device table */
-	init_devtable(cfg, 0);
-	loopnr = 0;
+	char *conffile = SYSCONFDIR "/" BRULCOLL_CONFIG_FILE;
+	struct event *ev;
 
 	/* process command line arguments */
 	while ((ch = getopt(argc, argv, "?c:dm:")) != -1)
@@ -1044,10 +1038,26 @@ int main(int argc, char **argv)
 			break;
 		}
 
+	if (!debugmode)
+		if (daemon(0, 0) == -1)
+			LOG(LOG_FATAL, "Failed to daemonize: %s",
+			    strerror(errno));
+	/* Initialize the event system */
+	base = event_base_new();
+	dns_base = evdns_base_new(base, 1);
+
+	/* Initialize the argtable */
+	init_argcomm();
+	/* Initialize the device table */
+	init_devtable(cfg, 0);
+	loopnr = 0;
+
 	cfg = parse_conf(conffile);
 
-	if (cfg_getstr(cfg, "logfile") != NULL)
+	if (!debugmode)
 		logfile = openlog(cfg_getstr(cfg, "logfile"));
+
+	writepidfile(cfg_getstr(cfg, "pidfile"));
 
 	/* First, parse the brulcoll section */
 
@@ -1097,6 +1107,10 @@ int main(int argc, char **argv)
 	brul_setup_gem(brulnet_conn);
 
 	parse_devices(cfg);
+
+	/* setup signal handlers */
+	ev = evsignal_new(base, SIGHUP, cb_sighup, conffile);
+	event_add(ev, NULL);
 
 	/* go forth and destroy */
 	event_base_dispatch(base);

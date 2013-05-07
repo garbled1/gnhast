@@ -1,5 +1,6 @@
 # $Id$
 
+AM_CPPFLAGS = -DLOCALSTATEDIR=\"$(localstatedir)\" -DSYSCONFDIR=\"$(sysconfdir)\"
 bin_PROGRAMS = owsrvcoll
 
 owsrvcoll_SOURCES = \
