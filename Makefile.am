@@ -1,1 +1,1 @@
-SUBDIRS = libconfuse gnhastd fakecoll owsrvcoll rrdcoll brulcoll
+SUBDIRS = libconfuse gnhastd fakecoll owsrvcoll rrdcoll brulcoll insteoncoll

@@ -57,6 +57,7 @@ AC_CONFIG_FILES([Makefile \
 		 owsrvcoll/Makefile \
 		 rrdcoll/Makefile \
 		 brulcoll/Makefile \
+		 insteoncoll/Makefile \
 		 libconfuse/Makefile])
 
 AC_OUTPUT

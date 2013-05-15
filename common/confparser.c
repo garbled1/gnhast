@@ -51,10 +51,6 @@
 /* Externs */
 extern cfg_opt_t options[];
 
-static int conf_parse_subtype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
-			      void *result);
-static int conf_parse_type(cfg_t *cfg, cfg_opt_t *opt, const char *value,
-			      void *result);
 static int conf_parse_proto(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 			      void *result);
 
@@ -201,8 +197,8 @@ static void conf_print_proto(cfg_opt_t *opt, unsigned int index, FILE *fp)
 /**
    \brief parse a type
 */
-static int conf_parse_type(cfg_t *cfg, cfg_opt_t *opt, const char *value,
-			      void *result)
+int conf_parse_type(cfg_t *cfg, cfg_opt_t *opt, const char *value,
+		    void *result)
 {
 	if (strcmp(value,"switch") == 0)
 		*(int *)result = DEVICE_SWITCH;
@@ -272,8 +268,8 @@ static void conf_print_type(cfg_opt_t *opt, unsigned int index, FILE *fp)
    \brief parse a subtype by name
 */
 
-static int conf_parse_subtype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
-			      void *result)
+int conf_parse_subtype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
+		       void *result)
 {
 	if (strcmp(value, "switch") == 0)
 		*(int *)result = SUBTYPE_SWITCH;
