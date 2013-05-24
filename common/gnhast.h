@@ -131,8 +131,9 @@ enum DATATYPE_TYPES {
 };
 
 #define DEVONQ_CLIENT	(1<<1)
-#define DEVONQ_PEER	(1<<2)
-#define DEVONQ_ALL	(1<<3)
+#define DEVONQ_ALL	(1<<2)
+#define WRAPONQ_NEXT	(1<<1)
+#define GROUPONQ_NEXT	(1<<1)
 
 /** data union */
 typedef union _data_t {
@@ -175,14 +176,14 @@ typedef struct _device_t {
 	struct rb_node rbn;	/**< \brief red black node */
 	uint32_t onq;		/**< \brief I am on a queue */
 	TAILQ_ENTRY(_device_t) next_client;	/**< \brief Next device in client */
-	TAILQ_ENTRY(_device_t) next_peer;	/**< \brief Next peer in devgroup */
 	TAILQ_ENTRY(_device_t) next_all;	/**< \brief Next in global devlist */
 } device_t;
 
 /** A wrapper device structure */
 typedef struct _wrap_device_t {
-	int rate;		/**< \brief rate of fire */
 	device_t *dev;		/**< \brief wrapped device */
+	int rate;		/**< \brief rate of fire */
+	struct _device_group_t *group; /**< \brief parent group */
 	time_t last_fired;	/**< \brief last time fired */
 	uint32_t onq;		/**< \brief I am on a queue */
 	TAILQ_ENTRY(_wrap_device_t) next; /**< \brief next device */
@@ -194,7 +195,9 @@ typedef struct _device_group_t {
 	char *name;		/**< \brief group name */
 	struct _device_group_t *parent;	/**< \brief parent devgroup */
 	uint32_t onq;		/**< \brief I am on a queue */
-	TAILQ_HEAD(, _device_t) members; /**< \brief group members, ties to next_peer in device_t */
+	struct rb_node rbn;	/**< \brief red black node */
+	TAILQ_HEAD(, _wrap_device_t) members; /**< \brief group members,
+					    ties to next in wrap_device_t */
 	TAILQ_HEAD(, _device_group_t) children; /**< \brief child groups */
 	TAILQ_ENTRY(_device_group_t) next;	/**< \brief my siblings */
 } device_group_t;

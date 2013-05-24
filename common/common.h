@@ -52,8 +52,13 @@ int compare_command(const void *a, const void *b);
 
 /* from devices.c */
 device_t *find_device_byuid(char *uid);
+device_group_t *find_devgroup_byuid(char *uid);
 void add_wrapped_device(device_t *dev, client_t *client, int rate);
 void insert_device(device_t *dev);
+device_group_t *new_devgroup(char *uid);
+void add_dev_group(device_t *dev, device_group_t *devgrp);
+void add_group_group(device_group_t *group1, device_group_t *group2);
+int dev_in_group(device_t *dev, device_group_t *devgrp);
 void init_devtable(cfg_t *cfg, int readconf);
 void get_data_dev(device_t *dev, int where, void *data);
 void store_data_dev(device_t *dev, int where, void *data);

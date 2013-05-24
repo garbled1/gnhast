@@ -132,6 +132,11 @@ void plm_enq_std(device_t *dev, uint8_t com1, uint8_t com2, uint8_t waitflags)
 	insteon_devdata_t *dd;
 	uint8_t *daddr;
 
+	if (dev->proto == PROTO_INSTEON_V2CS) {
+		plm_enq_stdcs(dev, com1, com2, waitflags);
+		return;
+	}
+
 	cmd = smalloc(cmdq_t);
 	dd = (insteon_devdata_t *)dev->localdata;
 	cmd->cmd[0] = PLM_START;
@@ -143,6 +148,42 @@ void plm_enq_std(device_t *dev, uint8_t com1, uint8_t com2, uint8_t waitflags)
 	cmd->cmd[6] = com1;
 	cmd->cmd[7] = com2;
 	cmd->msglen = 8;
+	cmd->sendcount = 0;
+	cmd->wait = waitflags;
+	cmd->state = waitflags|CMDQ_WAITSEND;
+	SIMPLEQ_INSERT_TAIL(&cmdfifo, cmd, entries);
+}
+
+/**
+   \brief Enqueue an extended command
+   \param dev device to enqueue for
+   \param com1 command 1
+   \param com2 command 2
+   \param data D1-D14
+   \param waitflags waitflags
+*/
+void plm_enq_ext(device_t *dev, uint8_t com1, uint8_t com2, uint8_t *data,
+		 uint8_t waitflags)
+{
+	cmdq_t *cmd;
+	insteon_devdata_t *dd;
+	uint8_t *daddr;
+
+	cmd = smalloc(cmdq_t);
+	dd = (insteon_devdata_t *)dev->localdata;
+	cmd->cmd[0] = PLM_START;
+	cmd->cmd[1] = PLM_SEND;
+	cmd->cmd[2] = dd->daddr[0];
+	cmd->cmd[3] = dd->daddr[1];
+	cmd->cmd[4] = dd->daddr[2];
+	cmd->cmd[5] = plm_get_hops(dev);
+	cmd->cmd[5] |= PLMFLAG_EXT;
+	cmd->cmd[6] = com1;
+	cmd->cmd[7] = com2;
+	memcpy((cmd->cmd)+8, data, 14);
+	if (dev->proto == PROTO_INSTEON_V2CS)
+		cmd->cmd[21] = plm_calc_cs(com1, com2, (cmd->cmd)+8);
+	cmd->msglen = 22;
 	cmd->sendcount = 0;
 	cmd->wait = waitflags;
 	cmd->state = waitflags|CMDQ_WAITSEND;
@@ -190,6 +231,7 @@ void plm_enq_stdcs(device_t *dev, uint8_t com1, uint8_t com2,
 	cmd->cmd[3] = dd->daddr[1];
 	cmd->cmd[4] = dd->daddr[2];
 	cmd->cmd[5] = plm_get_hops(dev);
+	cmd->cmd[5] |= PLMFLAG_EXT;
 	cmd->cmd[6] = com1;
 	cmd->cmd[7] = com2;
 	/* smalloc is a zeroing malloc, so D1-14 are 0 */
@@ -201,7 +243,101 @@ void plm_enq_stdcs(device_t *dev, uint8_t com1, uint8_t com2,
 	SIMPLEQ_INSERT_TAIL(&cmdfifo, cmd, entries);
 }
 
+/**
+   \brief queue up a wait, to give the plm a second to breathe
+   \param howlong  how many queue cycles to wait
+*/
+void plm_enq_wait(int howlong)
+{
+	cmdq_t *cmd;
 
+	cmd = smalloc(cmdq_t);
+	cmd->cmd[0] = CMDQ_NOPWAIT;
+	cmd->sendcount = howlong;
+	SIMPLEQ_INSERT_TAIL(&cmdfifo, cmd, entries);
+}
+
+void plm_print_cmd(cmdq_t *cmd)
+{
+	LOG(LOG_DEBUG, "Command: Sendcount=%d msglen=%d state=%d wait=%d\n"
+	    "%0.2X %0.2X %0.2X %0.2X %0.2X %0.2X %0.2X %0.2X %0.2X %0.2X "
+	    "%0.2X %0.2X %0.2X %0.2X %0.2X %0.2X %0.2X %0.2X %0.2X %0.2X "
+	    "%0.2X %0.2X %0.2X %0.2X %0.2X",
+	    cmd->sendcount, cmd->msglen, cmd->state, cmd->wait,
+	    cmd->cmd[0], cmd->cmd[1], cmd->cmd[2], cmd->cmd[3], cmd->cmd[4],
+	    cmd->cmd[5], cmd->cmd[6], cmd->cmd[7], cmd->cmd[8], cmd->cmd[9],
+	    cmd->cmd[10], cmd->cmd[11], cmd->cmd[12], cmd->cmd[13],
+	    cmd->cmd[14], cmd->cmd[15], cmd->cmd[16], cmd->cmd[17],
+	    cmd->cmd[18], cmd->cmd[19], cmd->cmd[20], cmd->cmd[21],
+	    cmd->cmd[22], cmd->cmd[23], cmd->cmd[24]);
+}
+
+/**
+   \brief Condense the run queue
+*/
+
+void plm_condense_runq(void)
+{
+	cmdq_t *cmd, *chk, *tmp;
+
+	if (SIMPLEQ_EMPTY(&cmdfifo))
+		return;
+	cmd = SIMPLEQ_FIRST(&cmdfifo);
+	if (cmd == NULL)
+		return;
+
+	/* don't dequeue ourselves, and don't dequeue waits */
+	SIMPLEQ_FOREACH_SAFE(chk, &cmdfifo, entries, tmp)
+		if (chk != cmd && chk->cmd[0] != CMDQ_NOPWAIT &&
+		    memcmp(cmd->cmd, chk->cmd, 25) == 0) {
+			LOG(LOG_DEBUG, "Removing duplicate cmd entry");
+			plm_print_cmd(chk);
+			LOG(LOG_DEBUG, "Duplicate OF:");
+			plm_print_cmd(cmd);
+			SIMPLEQ_REMOVE(&cmdfifo, chk, _cmdq_t, entries);
+			free(chk);
+		}
+	SIMPLEQ_FOREACH_SAFE(chk, &cmdfifo, entries, tmp)
+		if (chk != cmd && memcmp(cmd->cmd, chk->cmd, 8) == 0 &&
+		    cmd->cmd[1] == PLM_SEND) {
+			LOG(LOG_DEBUG, "Removing early command entry");
+			SIMPLEQ_REMOVE(&cmdfifo, cmd, _cmdq_t, entries);
+			free(cmd);
+			return;
+		}
+}
+
+void plm_check_proper_delay(uint8_t *devaddr)
+{
+	cmdq_t *delay, *chk, *tmp, *cmd;
+
+	if (SIMPLEQ_EMPTY(&cmdfifo))
+		return;
+
+	delay = NULL;
+	SIMPLEQ_FOREACH_SAFE(chk, &cmdfifo, entries, tmp)
+		if (chk->cmd[0] == CMDQ_NOPWAIT) {
+			delay = chk;
+			break;
+		}
+	SIMPLEQ_FOREACH_SAFE(chk, &cmdfifo, entries, tmp) {
+		if (chk->cmd[1] == PLM_SEND && chk->cmd[2] == devaddr[0] &&
+		    chk->cmd[3] == devaddr[1] && chk->cmd[4] == devaddr[2]) {
+			/* we are sending to this device */
+			if (delay == NULL) {
+				LOG(LOG_DEBUG, "Adding delay to head");
+				cmd = smalloc(cmdq_t);
+				cmd->cmd[0] = CMDQ_NOPWAIT;
+				cmd->sendcount = 10;
+				SIMPLEQ_INSERT_HEAD(&cmdfifo, cmd, entries);
+			} else {
+				LOG(LOG_DEBUG, "Extending first delay");
+				delay->sendcount = 10;
+			}
+			break;
+		}
+	}
+}
 
 /**
    \brief Run the queue, see if anything is ready
@@ -214,11 +350,13 @@ void plm_runq(int fd, short what, void *arg)
 {
 	cmdq_t *cmd;
 	connection_t *conn = (connection_t *)arg;
-	struct timespec tp, chk, qsec = { 2 , 500000000L };
+	struct timespec tp, chk, qsec = { 3 , 500000000L };
 	struct timespec alink = { 5, 0 };
+	struct timespec aldb = { 10, 0 };
 	int i;
 
 	//LOG(LOG_DEBUG, "Queue runner entered");
+	plm_condense_runq();
 again:
 	if (SIMPLEQ_EMPTY(&cmdfifo)) {
 		plm_queue_empty_cb(conn);
@@ -228,6 +366,19 @@ again:
 	cmd = SIMPLEQ_FIRST(&cmdfifo);
 	if (cmd == NULL)
 		return;
+
+	if (cmd->cmd[0] == CMDQ_NOPWAIT) {
+		LOG(LOG_DEBUG, "Runqueue sleeping");
+		/* we have a sleep request */
+		if (cmd->sendcount <= 0) {
+			SIMPLEQ_REMOVE_HEAD(&cmdfifo, entries);
+			free(cmd);
+			return;
+		} else {
+			cmd->sendcount -= 1;
+			return;
+		}
+	}
 
 	if (!cmd->state || (cmd->state && (cmd->sendcount > CMDQ_MAX_SEND))) {
 		/* dequeue */
@@ -259,6 +410,8 @@ again:
 		clock_gettime(CLOCK_MONOTONIC, &tp);
 		if (cmd->state & CMDQ_WAITALINK)
 			timespecadd(&cmd->tp, &alink, &chk);
+		else if (cmd->state & CMDQ_WAITALDB)
+			timespecadd(&cmd->tp, &aldb, &chk);
 		else
 			timespecadd(&cmd->tp, &qsec, &chk);
 		if (timespeccmp(&tp, &chk, >)) {
@@ -394,6 +547,11 @@ void plmcmdq_check_recv(char *fromaddr, char *toaddr, uint8_t cmd1,
 	    memcmp(toaddr, plm_addr, 3) == 0)
 		plmcmdq_got_data(whatkind);
 
+	/* without cmd, for any */
+	if (memcmp(fromaddr, (cmd->cmd)+2, 3) == 0 &&
+	    memcmp(toaddr, plm_addr, 3) == 0)
+		plmcmdq_got_data(CMDQ_WAITANY);
+
 	return;
 }
 
@@ -441,6 +599,42 @@ void plm_all_link(uint8_t linkcode, uint8_t group)
 	SIMPLEQ_INSERT_TAIL(&cmdfifo, cmd, entries);
 }
 
+/**
+   \brief Request the engine versions
+   \param conn the connection_t
+*/
+
+void plm_req_aldb(device_t *dev)
+{
+	char data[14];
+
+	/* set to all zeros to get a dump */
+	memset(data, 0, 14);
+	plm_enq_ext(dev, EXTCMD_RWALDB, 0x00, data,
+		    CMDQ_WAITACK|CMDQ_WAITDATA|CMDQ_WAITALDB);
+}
+
+/**
+   \brief Turn a switch ON
+   \param dev device to turn on
+   \param level new level
+*/
+void plm_switch_on(device_t *dev, uint8_t level)
+{
+	plm_enq_std(dev, STDCMD_ON, level, CMDQ_WAITACKDATA);
+}
+
+/**
+   \brief Turn a switch OFF
+   \param dev device to turn off
+   \param level new level
+*/
+void plm_switch_off(device_t *dev)
+{
+	plm_enq_std(dev, STDCMD_OFF, 0, CMDQ_WAITACKDATA);
+}
+
+
 /*********************************************************
 	PLM Handlers
 *********************************************************/
@@ -466,86 +660,121 @@ void plm_handle_getinfo(uint8_t *data)
 	plmcmdq_dequeue();
 }
 
-
 /**
-   \brief Handle a std length recv
-   \param fromaddr Who from?
-   \param toaddr who to?
-   \param flags message flags
-   \param com1 command1
-   \param com2 command2
+   \brief Write an aldb record
+   \param dev device with record to write
+   \param recno record number to write
 */
 
-void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
-			uint8_t com1, uint8_t com2, connection_t *conn)
+void plm_write_aldb_record(device_t *dev, int recno)
 {
-	char fa[16], ta[16];
-	device_t *dev;
+	insteon_devdata_t *dd = (insteon_devdata_t *)dev->localdata;
+	uint8_t data[14];
 
-	addr_to_string(fa, fromaddr);
-	addr_to_string(ta, toaddr);
-
-	LOG(LOG_DEBUG, "StdMesg from:%s to %s cmd1,2:0x%0.2X,0x%0.2X "
-	    "flags:0x%0.2X", fa, ta, com1, com2, flags);
-	plmcmdq_check_recv(fromaddr, toaddr, com1, CMDQ_WAITDATA);
-
-	dev = find_device_byuid(fa);
-	if (dev == NULL) {
-		LOG(LOG_ERROR, "Unknown device %s sent stdmsg", fa);
+	if (recno > ALDB_MAXSIZE) {
+		LOG(LOG_ERROR, "Request to write record number > ALDB_MAXSIZE");
 		return;
 	}
+	memset(data, 0, 14);
+	/* rewrite the record address, just in case it's all 0's */
+	dd->aldb[recno].addr = 0x0FFF - (8 * recno);
+	data[1] = 0x02; /* write aldb record */
+	data[2] = ((dd->aldb[recno].addr&0xFF00)>>8);
+	data[3] = (dd->aldb[recno].addr&0x00FF);
+	data[4] = 0x08; /* 8 bytes of record */
+	data[5] = dd->aldb[recno].lflags;
+	data[6] = dd->aldb[recno].group;
+	data[7] = dd->aldb[recno].devaddr[0];
+	data[8] = dd->aldb[recno].devaddr[1];
+	data[9] = dd->aldb[recno].devaddr[2];
+	data[10] = dd->aldb[recno].ldata1;
+	data[11] = dd->aldb[recno].ldata2;
+	data[12] = dd->aldb[recno].ldata3;
 
-	switch (com1) {
-	case STDCMD_GETVERS:
-		switch (com2) {
-		case 0x00:
-			dev->proto = PROTO_INSTEON_V1;
-			break;
-		case 0x01:
-			dev->proto = PROTO_INSTEON_V2;
-			break;
-		case 0x02:
-			dev->proto = PROTO_INSTEON_V2CS;
-			break;
-		case 0xFF:
-			dev->proto = PROTO_INSTEON_V2CS;
-			LOG(LOG_WARNING, "Device %s is i2cs not linked to PLM");
-			break;
-		}
-		break;
-	case STDCMD_PING:
-		plm_set_hops(dev, flags);
-		break;
-	}
+	LOG(LOG_DEBUG, "Sending write ALDB request for recno %d", recno);
+	plm_enq_ext(dev, EXTCMD_RWALDB, 0x00, data,
+		    CMDQ_WAITACK|CMDQ_WAITDATA);
 }
 
 /**
-   \brief Handle an extended length recv
-   \param fromaddr Who from?
-   \param toaddr who to?
-   \param flags message flags
-   \param com1 command1
-   \param com2 command2
+   \brief Write the entire ALDB
+   \param dev device to write aldb of
 */
-
-void plm_handle_extrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
-			uint8_t com1, uint8_t com2, uint8_t *ext,
-			connection_t *conn)
+void plm_write_aldb(device_t *dev)
 {
-	char fa[16], ta[16];
+	insteon_devdata_t *dd = (insteon_devdata_t *)dev->localdata;
+	int i;
 
-	addr_to_string(fa, fromaddr);
-	addr_to_string(ta, toaddr);
-
-	LOG(LOG_DEBUG, "ExtMesg from:%s to %s cmd1,2:0x%0.2X,0x%0.2X "
-	    "flags:0x%0.2X", fa, ta, com1, com2, flags);
-	LOG(LOG_DEBUG, "ExtMesg data:0x%0.2X 0x%0.2X 0x%0.2X 0x%0.2X "
-	    "0x%0.2X 0x%0.2X 0x%0.2X 0x%0.2X 0x%0.2X 0x%0.2X 0x%0.2X "
-	    "0x%0.2X 0x%0.2X 0x%0.2X", ext[0], ext[1], ext[2], ext[3],
-	    ext[4], ext[5], ext[6], ext[7], ext[8], ext[9], ext[10],
-	    ext[11], ext[12], ext[13]);
-	plmcmdq_check_recv(fromaddr, toaddr, com1, CMDQ_WAITEXT);
+	for (i=0; i < dd->aldblen; i++)
+		plm_write_aldb_record(dev, i);
 }
+
+/**
+   \brief handle an aldb record
+   \param dev device that got an aldb record
+   \param data extended data D1-D14
+   \return 1 if last record
+*/
+int plm_handle_aldb(device_t *dev, char *data)
+{
+	int i, recno;
+	uint16_t addr;
+	aldb_t rec;
+	insteon_devdata_t *dd = (insteon_devdata_t *)dev->localdata;
+	device_group_t *devgrp;
+	char gn[16], ln[16];
+	device_t *link;
+
+	memset(&rec, 0, sizeof(aldb_t));
+	rec.addr = data[3] | (data[2]<<8);
+	rec.lflags = data[5];
+	rec.group = data[6];
+	rec.devaddr[0] = data[7];
+	rec.devaddr[1] = data[8];
+	rec.devaddr[2] = data[9];
+	rec.ldata1 = data[10];
+	rec.ldata2 = data[11];
+	rec.ldata3 = data[12];
+
+	recno = (0x0FFF - rec.addr) / 8;
+	if (recno >= ALDB_MAXSIZE) {
+		LOG(LOG_ERROR,"ALDB too large, need to increase ALDB_MAXSIZE");
+		return 1;
+	}
+	memcpy(&dd->aldb[recno], &rec, sizeof(aldb_t));
+
+	/* Build a device group? */
+	if (rec.lflags & ALDBLINK_MASTER) {
+		sprintf(gn, "%s-%0.2X", dev->loc, rec.group);
+		addr_to_string(ln, rec.devaddr);
+		devgrp = find_devgroup_byuid(gn);
+		if (devgrp == NULL) {
+			LOG(LOG_DEBUG, "Building new group %s", gn);
+			devgrp = new_devgroup(gn);
+			devgrp->name = strdup(gn); /* for now */
+		}
+		/* add self to group */
+		if (!dev_in_group(dev, devgrp))
+			add_dev_group(dev, devgrp);
+		link = find_device_byuid(ln);
+		if (link != NULL) {
+			if (!dev_in_group(link, devgrp))
+				add_dev_group(link, devgrp);
+		}
+	}
+
+	for (i=0; i < ALDB_MAXSIZE; i++)
+		if (dd->aldb[i].addr == 0) {
+			dd->aldblen = i;
+			break;
+		}
+	/* final record seems to be all zeros */
+	if (data[5] == 0 && data[6] == 0 && data[7] == 0 && data[8] == 0 &&
+	    data[9] == 0 && data[10] == 0 && data[11] == 0 && data[12] == 0)
+		return 1;
+	return 0;
+}
+
 
 
 /*********************************************************
@@ -612,7 +841,7 @@ moredata:
 				    data[10], data[11], data[12], data[13],
 				    data[14], data[15], data[16], data[17],
 				    data[18], data[19], data[20], data[21],
-				    data[21]);
+				    data[22]);
 		}
 		plmcmdq_check_ack(data);
 		if (data[5] & PLMFLAG_EXT)

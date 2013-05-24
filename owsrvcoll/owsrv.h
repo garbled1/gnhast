@@ -41,5 +41,6 @@ struct client_msg {
 #define OWFLAG_TEMP_F	(1<<16)
 #define OWFLAG_TEMP_K	(1<<17)
 #define OWFLAG_TEMP_R	(OWFLAG_TEMP_F&OWFLAG_TEMP_K)
+#define OWFLAG_PERSIST	(1<<2)
 
 #endif /*_OWSRV_H_*/

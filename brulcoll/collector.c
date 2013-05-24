@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * Copyright (c) 2013
  *      Tim Rightnour.  All rights reserved.
@@ -29,6 +27,15 @@
  * SUCH DAMAGE.
  */
 
+/**
+   \file collector.c
+   \author Tim Rightnour
+   \brief Brultech collector
+   This collector connects to a brultech GEM, and relays the data to gnhastd
+   Currently, only GEM devices with ethernet are supported.
+   There is basic support for reading an ecm1240, but only tested via
+   GEM emulation, need code to actually setup the ecm and build devices.
+*/
 
 #include <stdio.h>
 #include <unistd.h>
@@ -49,16 +56,6 @@
 #include "brultech.h"
 #include "confparser.h"
 #include "gncoll.h"
-
-/**
-   \file collector.c
-   \author Tim Rightnour
-   \brief Brultech collector
-   This collector connects to a brultech GEM, and relays the data to gnhastd
-   Currently, only GEM devices with ethernet are supported.
-   There is basic support for reading an ecm1240, but only tested via
-   GEM emulation, need code to actually setup the ecm and build devices.
-*/
 
 void connect_event_cb(struct bufferevent *ev, short what, void *arg);
 void brul_netconnect_event_cb(struct bufferevent *ev, short what, void *arg);

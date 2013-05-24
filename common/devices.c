@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * Copyright (c) 2013
  *      Tim Rightnour.  All rights reserved.
@@ -30,9 +28,9 @@
  */
 
 /**
-	\file devices.c
-	\brief Device handling
-	\author Tim Rightnour
+   \file devices.c
+   \brief Device handling
+   \author Tim Rightnour
 */
 
 #include <stdio.h>
@@ -48,6 +46,7 @@
 
 int nrofdevs;
 rb_tree_t devices;
+rb_tree_t devgroups;
 TAILQ_HEAD(, _device_t) alldevs = TAILQ_HEAD_INITIALIZER(alldevs);
 
 static int compare_device_byuid(void *ctx, const void *a, const void *b);
@@ -56,6 +55,16 @@ static const rb_tree_ops_t device__alltree_ops = {
 	.rbto_compare_nodes = compare_device_byuid,
 	.rbto_compare_key = compare_device_uidtokey,
 	.rbto_node_offset = offsetof(struct _device_t, rbn),
+	.rbto_context = NULL
+};
+
+static int compare_devgroup_byuid(void *ctx, const void *a, const void *b);
+static int compare_devgroup_uidtokey(void *ctx, const void *a,
+				     const void *key);
+static const rb_tree_ops_t devgroup__alltree_ops = {
+	.rbto_compare_nodes = compare_devgroup_byuid,
+	.rbto_compare_key = compare_devgroup_uidtokey,
+	.rbto_node_offset = offsetof(struct _device_group_t, rbn),
 	.rbto_context = NULL
 };
 
@@ -73,15 +82,40 @@ static int compare_device_uidtokey(void *ctx, const void *a, const void *key)
 	return strcmp(((device_t *)a)->uid, key);
 }
 
+/** \brief Compare two device groups by uid */
+
+static int compare_devgroup_byuid(void *ctx, const void *a, const void *b) 
+{
+	return strcmp(((device_group_t *)a)->uid, ((device_group_t *)b)->uid);
+}
+
+/** \brief Compare device group uid to string */
+
+static int compare_devgroup_uidtokey(void *ctx, const void *a, const void *key)
+{
+	return strcmp(((device_group_t *)a)->uid, key);
+}
+
 /**
-	\brief Search the devicetable for a device matching UID
-	\param name name to look for
-	\return device_t * if found, NULL if not
+   \brief Search the devicetable for a device matching UID
+   \param uid uid to look for
+   \return device_t * if found, NULL if not
 */
 
 device_t *find_device_byuid(char *uid)
 {
 	return rb_tree_find_node(&devices, uid);
+}
+
+/**
+   \brief Search the device group table for a devgroup matching UID
+   \param uid uid to look for
+   \return device_t * if found, NULL if not
+*/
+
+device_group_t *find_devgroup_byuid(char *uid)
+{
+	return rb_tree_find_node(&devgroups, uid);
 }
 
 /**
@@ -125,9 +159,70 @@ void insert_device(device_t *dev)
 	}
 }
 
+/**
+   \brief Create a new device group
+   \param uid uid of group
+   \return pointer to new group
+*/
+
+device_group_t *new_devgroup(char *uid)
+{
+	device_group_t *devgrp;
+
+	devgrp = smalloc(device_group_t);
+	devgrp->uid = strdup(uid);
+	rb_tree_insert_node(&devgroups, devgrp);
+	TAILQ_INIT(&devgrp->children);
+	TAILQ_INIT(&devgrp->members);
+}
 
 /**
-   \brief Initialize the devicetable
+   \brief Add a device to a group
+   \param dev device to add
+   \param devgrp device group to add to
+   \note Uses a wrap device
+*/
+void add_dev_group(device_t *dev, device_group_t *devgrp)
+{
+	wrap_device_t *wrap = smalloc(wrap_device_t);
+
+	wrap->dev = dev;
+	TAILQ_INSERT_TAIL(&devgrp->members, wrap, next);
+	wrap->onq |= WRAPONQ_NEXT;
+	wrap->group = devgrp;
+}
+
+/**
+   \brief Add a group to a group
+   \param group1 group to add
+   \param group2 group to add to
+*/
+void add_group_group(device_group_t *group1, device_group_t *group2)
+{
+	TAILQ_INSERT_TAIL(&group2->children, group1, next);
+	group2->onq |= GROUPONQ_NEXT;
+	group2->parent = group1;
+}
+
+/**
+   \brief Is a device a member of a given group?
+   \param dev dev to lookup
+   \param devgrp device group to look in
+   \return bool
+*/
+
+int dev_in_group(device_t *dev, device_group_t *devgrp)
+{
+	wrap_device_t *tmp;
+
+	TAILQ_FOREACH(tmp, &devgrp->members, next)
+		if (tmp->dev == dev)
+			return 1;
+	return 0;
+}
+
+/**
+   \brief Initialize the devicetable and the group table
    \param readconf if true, read the device conf file
 */
 
@@ -139,6 +234,7 @@ void init_devtable(cfg_t *cfg, int readconf)
 
 	nrofdevs = 0;
 	rb_tree_init(&devices, &device__alltree_ops);
+	rb_tree_init(&devgroups, &devgroup__alltree_ops);
 
 	if (readconf == 0)
 		return;
@@ -334,6 +430,8 @@ void store_data_dev(device_t *dev, int where, void *data)
 
 int datatype_dev(device_t *dev)
 {
+	if (dev->type == DEVICE_DIMMER)
+		return DATATYPE_DOUBLE;
 	if (dev->subtype == SUBTYPE_SWITCH)
 		return DATATYPE_UINT;
 	if (dev->subtype == SUBTYPE_COUNTER)

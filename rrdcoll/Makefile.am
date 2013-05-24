@@ -11,6 +11,7 @@ rrdcoll_SOURCES = \
 	../common/netparser.c \
 	../common/confparser.c \
 	../common/gncoll.c \
+	../common/collcmd.c \
 	collector.c
 
 rrdcoll_LDADD = @RRD_LIBS@ -L../libconfuse -lconfuse

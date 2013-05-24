@@ -27,6 +27,13 @@
  * SUCH DAMAGE.
  */
 
+/**
+   \file collector.c
+   \brief Bidirectional collector for insteon devices
+   \author Tim Rightnour
+   \note Currently only supports i2 and i2cs devices
+*/
+
 
 #include <termios.h>
 #include <stdio.h>
@@ -39,6 +46,7 @@
 #include <errno.h>
 #include <time.h>
 #include <signal.h>
+#include <math.h>
 #include <sys/queue.h>
 #include <event2/dns.h>
 #include <event2/bufferevent.h>
@@ -50,6 +58,7 @@
 #include "confparser.h"
 #include "confuse.h"
 #include "gncoll.h"
+#include "collcmd.h"
 #include "insteon.h"
 
 extern int errno;
@@ -57,17 +66,22 @@ extern int debugmode;
 extern TAILQ_HEAD(, _device_t) alldevs;
 extern int nrofdevs;
 extern char *conntype[];
+extern commands_t commands[];
 
 void connect_event_cb(struct bufferevent *ev, short what, void *arg);
 void connect_server_cb(int nada, short what, void *arg);
+void plm_query_all_devices(void);
+void plm_query_grouped_devices(device_t *dev, uint group);
 
 /* Configuration file details */
 
+int need_query = 0;
 cfg_t *cfg, *icoll_c, *gnhastd_c;
 extern cfg_opt_t device_opts[];
 
 cfg_opt_t insteoncoll_opts[] = {
 	CFG_STR("device", 0, CFGF_NODEFAULT),
+	CFG_INT("rescan", 60, CFGF_NONE),
 	CFG_END(),
 };
 
@@ -105,6 +119,78 @@ usage(void)
 	exit(1);
 }
 
+/**********************************************
+	gnhastd handlers
+**********************************************/
+
+/**
+   \brief Called when an upd command occurs
+   \param dev device that got updated
+   \param arg pointer to client_t
+*/
+
+void coll_upd_cb(device_t *dev, void *arg)
+{
+	return;
+}
+
+
+/**
+   \brief Handle a enldevs device command
+   \param args The list of arguments
+   \param arg void pointer to client_t of provider
+*/
+
+int cmd_endldevs(pargs_t *args, void *arg)
+{
+	return 0;
+}
+
+/**
+   \brief Called when a switch chg command occurs
+   \param dev device that got updated
+   \param state new state (on/off)
+   \param arg pointer to client_t
+*/
+
+void coll_chg_switch_cb(device_t *dev, int state, void *arg)
+{
+	if (state)
+		plm_switch_on(dev, 0xFF);
+	else
+		plm_switch_off(dev);
+}
+
+/**
+   \brief Called when a dimmer chg command occurs
+   \param dev device that got updated
+   \param level new dimmer level
+   \param arg pointer to client_t
+*/
+
+void coll_chg_dimmer_cb(device_t *dev, double level, void *arg)
+{
+	double d;
+	uint8_t u;
+
+	if (level == 0.0) {
+		plm_switch_off(dev);
+		return;
+	}
+
+	d = rint(255.0 * level);
+	u = (uint8_t)d;
+	LOG(LOG_DEBUG, "Got request dimmer level=%f, set to %d", level, u);
+	plm_switch_on(dev, u);
+
+	return;
+}
+
+/**************************************
+	PLM Handling code
+**************************************/
+
+
 /**
    \brief Queue is empty callback
    \param arg pointer to connection_t
@@ -113,7 +199,25 @@ usage(void)
 void plm_queue_empty_cb(void *arg)
 {
 	connection_t *conn = (connection_t *)arg;
+
+	if (need_query) {
+		plm_enq_wait(10);
+		plm_query_all_devices();
+	}
+	need_query = 0;
 	return; /* do nothing */
+}
+
+/**
+   \brief Rescan request callback
+   \param fd unused
+   \param what unused
+   \param arg pointer to connection_t
+*/
+void plm_rescan(int fd, short what, void *arg)
+{
+
+	need_query++;
 }
 
 
@@ -142,38 +246,241 @@ void plm_handle_alink_complete(uint8_t *data)
 		plmcmdq_dequeue();
 }
 
+/**
+   \brief Handle a std length recv
+   \param fromaddr Who from?
+   \param toaddr who to?
+   \param flags message flags
+   \param com1 command1
+   \param com2 command2
+*/
+
+void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
+			uint8_t com1, uint8_t com2, connection_t *conn)
+{
+	char fa[16], ta[16];
+	device_t *dev;
+	double d;
+	uint8_t s, group;
+	cmdq_t *cmd;
+	int maybe_need_query = 0;
+
+	addr_to_string(fa, fromaddr);
+	addr_to_string(ta, toaddr);
+
+	LOG(LOG_DEBUG, "StdMesg from:%s to %s cmd1,2:0x%0.2X,0x%0.2X "
+	    "flags:0x%0.2X", fa, ta, com1, com2, flags);
+	plmcmdq_check_recv(fromaddr, toaddr, com1, CMDQ_WAITDATA);
+
+	dev = find_device_byuid(fa);
+	if (dev == NULL) {
+		LOG(LOG_ERROR, "Unknown device %s sent stdmsg", fa);
+		return;
+	}
+
+	group = 0;
+	/* do we have a broadcast to a group */
+	if (flags & PLMFLAG_GROUP && flags & PLMFLAG_BROAD)
+		group = toaddr[2]; /* low byte in send is group number */
+
+	/* look for status requests, as they are wierd */
+	cmd = SIMPLEQ_FIRST(&cmdfifo);
+	if (cmd != NULL && cmd->cmd[6] == STDCMD_STATUSREQ) {
+		d = (double)com2 / 255.0;
+		s = com2;
+		LOG(LOG_DEBUG, "Storing data from %s %f", fa, d);
+		if (dev->type == DEVICE_SWITCH)
+			store_data_dev(dev, DATALOC_DATA, &s);
+		else
+			store_data_dev(dev, DATALOC_DATA, &d);
+		gn_update_device(dev, 0, gnhastd_conn->bev);
+		return;
+	}
+
+	switch (com1) {
+	case STDCMD_GETVERS:
+		LOG(LOG_DEBUG, "Got Version info from %s", fa);
+		switch (com2) {
+		case 0x00:
+			dev->proto = PROTO_INSTEON_V1;
+			break;
+		case 0x01:
+			dev->proto = PROTO_INSTEON_V2;
+			break;
+		case 0x02:
+			dev->proto = PROTO_INSTEON_V2CS;
+			break;
+		case 0xFF:
+			dev->proto = PROTO_INSTEON_V2CS;
+			LOG(LOG_WARNING, "Device %s is i2cs not linked to PLM");
+			break;
+		}
+		break;
+	case STDCMD_PING:
+		LOG(LOG_DEBUG, "Ping reply from %s", fa);
+		plm_set_hops(dev, flags);
+		need_query++;
+		break;
+	case STDCMD_ON:
+		LOG(LOG_DEBUG, "Got ON from %s", fa);
+	case STDCMD_FASTON:
+		LOG(LOG_DEBUG, "Got FAST ON from %s", fa);
+		if ((flags & PLMFLAG_GROUP) && com2 == 0) {
+			d = 100.0; /* for now, lets assume this */
+			s = 0xFF;
+		} else {
+			d = (double)com2 / 255.0;
+			s = com2;
+		}
+		if (dev->type == DEVICE_SWITCH)
+			store_data_dev(dev, DATALOC_DATA, &s);
+		else
+			store_data_dev(dev, DATALOC_DATA, &d);
+		gn_update_device(dev, 0, gnhastd_conn->bev);
+		/* schedule a query for it too */
+		maybe_need_query++;
+		break;
+	case STDCMD_OFF:
+		LOG(LOG_DEBUG, "Got OFF from %s", fa);
+	case STDCMD_FASTOFF:
+		LOG(LOG_DEBUG, "Got FAST OFF from %s", fa);
+		if ((flags & PLMFLAG_GROUP) && com2 == 0) {
+			d = 0.0; /* for now, lets assume this */
+			s = 0x0;
+		} else {
+			d = (double)com2 / 255.0;
+			s = com2;
+		}
+		if (dev->type == DEVICE_SWITCH)
+			store_data_dev(dev, DATALOC_DATA, &s);
+		else
+			store_data_dev(dev, DATALOC_DATA, &d);
+		gn_update_device(dev, 0, gnhastd_conn->bev);
+		/* schedule a query for it too */
+		maybe_need_query++;
+		break;
+	case STDCMD_MANUALDIM:
+		LOG(LOG_DEBUG, "Got Manual Dim Start from %s", fa);
+		break;
+	case STDCMD_MANUALDIMSTOP:
+		LOG(LOG_DEBUG, "Got Manual Dim Stop from %s", fa);
+		maybe_need_query++;
+		break;
+	}
+	if (maybe_need_query) {
+		plm_check_proper_delay(fromaddr);
+		if (group)
+			plm_query_grouped_devices(dev, group);
+		else
+			need_query++;
+	}
+}
+
+/**
+   \brief Handle an extended length recv
+   \param fromaddr Who from?
+   \param toaddr who to?
+   \param flags message flags
+   \param com1 command1
+   \param com2 command2
+*/
+
+void plm_handle_extrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
+			uint8_t com1, uint8_t com2, uint8_t *ext,
+			connection_t *conn)
+{
+	char fa[16], ta[16];
+	device_t *dev;
+
+	addr_to_string(fa, fromaddr);
+	addr_to_string(ta, toaddr);
+
+	LOG(LOG_DEBUG, "ExtMesg from:%s to %s cmd1,2:0x%0.2X,0x%0.2X "
+	    "flags:0x%0.2X", fa, ta, com1, com2, flags);
+	LOG(LOG_DEBUG, "ExtMesg data:0x%0.2X 0x%0.2X 0x%0.2X 0x%0.2X "
+	    "0x%0.2X 0x%0.2X 0x%0.2X 0x%0.2X 0x%0.2X 0x%0.2X 0x%0.2X "
+	    "0x%0.2X 0x%0.2X 0x%0.2X", ext[0], ext[1], ext[2], ext[3],
+	    ext[4], ext[5], ext[6], ext[7], ext[8], ext[9], ext[10],
+	    ext[11], ext[12], ext[13]);
+
+	plmcmdq_check_recv(fromaddr, toaddr, com1, CMDQ_WAITEXT);
+
+	dev = find_device_byuid(fa);
+	if (dev == NULL) {
+		LOG(LOG_ERROR, "Unknown device %s sent stdmsg", fa);
+		return;
+	}
+
+	switch (com1) {
+	case EXTCMD_RWALDB:
+		if (plm_handle_aldb(dev, ext))
+			plmcmdq_got_data(CMDQ_WAITALDB);
+		break;
+	}
+}
+
+/**
+   \brief Ping all devices
+*/
+
 void plm_ping_all_devices(void)
 {
 	device_t *dev;
 
 	TAILQ_FOREACH(dev, &alldevs, next_all)
 		plm_enq_std(dev, STDCMD_PING, 0x00, CMDQ_WAITACKDATA);
+
+	plm_enq_wait(5);
+
+	TAILQ_FOREACH(dev, &alldevs, next_all) {
+		plm_req_aldb(dev);
+		plm_enq_wait(2);
+	}
+}
+
+/**
+   \brief Query all devices
+*/
+void plm_query_all_devices(void)
+{
+	device_t *dev;
+
+	TAILQ_FOREACH(dev, &alldevs, next_all)
+		plm_enq_std(dev, STDCMD_STATUSREQ, 0x00,
+			    CMDQ_WAITACK|CMDQ_WAITANY);
+}
+
+/**
+   \brief Query grouped devices
+   \param dev device that might be leader of group
+   \param group group number
+*/
+void plm_query_grouped_devices(device_t *dev, uint group)
+{
+	char gn[16];
+	device_group_t *devgrp;
+	wrap_device_t *wrap;
+
+	sprintf(gn, "%s-%0.2X", dev->loc, group);
+	devgrp = find_devgroup_byuid(gn);
+	if (devgrp == NULL) {
+		need_query++;
+		return;
+	}
+	LOG(LOG_DEBUG, "Query device group: %s", gn);
+	plm_enq_wait(10);
+	TAILQ_FOREACH(wrap, &devgrp->members, next) {
+		plm_enq_std(wrap->dev, STDCMD_STATUSREQ, 0x00,
+			    CMDQ_WAITACK|CMDQ_WAITANY);
+		LOG(LOG_DEBUG, "Query group member %s", wrap->dev->uid);
+	}
+	plm_enq_wait(1);
 }
 
 /*****
       General routines/gnhastd connection stuff
 *****/
 
-
-/**
-   \brief A read callback, got data from server
-   \param in The bufferevent that fired
-   \param arg optional arg
-*/
-
-void buf_read_cb(struct bufferevent *in, void *arg)
-{
-	char *data;
-	struct evbuffer *input;
-	size_t len;
-
-	input = bufferevent_get_input(in);
-	data = evbuffer_readln(input, &len, EVBUFFER_EOL_CRLF);
-	if (len) {
-		printf("Got data? %s\n", data);
-		free(data);
-	}
-}
 
 /**
    \brief A write callback, if we need to tell server something
@@ -223,7 +530,7 @@ void connect_server_cb(int nada, short what, void *arg)
 
 	conn->bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
 	if (conn->type == CONN_TYPE_GNHASTD)
-		bufferevent_setcb(conn->bev, buf_read_cb, NULL,
+		bufferevent_setcb(conn->bev, gnhastd_read_cb, NULL,
 				  connect_event_cb, conn);
 
 	bufferevent_enable(conn->bev, EV_READ|EV_WRITE);
@@ -322,6 +629,7 @@ main(int argc, char *argv[])
 	struct ev_token_bucket_cfg *ratelim;
 	struct timeval rate = { 1, 0 };
 	struct timeval runq = { 0, 500 };
+	struct timeval rescan = { 60, 0 };
 	struct event *ev;
 
 	while ((c = getopt(argc, argv, "c:d")) != -1)
@@ -350,6 +658,7 @@ main(int argc, char *argv[])
 
 	/* Initialize the argtable */
 	init_argcomm();
+	init_commands();
 
 	/* Initialize the command fifo */
 	SIMPLEQ_INIT(&cmdfifo);
@@ -402,6 +711,10 @@ main(int argc, char *argv[])
 	/* setup runq */
 	ev = event_new(base, -1, EV_PERSIST, plm_runq, plm_conn);
 	event_add(ev, &runq);
+
+	ev = event_new(base, -1, EV_PERSIST, plm_rescan, plm_conn);
+	rescan.tv_sec = cfg_getint(icoll_c, "rescan");
+	event_add(ev, &rescan);
 
 	/* Connect to gnhastd */
 

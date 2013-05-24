@@ -84,10 +84,24 @@
 #define STDCMD_UNLINKMODE		0x0A
 #define STDCMD_GETVERS			0x0D
 #define STDCMD_PING			0x0F
+#define STDCMD_IDREQ			0x10
+#define STDCMD_ON			0x11
+#define STDCMD_FASTON			0x12
+#define STDCMD_OFF			0x13
+#define STDCMD_FASTOFF			0x14
+#define STDCMD_BRIGHT			0x15
+#define STDCMD_DIM			0x16
+#define STDCMD_MANUALDIM		0x17
+#define STDCMD_MANUALDIMSTOP		0x18
 
+#define STDCMD_STATUSREQ		0x19
+
+#define EXTCMD_RWALDB			0x2F
 
 #define addr_to_string(buf, addr) sprintf(buf, "%0.2X.%0.2X.%0.2X", addr[0], \
 					  addr[1], addr[2])
+#define addr_to_groupuid(buf, addr, group) sprintf(buf, \
+        "%0.2X.%0.2X.%0.2X-%0.2X", addr[0], addr[1], addr[2], group)
 
 /* General structures */
 struct _cmdq_t;
@@ -101,12 +115,33 @@ typedef struct _cmdq_t {
 	SIMPLEQ_ENTRY(_cmdq_t) entries;  /**< \brief FIFO queue */
 } cmdq_t;
 
+typedef struct _aldb_t {
+	uint16_t addr;		/**< \brief address of record */
+	uint8_t lflags;		/**< \brief link control flags ALDBLINK_* */
+	uint8_t group;		/**< \brief group number */
+	uint8_t devaddr[3];	/**< \brief addr of linked device */
+	uint8_t ldata1;		/**< \brief linkdata1 (on level) */
+	uint8_t ldata2;		/**< \brief linkdata2 (ramprate) */
+	uint8_t ldata3;		/**< \brief unused? */
+} aldb_t;
+
+#define ALDB_MAXSIZE	32
+
 typedef struct _insteon_devdata_t {
 	uint8_t daddr[3];	/**< \brief Device addr decoded */
 	uint8_t hopflag;	/**< \brief ideal nrof hops */
+	aldb_t aldb[ALDB_MAXSIZE];	/**< \brief aldb records */
+	int aldblen;		/**< \brief length of aldb */
 } insteon_devdata_t;
 
+#define ALDBLINK_USED	(1<<1)
+#define ALDBLINK_ACKREQ	(1<<5)
+#define ALDBLINK_MASTER	(1<<6)
+#define ALDBLINK_INUSE	(1<<7)
+
 #define CMDQ_MAX_SEND	2
+
+#define CMDQ_NOPWAIT	0xFF
 
 #define CMDQ_DONE	0
 #define CMDQ_WAITACK	(1<<0)
@@ -114,6 +149,8 @@ typedef struct _insteon_devdata_t {
 #define CMDQ_WAITEXT	(1<<2)
 #define CMDQ_WAITSEND	(1<<3)
 #define CMDQ_WAITALINK	(1<<4)
+#define CMDQ_WAITANY	(1<<5) /* take any stdmsg as having worked */
+#define CMDQ_WAITALDB	(1<<6) /* wait for all aldb records */
 
 #define CMDQ_WAITACKDATA (CMDQ_WAITACK|CMDQ_WAITDATA)
 #define CMDQ_WAITACKEXT (CMDQ_WAITACK|CMDQ_WAITEXT)
@@ -134,9 +171,13 @@ typedef struct _connection_t {
 ****************/
 
 void plm_enq_std(device_t *dev, uint8_t com1, uint8_t com2, uint8_t waitflags);
+void plm_enq_ext(device_t *dev, uint8_t com1, uint8_t com2, uint8_t *data,
+		 uint8_t waitflags);
 uint8_t plm_calc_cs(uint8_t com1, uint8_t com2, uint8_t *data);
 void plm_enq_stdcs(device_t *dev, uint8_t com1, uint8_t com2,
 		   uint8_t waitflags);
+void plm_enq_wait(int howlong);
+void plm_check_proper_delay(uint8_t *devaddr);
 void plm_runq(int fd, short what, void *arg);
 void plmcmdq_retry_cur(void);
 void plmcmdq_got_data(int whatkind);
@@ -145,8 +186,12 @@ void plmcmdq_dequeue(void);
 void plmcmdq_check_recv(char *fromaddr, char *toaddr, uint8_t cmd1,
 			int whatkind);
 void plm_getinfo(void);
+void plm_req_aldb(device_t *dev);
+void plm_switch_on(device_t *dev, uint8_t level);
+void plm_switch_off(device_t *dev);
 void plm_all_link(uint8_t linkcode, uint8_t group);
 void plm_handle_getinfo(uint8_t *data);
+int plm_handle_aldb(device_t *dev, char *data);
 void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 			uint8_t com1, uint8_t com2, connection_t *conn);
 void plm_handle_extrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,

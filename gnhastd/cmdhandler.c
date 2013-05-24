@@ -43,15 +43,17 @@
 extern TAILQ_HEAD(, _device_t) alldevs;
 
 /**
-	\file cmdhandler.c
-	\brief Common command handlers
-	\author Tim Rightnour
+   \file cmdhandler.c
+   \brief Common command handlers
+   \author Tim Rightnour
 */
 
 extern struct event_base *base;
+extern argtable_t argtable[];
 
 /** The command table */
 commands_t commands[] = {
+	{"chg", cmd_change, 0},
 	{"reg", cmd_register, 0},
 	{"upd", cmd_update, 0},
 	{"feed", cmd_feed, 0},
@@ -173,6 +175,92 @@ int cmd_update(pargs_t *args, void *arg)
 	return(0);
 }
 
+/**
+   \brief Handle a change device command
+   \param args The list of arguments
+   \param arg void pointer to client_t of provider
+*/
+
+int cmd_change(pargs_t *args, void *arg)
+{
+	int i;
+	double wlevel;
+	device_t *dev;
+	char *uid=NULL;
+	client_t *client = (client_t *)arg;
+	struct evbuffer *send;
+
+	/* loop through the args and find the UID */
+	for (i=0; args[i].cword != -1; i++) {
+		switch (args[i].cword) {
+		case SC_UID:
+			uid = args[i].arg.c;
+			break;
+		}
+	}
+	if (!uid) {
+		LOG(LOG_ERROR, "update without UID");
+		return(-1);
+	}
+	dev = find_device_byuid(uid);
+	if (!dev) {
+		LOG(LOG_ERROR, "UID:%s doesn't exist", uid);
+		return(-1);
+	}
+
+	send = evbuffer_new();
+	/* The command to change is "chg" */
+	evbuffer_add_printf(send, "chg ");
+
+	/* fill in the details */
+	evbuffer_add_printf(send, "%s:%s", ARGNM(SC_UID), dev->uid);
+
+	for (i=0; args[i].cword != -1; i++) {
+		switch (args[i].cword) {
+		case SC_SWITCH:
+			evbuffer_add_printf(send, " %s:%d",
+					    ARGNM(args[i].cword),
+					    args[i].arg.i);
+			break;
+		case SC_LUX:
+		case SC_HUMID:
+		case SC_TEMP:
+		case SC_DIMMER:
+		case SC_PRESSURE:
+		case SC_SPEED:
+		case SC_DIR:
+		case SC_MOISTURE:
+		case SC_WETNESS:
+		case SC_VOLTAGE:
+		case SC_WATT:
+		case SC_AMPS:
+			evbuffer_add_printf(send, " %s:%f",
+					    ARGNM(args[i].cword),
+					    args[i].arg.d);
+			store_data_dev(dev, DATALOC_DATA, &args[i].arg.d);
+			break;
+		case SC_COUNT:
+			evbuffer_add_printf(send, " %s:%d",
+					    ARGNM(args[i].cword),
+					    args[i].arg.u);
+			break;
+		case SC_WATTSEC:
+			evbuffer_add_printf(send, " %s:%jd",
+					    ARGNM(args[i].cword),
+					    args[i].arg.ll);
+			break;
+		}
+	}
+	if (dev->collector == NULL) {
+		LOG(LOG_ERROR, "Got chg for uid:%s, but no collector",
+		    dev->uid);
+		return(-1);
+	}
+	/* and send it on it's way */
+	evbuffer_add_printf(send, "\n");
+	bufferevent_write_buffer(dev->collector->ev, send);
+	return(0);
+}
 
 /**
 	\brief Handle a register device command

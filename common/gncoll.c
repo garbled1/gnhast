@@ -53,8 +53,8 @@
 #include "confparser.h"
 #include "gncoll.h"
 
-/** Need the argtable in scope, so we can generate proper commands
-    for the server */
+/* Need the argtable in scope, so we can generate proper commands
+   for the server */
 extern argtable_t argtable[];
 
 /**

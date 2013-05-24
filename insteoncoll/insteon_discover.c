@@ -231,13 +231,15 @@ void plm_queue_empty_cb(void *arg)
 			TAILQ_FOREACH(dev, &alldevs, next_all) {
 				plm_enq_std(dev, STDCMD_LINKMODE, 0x01,
 					    CMDQ_WAITACK|CMDQ_WAITDATA);
-				plm_all_link(0x01, 0x01);
+				plm_all_link(0x01, 0x75);
+				//plm_all_link(0xFF, 0x75);
 			}
 		}
 		break;
 	case MODE_LINK_ALL_C:
 		TAILQ_FOREACH(dev, &alldevs, next_all) {
-			plm_all_link(0x00, 0x02);
+			plm_all_link(0x00, 0x76);
+			//plm_all_link(0xFF, 0x76);
 			plm_enq_std(dev, STDCMD_LINKMODE, 0x02,
 				    CMDQ_WAITACK|CMDQ_WAITDATA);
 		}
@@ -305,6 +307,85 @@ void plm_handle_alink_complete(uint8_t *data)
 	devconf = new_conf_from_dev(cfg, dev);
 }
 
+/**
+   \brief Handle a std length recv
+   \param fromaddr Who from?
+   \param toaddr who to?
+   \param flags message flags
+   \param com1 command1
+   \param com2 command2
+*/
+
+void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
+			uint8_t com1, uint8_t com2, connection_t *conn)
+{
+	char fa[16], ta[16];
+	device_t *dev;
+
+	addr_to_string(fa, fromaddr);
+	addr_to_string(ta, toaddr);
+
+	LOG(LOG_DEBUG, "StdMesg from:%s to %s cmd1,2:0x%0.2X,0x%0.2X "
+	    "flags:0x%0.2X", fa, ta, com1, com2, flags);
+	plmcmdq_check_recv(fromaddr, toaddr, com1, CMDQ_WAITDATA);
+
+	dev = find_device_byuid(fa);
+	if (dev == NULL) {
+		LOG(LOG_ERROR, "Unknown device %s sent stdmsg", fa);
+		return;
+	}
+
+	switch (com1) {
+	case STDCMD_GETVERS:
+		switch (com2) {
+		case 0x00:
+			dev->proto = PROTO_INSTEON_V1;
+			break;
+		case 0x01:
+			dev->proto = PROTO_INSTEON_V2;
+			break;
+		case 0x02:
+			dev->proto = PROTO_INSTEON_V2CS;
+			break;
+		case 0xFF:
+			dev->proto = PROTO_INSTEON_V2CS;
+			LOG(LOG_WARNING, "Device %s is i2cs not linked to PLM");
+			break;
+		}
+		break;
+	case STDCMD_PING:
+		plm_set_hops(dev, flags);
+		break;
+	}
+}
+
+/**
+   \brief Handle an extended length recv
+   \param fromaddr Who from?
+   \param toaddr who to?
+   \param flags message flags
+   \param com1 command1
+   \param com2 command2
+*/
+
+void plm_handle_extrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
+			uint8_t com1, uint8_t com2, uint8_t *ext,
+			connection_t *conn)
+{
+	char fa[16], ta[16];
+
+	addr_to_string(fa, fromaddr);
+	addr_to_string(ta, toaddr);
+
+	LOG(LOG_DEBUG, "ExtMesg from:%s to %s cmd1,2:0x%0.2X,0x%0.2X "
+	    "flags:0x%0.2X", fa, ta, com1, com2, flags);
+	LOG(LOG_DEBUG, "ExtMesg data:0x%0.2X 0x%0.2X 0x%0.2X 0x%0.2X "
+	    "0x%0.2X 0x%0.2X 0x%0.2X 0x%0.2X 0x%0.2X 0x%0.2X 0x%0.2X "
+	    "0x%0.2X 0x%0.2X 0x%0.2X", ext[0], ext[1], ext[2], ext[3],
+	    ext[4], ext[5], ext[6], ext[7], ext[8], ext[9], ext[10],
+	    ext[11], ext[12], ext[13]);
+	plmcmdq_check_recv(fromaddr, toaddr, com1, CMDQ_WAITEXT);
+}
 
 /**
    \brief Parse a config file

@@ -29,6 +29,13 @@
  * SUCH DAMAGE.
  */
 
+/**
+   \file collector.c
+   \author Tim Rightnour
+   \brief RRDtool collector
+   This collector connects to gnhastd, and generates rrd data.
+   In addition, it relays min/max/avg to the gnhastd server.
+*/
 
 #include <stdio.h>
 #include <unistd.h>
@@ -53,14 +60,7 @@
 #include "confuse.h"
 #include "confparser.h"
 #include "gncoll.h"
-
-/**
-   \file collector.c
-   \author Tim Rightnour
-   \brief RRDtool collector
-   This collector connects to gnhastd, and generates rrd data.
-   In addition, it relays min/max/avg to the gnhastd server.
-*/
+#include "collcmd.h"
 
 void connect_event_cb(struct bufferevent *ev, short what, void *arg);
 void connect_server_cb(int nada, short what, void *arg);
@@ -86,11 +86,11 @@ int usecache = 0;
     for the server */
 extern argtable_t argtable[];
 extern TAILQ_HEAD(, _device_t) alldevs;
+extern commands_t commands[];
 
 /** The event base */
 struct event_base *base;
 struct evdns_base *dns_base;
-
 
 typedef struct _connection_t {
 	int port;
@@ -151,59 +151,7 @@ cfg_opt_t options[] = {
 	CFG_STR("logfile", RRDCOLL_LOG_FILE, CFGF_NONE),
 	CFG_STR("pidfile", RRDCOLL_PID_FILE, CFGF_NONE),
 	CFG_END(),
-};      
-
-
-int cmd_register(pargs_t *args, void *arg);
-int cmd_endldevs(pargs_t *args, void *arg);
-int cmd_update(pargs_t *args, void *arg);
-/** The command table */
-commands_t commands[] = {
-	{"reg", cmd_register, 0},
-	{"endldevs", cmd_endldevs, 0},
-	{"upd", cmd_update, 0},
 };
-
-/** The size of the command table */
-const size_t commands_size = sizeof(commands) / sizeof(commands_t);
-
-
-/**
-	\brief Initialize the commands table
-*/
-
-void init_commands(void)
-{
-	qsort((char *)commands, commands_size, sizeof(commands_t),
-	    compare_command);
-}
-
-/**
-	\brief Handle a command from the network
-	\param command command to execute
-	\param args arguments to command
-*/
-
-int parsed_command(char *command, pargs_t *args, void *arg)
-{
-	commands_t *asp, dummy;
-	char *cp;
-	int ret;
-
-	for (cp=command; *cp; cp++)
-		*cp = tolower(*cp);
-
-	dummy.name = command;
-	asp = (commands_t *)bsearch((void *)&dummy, (void *)commands,
-	    commands_size, sizeof(commands_t), compare_command);
-
-	if (asp) {
-		ret = asp->func(args, arg);
-		return(ret);
-	} else {
-		return(-1); /* command not found */
-	}
-}
 
 /**
         \brief Find the cfg entry for an rrdev by it's UID
@@ -259,9 +207,9 @@ cfg_t *new_rrdconf_from_dev(cfg_t *cfg, device_t *dev)
 }
 
 /**
-	\brief Handle a enldevs device command
-	\param args The list of arguments
-	\param arg void pointer to client_t of provider
+   \brief Handle a enldevs device command
+   \param args The list of arguments
+   \param arg void pointer to client_t of provider
 */
 
 int cmd_endldevs(pargs_t *args, void *arg)
@@ -280,143 +228,39 @@ int cmd_endldevs(pargs_t *args, void *arg)
 }
 
 /**
-	\brief Handle a register device command
-	\param args The list of arguments
-	\param arg void pointer to client_t of provider
+   \brief Called when an upd command occurs
+   \param dev device that got updated
+   \param arg pointer to client_t
 */
 
-int cmd_register(pargs_t *args, void *arg)
+void coll_upd_cb(device_t *dev, void *arg)
 {
-	int i, new=0;
-	uint8_t devtype=0, proto=0, subtype=0;
-	char *uid=NULL, *name=NULL, *rrdname=NULL;
-	device_t *dev, *tdev;
-
-	for (i=0; args[i].cword != -1; i++) {
-		switch (args[i].cword) {
-		case SC_UID:
-			uid = strdup(args[i].arg.c);
-			break;
-		case SC_NAME:
-			name = strdup(args[i].arg.c);
-			break;
-		case SC_RRDNAME:
-			rrdname = strndup(args[i].arg.c, 19);
-			break;
-		case SC_DEVTYPE:
-			devtype = (uint8_t)args[i].arg.i;
-			break;
-		case SC_PROTO:
-			proto = (uint8_t)args[i].arg.i;
-			break;
-		case SC_SUBTYPE:
-			subtype = (uint8_t)args[i].arg.i;
-			break;
-		}
-	}
-
-	if (uid == NULL) {
-		LOG(LOG_ERROR, "Got register command without UID");
-		return(-1); /* MUST have UID */
-	}
-
-	LOG(LOG_DEBUG, "Register device: uid=%s name=%s rrd=%s type=%d proto=%d subtype=%d",
-	    uid, (name) ? name : "NULL", (rrdname) ? rrdname : "NULL",
-	    devtype, proto, subtype);
-
-	dev = find_device_byuid(uid);
-	if (dev == NULL) {
-		LOG(LOG_DEBUG, "Creating new device for uid %s", uid);
-		if (subtype == 0 || devtype == 0 || proto == 0 || name == NULL) {
-			LOG(LOG_ERROR, "Attempt to register new device without full specifications");
-			return(-1);
-		}
-		if (rrdname == NULL)
-			rrdname = strndup(name, 19);
-		dev = smalloc(device_t);
-		dev->uid = uid;
-		new = 1;
-	} else
-		LOG(LOG_DEBUG, "Updating existing device uid:%s", uid);
-	dev->name = name;
-	dev->rrdname = rrdname;
-	dev->type = devtype;
-	dev->proto = proto;
-	dev->subtype = subtype;
-	(void)time(&dev->last_upd);
-
-	if (new)
-		insert_device(dev);
-
-	return(0);
+	rrd_update_dev(dev);
 }
 
 /**
-	\brief Handle a update device command
-	\param args The list of arguments
-	\param arg void pointer to client_t of provider
+   \brief Called when a switch chg command occurs
+   \param dev device that got updated
+   \param state new state (on/off)
+   \param arg pointer to client_t
 */
 
-int cmd_update(pargs_t *args, void *arg)
+void coll_chg_switch_cb(device_t *dev, int state, void *arg)
 {
-	int i;
-	device_t *dev;
-	char *uid=NULL;
-	client_t *client = (client_t *)arg;
-
-	/* loop through the args and find the UID */
-	for (i=0; args[i].cword != -1; i++) {
-		switch (args[i].cword) {
-		case SC_UID:
-			uid = args[i].arg.c;
-			break;
-		}
-	}
-	if (!uid) {
-		LOG(LOG_ERROR, "update without UID");
-		return(-1);
-	}
-	dev = find_device_byuid(uid);
-	if (!dev) {
-		LOG(LOG_ERROR, "UID:%s doesn't exist", uid);
-		return(-1);
-	}
-
-	/* Ok, we got one, now lets update it's data */
-
-	for (i=0; args[i].cword != -1; i++) {
-		switch (args[i].cword) {
-		case SC_SWITCH:
-			store_data_dev(dev, DATALOC_DATA, &args[i].arg.i);
-			break;
-		case SC_LUX:
-		case SC_HUMID:
-		case SC_TEMP:
-		case SC_DIMMER:
-		case SC_PRESSURE:
-		case SC_SPEED:
-		case SC_DIR:
-		case SC_MOISTURE:
-		case SC_WETNESS:
-		case SC_VOLTAGE:
-		case SC_WATT:
-		case SC_AMPS:
-			store_data_dev(dev, DATALOC_DATA, &args[i].arg.d);
-			break;
-		case SC_COUNT:
-			store_data_dev(dev, DATALOC_DATA, &args[i].arg.u);
-			break;
-		case SC_WATTSEC:
-			store_data_dev(dev, DATALOC_DATA, &args[i].arg.ll);
-			break;
-		}
-	}
-
-	(void)time(&dev->last_upd);
-	rrd_update_dev(dev);
-	return(0);
+	return;
 }
 
+/**
+   \brief Called when a dimmer chg command occurs
+   \param dev device that got updated
+   \param level new dimmer level
+   \param arg pointer to client_t
+*/
+
+void coll_chg_dimmer_cb(device_t *dev, double level, void *arg)
+{
+	return;
+}
 
 /*****
       RRD routines
@@ -699,54 +543,6 @@ void rrdc_read_cb(struct bufferevent *in, void *arg)
 *****/
 
 
-/**
-   \brief A read callback, got data from server
-   \param in The bufferevent that fired
-   \param arg optional arg
-*/
-
-void buf_read_cb(struct bufferevent *in, void *arg)
-{
-	char *data;
-	char **words, *cmdword;
-	int numwords, i;
-	pargs_t *args=NULL;
-	struct evbuffer *evbuf;
-	size_t len;
-
-	/* loop as long as we have data to read */
-	while (1) {
-		evbuf = bufferevent_get_input(in);
-		data = evbuffer_readln(evbuf, &len, EVBUFFER_EOL_CRLF);
-
-		if (data == NULL || len < 1)
-			return;
-
-		LOG(LOG_DEBUG, "Got data %s", data);
-
-		words = parse_netcommand(data, &numwords);
-
-		if (words == NULL || words[0] == NULL) {
-			free(data);
-			goto out;
-		}
-
-		cmdword = strdup(words[0]);
-		args = parse_command(words, numwords);
-		parsed_command(cmdword, args, arg);
-		free(cmdword);
-		free(data);
-	}
-
-out:
-	if (args) {
-		for (i=0; args[i].cword != -1; i++)
-			if (args[i].type == PTCHAR)
-				free(args[i].arg.c);
-		free(args);
-		args=NULL;
-	}
-}
 
 /**
    \brief A write callback, if we need to tell server something
@@ -796,7 +592,7 @@ void connect_server_cb(int nada, short what, void *arg)
 
 	conn->bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
 	if (strcmp(conn->server, "gnhastd") == 0)
-		bufferevent_setcb(conn->bev, buf_read_cb, NULL,
+		bufferevent_setcb(conn->bev, gnhastd_read_cb, NULL,
 				  connect_event_cb, conn);
 	else
 		bufferevent_setcb(conn->bev, rrdc_read_cb, NULL,
@@ -828,7 +624,7 @@ void ssl_connect_server_cb(int nada, short what, void *arg)
 
 	conn->bev = bufferevent_openssl_socket_new(base, -1, conn->ssl,
 	    BUFFEREVENT_SSL_CONNECTING, BEV_OPT_CLOSE_ON_FREE);
-	bufferevent_setcb(conn->bev, buf_read_cb, NULL,
+	bufferevent_setcb(conn->bev, gnhastd_read_cb, NULL,
 			  connect_event_cb, conn);
 	bufferevent_enable(conn->bev, EV_READ|EV_WRITE);
 	bufferevent_socket_connect_hostname(conn->bev, dns_base, AF_UNSPEC,

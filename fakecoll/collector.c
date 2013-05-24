@@ -29,6 +29,12 @@
  * SUCH DAMAGE.
  */
 
+/**
+   \file collector.c
+   \author Tim Rightnour
+   \brief An example collector, that generates fake data to test
+   \note You may use this as a skeleton to create a new collector
+*/
 
 #include <stdio.h>
 #include <unistd.h>
@@ -47,13 +53,6 @@
 #include "gnhast.h"
 #include "confuse.h"
 #include "gncoll.h"
-
-/**
-	\file collector.c
-	\author Tim Rightnour
-	\brief An example collector, that generates fake data to test
-	\note You may use this as a skeleton to create a new collector
-*/
 
 /** our logfile */
 FILE *logfile;

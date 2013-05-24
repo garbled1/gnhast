@@ -29,6 +29,12 @@
  * SUCH DAMAGE.
  */
 
+/**
+   \file collector.c
+   \author Tim Rightnour
+   \brief One Wire Server collector
+   This collector connects to an owserver, and relays the data to gnhastd
+*/
 
 #include <stdio.h>
 #include <unistd.h>
@@ -50,13 +56,6 @@
 #include "confparser.h"
 #include "gncoll.h"
 
-/**
-   \file collector.c
-   \author Tim Rightnour
-   \brief One Wire Server collector
-   This collector connects to an owserver, and relays the data to gnhastd
-*/
-
 void connect_event_cb(struct bufferevent *ev, short what, void *arg);
 void ows_connect_event_cb(struct bufferevent *ev, short what, void *arg);
 void connect_server_cb(int nada, short what, void *arg);
@@ -69,6 +68,7 @@ uint32_t loopnr; /**< \brief the number of loops we've made */
 char *dumpconf = NULL;
 int need_rereg = 0;
 int timer_pending = 0;
+int persistent = 0;
  
 #define OWSRVCOLL_CONFIG_FILE	"owsrvcoll.conf"
 #define OWSRVCOLL_LOG_FILE	"owsrvcoll.log"
@@ -161,6 +161,8 @@ void ows_schedule_devread(device_t *dev, connection_t *conn)
 	struct event *tev;
 	struct timeval secs = { 0, 0};
 
+
+	LOG(LOG_DEBUG, "Scheduling read for device %s", dev->uid);
 schedtop:
 	switch (dev->subtype) {
 	case SUBTYPE_TEMP:
@@ -242,7 +244,8 @@ schedtop:
 	sendmsg.size = htonl(65536);
 	sendmsg.offset = 0; /* unused? */
 	/* connect to owserver again */
-	connect_server_cb(0, 0, conn);
+	if (!persistent)
+		connect_server_cb(0, 0, conn);
 	bufferevent_write(conn->bev, &sendmsg, sizeof(struct server_msg));
 	bufferevent_write(conn->bev, buf, sz);
 	free(buf);
@@ -301,7 +304,8 @@ void ows_schedule_dirall(connection_t *conn)
 	msg.control_flags = htonl(conn->owbase);
 	msg.size = 0; /* unused */
 	msg.offset = 0; /* unused? */
-	connect_server_cb(0, 0, conn);
+	if (!persistent)
+		connect_server_cb(0, 0, conn);
 	bufferevent_write(conn->bev, &msg, sizeof(struct server_msg));
 	bufferevent_write(conn->bev, buf, strlen(buf)+1);
 }
@@ -396,12 +400,19 @@ void ows_buf_read_cb(struct bufferevent *in, void *arg)
 		LOG(LOG_ERROR, "Got bad return code from %s: %d",	
 		    conntype[conn->type], ntohl(msg.ret));
 
+	itmp = (int32_t)ntohl(msg.control_flags);
+	if (itmp & OWFLAG_PERSIST)
+		persistent = 1;
+	LOG(LOG_DEBUG, "Control flags == 0x%X", itmp);
+
 	itmp = (int32_t)ntohl(msg.payload);
 	msg.payload = itmp;
 	/* we really don't care about the rest */
 
-	if (msg.payload == -1 && msg.ret == 0)
+	if (msg.payload == -1 && msg.ret == 0) {
+		LOG(LOG_DEBUG, "Got ping");
 		return; /* we got a ping packet, too slow! */
+	}
 
 	if (msg.payload < 1) {
 		LOG(LOG_WARNING, "Got message with no payload from %s",
@@ -427,8 +438,8 @@ void ows_buf_read_cb(struct bufferevent *in, void *arg)
 		dev = TAILQ_FIRST(&alldevs);
 		if (dev == NULL)
 			goto readcbout;
-		/* we need to schedule a READ */
-		ows_schedule_devread(dev, conn);
+		/* we need to schedule a READ, this will happen at the end */
+		conn->current_dev = dev;
 	} else if (conn->lastcmd == OWSM_READ) {
 		/* I bet we got some data! */
 		if (strlen(buf) < 1) {
@@ -515,6 +526,7 @@ void ows_timer_cb(int nada, short what, void *arg)
 {
 	connection_t *conn = (connection_t *)arg;
 
+	LOG(LOG_DEBUG, "Calling ows_timer_cb");
 	timer_pending = 0;
 	if (conn->current_dev == NULL)
 		ows_schedule_dirall(conn);
@@ -563,8 +575,10 @@ void ows_connect_event_cb(struct bufferevent *ev, short what, void *arg)
 				LOG(LOG_FATAL, "DNS Failure connecting to %s: %s",
 				    conntype[conn->type], strerror(err));
 		}
-		/*LOG(LOG_DEBUG, "Lost connection to %s, closing",
-		    conntype[conn->type]);*/
+		//if (persistent)
+			LOG(LOG_DEBUG, "Lost connection to %s, closing",
+			    conntype[conn->type]);
+		persistent = 0;
 		bufferevent_free(ev);
 	}
 }
@@ -825,6 +839,7 @@ int main(int argc, char **argv)
 	case 'F':
 		owserver_conn->owbase = OWFLAG_TEMP_F; break;
 	}
+	owserver_conn->owbase |= OWFLAG_PERSIST;
 	ows_schedule_dirall(owserver_conn);
 
 	/* Schedule a watchdog timer for the owserver */

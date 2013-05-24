@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * Copyright (c) 2013
  *      Tim Rightnour.  All rights reserved.
@@ -30,9 +28,9 @@
  */
 
 /**
-	\file confparser.c
-	\author Tim Rightnour
-	Contains generic routines to parse the config files
+   \file confparser.c
+   \brief Contains generic routines to parse the config files
+   \author Tim Rightnour
 */
 
 #include <stdio.h>
@@ -69,7 +67,7 @@ cfg_opt_t device_opts[] = {
 };
 
 /**
-	\brief Validate that a port option is valid
+   \brief Validate that a port option is valid
 */
 int conf_validate_port(cfg_t *cfg, cfg_opt_t *opt)
 {
