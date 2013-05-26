@@ -50,7 +50,7 @@
 #define CONV_THREE(x) (int64_t)x.byte[0] + ((int64_t)x.byte[1]<<8) + \
 	((int64_t)x.byte[2]<<16)
 
-#define MAX_WSEC	256*256*256*256*256
+#define MAX_WSEC	256LL*256LL*256LL*256LL*256LL
 #define MAX_THREE	256*256*256
 
 typedef struct _wattsec_t {

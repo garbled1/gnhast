@@ -492,6 +492,7 @@ void brul_handle_ecm1240(struct bufferevent *in, connection_t *conn)
 
 	for (i=2; i < 6; i++)
 		bruldata[1].channel[i] = LETOH32(ecmdata->aux[i-2]);
+	free(ecmdata);
 }
 
 
@@ -527,9 +528,9 @@ void brul_handle_type7(struct bufferevent *in, connection_t *conn)
 	for (i=0; i < brulconf.nrofchannels; i++) {
 		bruldata[1].channel[i] = CONV_WATTSEC(gemdata->channel[i]);
 		bruldata[1].polar[i] = CONV_WATTSEC(gemdata->polar[i]);
-		//printf("C%d=%jd   ", i, bruldata[1].channel[i]);
+		/* printf("C%d=%jd   ", i, bruldata[1].channel[i]); */
 	}
-	//printf("\n");
+	/* printf("\n"); */
 	bruldata[1].voltage = BETOH16(gemdata->voltage) / 10.0;
 	bruldata[1].seconds = CONV_THREE(gemdata->seconds);
 	bruldata[1].serial = BETOH16(gemdata->serial);
@@ -543,6 +544,7 @@ void brul_handle_type7(struct bufferevent *in, connection_t *conn)
 	for (i=0; i<4; i++)
 		if (brulconf.validpulse & (1<<i))
 			bruldata[1].pulse[i] = CONV_THREE(gemdata->pulse[i]);
+	free(gemdata);
 }
 
 /**
@@ -593,6 +595,7 @@ void brul_handle_type5(struct bufferevent *in, connection_t *conn)
 	for (i=0; i<4; i++)
 		if (brulconf.validpulse & (1<<i))
 			bruldata[1].pulse[i] = CONV_THREE(gemdata->pulse[i]);
+	free(gemdata);
 }
 
 
