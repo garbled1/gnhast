@@ -1,0 +1,21 @@
+model "2477D" {
+	name = "SwitchLinc Dimmer (Dual-Band) (600W)"
+	devcat = 0x01
+	subcat = 0x20
+	type = "dimmer"
+	subtype = "switch"
+}
+model "2475DA1" {
+	name = "In-LineLinc Dimmer"
+	devcat = 0x01
+	subcat = 0x1A
+	type = "dimmer"
+	subtype = "switch"
+}
+model "2486DWH6" {
+	name = "KeypadLinc Dimmer, 6-button"
+	devcat = 0x01
+	subcat = 0x1B
+	type = "dimmer"
+	subtype = "switch"
+}
