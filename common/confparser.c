@@ -61,6 +61,8 @@ cfg_opt_t device_opts[] = {
 	CFG_INT_CB("proto", 0, CFGF_NODEFAULT, conf_parse_proto),
 	CFG_STR("multimodel", 0, CFGF_NODEFAULT),
 	CFG_STR("handler", 0, CFGF_NODEFAULT),
+	CFG_STR_LIST("hargs", 0, CFGF_NODEFAULT),
+	CFG_INT_CB("spamhandler", 0, CFGF_NONE, conf_parse_bool),
 	CFG_FLOAT("hiwat", 0.0, CFGF_NONE),
 	CFG_FLOAT("lowat", 0.0, CFGF_NONE),
 	CFG_END(),
@@ -117,9 +119,13 @@ int conf_parse_bool(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		*(int *)result = 1;
 	else if (strcasecmp(value, "true") == 0)
 		*(int *)result = 1;
+	else if (strcasecmp(value, "1") == 0)
+		*(int *)result = 1;
 	else if (strcasecmp(value, "no") == 0)
 		*(int *)result = 0;
 	else if (strcasecmp(value, "false") == 0)
+		*(int *)result = 0;
+	else if (strcasecmp(value, "0") == 0)
 		*(int *)result = 0;
 	else {
 		cfg_error(cfg, "invalid bool value for option '%s': %s",
@@ -415,6 +421,7 @@ device_t *new_dev_from_conf(cfg_t *cfg, char *uid)
 	cfg_t *devconf;
 	double d;
 	uint32_t u;
+	int i;
 
 	devconf = find_devconf_byuid(cfg, uid);
 	if (devconf == NULL)
@@ -433,6 +440,12 @@ device_t *new_dev_from_conf(cfg_t *cfg, char *uid)
 		dev->rrdname = strdup(cfg_getstr(devconf, "rrdname"));
 	if (cfg_getstr(devconf, "handler") != NULL)
 		dev->handler = strdup(cfg_getstr(devconf, "handler"));
+	if (cfg_size(devconf, "hargs") > 0) {
+		dev->nrofhargs = cfg_size(devconf, "hargs");
+		dev->hargs = safer_malloc(sizeof(char *) * dev->nrofhargs);
+		for (i = 0; i < cfg_size(devconf, "hargs"); i++)
+			dev->hargs[i] = strdup(cfg_getnstr(devconf, "hargs", i));
+	}
 	dev->proto = cfg_getint(devconf, "proto");
 	dev->type = cfg_getint(devconf, "type");
 	dev->subtype = cfg_getint(devconf, "subtype");
@@ -453,6 +466,8 @@ device_t *new_dev_from_conf(cfg_t *cfg, char *uid)
 		d = cfg_getfloat(devconf, "hiwat");
 		store_data_dev(dev, DATALOC_HIWAT, &d);
 	}
+	if (cfg_getint(devconf, "spamhandler") > 0)
+		dev->flags |= DEVFLAG_SPAMHANDLER;
 
 	return dev;
 }
@@ -536,6 +551,8 @@ cfg_t *dump_conf(cfg_t *cfg, int flags, const char *filename)
 		cfg_opt_set_print_func(a, conf_print_type);
 		a = cfg_getopt(section, "proto");
 		cfg_opt_set_print_func(a, conf_print_proto);
+		a = cfg_getopt(section, "spamhandler");
+		cfg_opt_set_print_func(a, conf_print_bool);
 		if (flags & CONF_DUMP_DEVONLY) {
 			fprintf(fp, "device \"%s\" {\n", cfg_title(section));
 			cfg_print_indent(section, fp, 2);

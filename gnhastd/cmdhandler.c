@@ -39,6 +39,7 @@
 #include "commands.h"
 #include "cmds.h"
 #include "gncoll.h"
+#include "gnhastd.h"
 
 extern TAILQ_HEAD(, _device_t) alldevs;
 
@@ -60,6 +61,8 @@ commands_t commands[] = {
 	{"ldevs", cmd_list_devices, 0},
 	{"ask", cmd_ask_device, 0},
 	{"cactiask", cmd_cactiask_device, 0},
+	{"disconnect", cmd_disconnect, 0},
+	{"client", cmd_client, 0},
 };
 
 /** The size of the command table */
@@ -116,6 +119,7 @@ int parsed_command(char *command, pargs_t *args, void *arg)
 int cmd_update(pargs_t *args, void *arg)
 {
 	int i;
+	int hadnodata = 0;
 	double wlevel;
 	device_t *dev;
 	char *uid=NULL;
@@ -138,6 +142,10 @@ int cmd_update(pargs_t *args, void *arg)
 		LOG(LOG_ERROR, "UID:%s doesn't exist", uid);
 		return(-1);
 	}
+
+	/* check if the device was unknown at the time */
+	if (dev->flags & DEVFLAG_NODATA)
+		hadnodata = 1;
 
 	/* Ok, we got one, now lets update it's data */
 
@@ -169,9 +177,12 @@ int cmd_update(pargs_t *args, void *arg)
 		}
 	}
 	(void)time(&dev->last_upd);
-	if (dev->handler != NULL && device_watermark(dev) != 0) {
+	client->updates++;
+
+	/* Always run handler on first update */
+	if (dev->handler != NULL && (device_watermark(dev) != 0 || hadnodata))
 		run_handler_dev(dev);
-	}
+
 	return(0);
 }
 
@@ -375,9 +386,9 @@ void feeddata_cb(int nada, short what, void *arg)
 }
 
 /**
-	\brief Handle a feed device command
-	\param args The list of arguments
-	\param arg void pointer to client_t of provider
+   \brief Handle a feed device command
+   \param args The list of arguments
+   \param arg void pointer to client_t of provider
 */
 
 int cmd_feed(pargs_t *args, void *arg)
@@ -417,6 +428,34 @@ int cmd_feed(pargs_t *args, void *arg)
 		secs.tv_sec = client->timer_gcd;
 		event_add(client->tev, &secs); /* update with new lcm */
 	}
+	return 0;
+}
+
+/**
+   \brief Handle a client command
+   \param args The list of arguments
+   \param arg void pointer to client_t of provider
+*/
+
+int cmd_client(pargs_t *args, void *arg)
+{
+	int i;
+	char *cli=NULL;
+	client_t *client = (client_t *)arg;
+
+	for (i=0; args[i].cword != -1; i++) {
+		switch (args[i].cword) {
+		case SC_CLIENT:
+			cli = args[i].arg.c;
+			break;
+		}
+	}
+
+	if (cli == NULL)
+		return -1;
+	client->name = strdup(cli);
+	LOG(LOG_NOTICE, "Client %s registered as %s",
+	    client->addr ? client->addr : "unknown", cli);
 	return 0;
 }
 
@@ -501,9 +540,9 @@ int cmd_ask_device(pargs_t *args, void *arg)
 }
 
 /**
-	\brief Handle a ask device command
-	\param args The list of arguments
-	\param arg void pointer to client_t of connection
+   \brief Handle a ask device command
+   \param args The list of arguments
+   \param arg void pointer to client_t of connection
 */
 
 int cmd_cactiask_device(pargs_t *args, void *arg)
@@ -525,4 +564,25 @@ int cmd_cactiask_device(pargs_t *args, void *arg)
 		}
 	}
 	return 0;
+}
+
+/**
+   \brief Close a connection down
+   \param args The list of arguments (ignored)
+   \param arg void pointer to client_t of connection
+*/
+
+int cmd_disconnect(pargs_t *args, void *arg)
+{
+	client_t *client = (client_t *)arg;
+
+	/* set close on empty, set watermark, then enable the write callback */
+	client->close_on_empty = 1;
+	bufferevent_setwatermark(client->ev, EV_WRITE, 0, 0);
+	bufferevent_setcb(client->ev, buf_read_cb, buf_write_cb,
+			  buf_error_cb, client);
+	bufferevent_enable(client->ev, EV_READ|EV_WRITE);
+	LOG(LOG_NOTICE, "Client %s from %s requested disconnect",
+	    client->name ? client->name : "generic",
+	    client->addr ? client->addr : "unknown");
 }

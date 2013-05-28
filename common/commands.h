@@ -79,6 +79,7 @@ enum SC_COMMANDS {
 	SC_WATTSEC,	/**< \brief watt seconds */
 	SC_WATT,	/**< \brief wattage */
 	SC_AMPS,	/**< \brief amperage */
+	SC_CLIENT,	/**< \brief client name */
 };
 
 /* commands */

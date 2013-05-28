@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * Copyright (c) 2013
  *      Tim Rightnour.  All rights reserved.
@@ -29,6 +27,12 @@
  * SUCH DAMAGE.
  */
 
+/**
+   \file script_handler.c
+   \brief Launches external handlers in response to events
+   \author Tim Rightnour
+*/
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -44,14 +48,8 @@
 #include "gncoll.h"
 
 extern TAILQ_HEAD(, _device_t) alldevs;
+extern TAILQ_HEAD(, _client_t) clients;
 extern struct event_base *base;
-
-/**
-   \file script_handler.c
-   \brief handler for running external scripts
-   \author Tim Rightnour
-*/
-
 
 /**
    \brief Given a device, launch it's handler
@@ -60,7 +58,7 @@ extern struct event_base *base;
 
 void run_handler_dev(device_t *dev)
 {
-	int sv[2];
+	int sv[2], i;
 	pid_t child;
 	char **cmd;
 	client_t *client;
@@ -93,10 +91,12 @@ void run_handler_dev(device_t *dev)
 			bailout();
 
 		/* Now setup args for the handler */
-		cmd = calloc(3, sizeof(char *));
+		cmd = calloc(3 + dev->nrofhargs, sizeof(char *));
 		cmd[0] = strdup(dev->handler);
 		cmd[1] = strdup(dev->uid);
-		cmd[2] = (char *)0;
+		for (i = 0; i < dev->nrofhargs; i++)
+			cmd[2 + i] = strdup(dev->hargs[i]);
+		cmd[2+i] = (char *)0;
 		execvp(dev->handler, cmd);
 		bailout(); /* if we got here, execvp failed */
 	} /* end switch, now we are back in parent */
@@ -107,6 +107,8 @@ void run_handler_dev(device_t *dev)
 
 	client = smalloc(client_t);
 	client->fd = sv[0];
+	client->name = strdup("handler");
+	client->addr = strdup(dev->handler);
 
 	client->ev = bufferevent_socket_new(base, sv[0],
             BEV_OPT_CLOSE_ON_FREE);
@@ -116,6 +118,7 @@ void run_handler_dev(device_t *dev)
 	bufferevent_setcb(client->ev, buf_read_cb, NULL,
 			  buf_error_cb, client);
 	bufferevent_enable(client->ev, EV_READ|EV_PERSIST);
+	TAILQ_INSERT_TAIL(&clients, client, next);
 	/* now, tell the client about the change */
 	gn_update_device(dev, GNC_UPD_NAME|GNC_UPD_RRDNAME, client->ev);
 }

@@ -111,11 +111,17 @@ typedef struct _client_t {
 	int timer_gcd;		/**< \brief current gcd of the timer */
 	SSL_CTX *srv_ctx;	/**< \brief server context */
 	SSL *cli_ctx;		/**< \brief client context */
+	int close_on_empty;	/**< \brief close this connection on empty */
+	char *name;		/**< \brief Name of client */
+	char *addr;		/**< \brief addr:port of client */
+	uint32_t updates;	/**< \brief updates recieved from this cli */
+	TAILQ_ENTRY(_client_t) next; /**< \brief next client on list */
 } client_t;
 
 /* matches struct device */
 enum DATALOC_TYPES {
 	DATALOC_DATA,
+	DATALOC_LAST,
 	DATALOC_MIN,
 	DATALOC_MAX,
 	DATALOC_AVG,
@@ -130,10 +136,17 @@ enum DATATYPE_TYPES {
 	DATATYPE_LL,
 };
 
+/* device queue flags */
+
 #define DEVONQ_CLIENT	(1<<1)
 #define DEVONQ_ALL	(1<<2)
 #define WRAPONQ_NEXT	(1<<1)
 #define GROUPONQ_NEXT	(1<<1)
+
+/* device flags */
+
+#define DEVFLAG_SPAMHANDLER	(1<<1)	/**< \brief do we spam the handler? */
+#define DEVFLAG_NODATA		(1<<2)	/**< \brief device has no cur data */
 
 /** data union */
 typedef union _data_t {
@@ -163,7 +176,8 @@ typedef struct _device_t {
 	uint8_t proto;		/**< \brief protocol */
 	uint8_t type;		/**< \brief Type */
 	uint8_t subtype;	/**< \brief sub-type */
-	data_t data;		/**< \brief data is current */
+	data_t data;		/**< \brief current data */
+	data_t last;		/**< \brief previous data */
 	data_t min;		/**< \brief 24h min */
 	data_t max;		/**< \brief 24h max */
 	data_t avg;		/**< \brief 24h avg */
@@ -171,10 +185,13 @@ typedef struct _device_t {
 	data_t hiwat;		/**< \brief high water mark */
 	client_t *collector;	/**< \brief The collector that serves this data up */
 	char *handler;		/**< \brief our external handler */
+	char **hargs;		/**< \brief handler arguments */
+	int nrofhargs;		/**< \brief number of handler arguments */
 	void *localdata;	/**< \brief pointer to program-specific data */
 	time_t last_upd;	/**< \brief time of last update */
 	struct rb_node rbn;	/**< \brief red black node */
 	uint32_t onq;		/**< \brief I am on a queue */
+	uint32_t flags;		/**< \brief DEVFLAG_* */
 	TAILQ_ENTRY(_device_t) next_client;	/**< \brief Next device in client */
 	TAILQ_ENTRY(_device_t) next_all;	/**< \brief Next in global devlist */
 } device_t;

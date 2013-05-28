@@ -5,6 +5,7 @@
 #define INSTEONCOLL_LOG_FILE	"insteoncoll.log"
 #define INSTEONCOLL_PID_FILE	"insteoncoll.pid"
 #define INSTEONCOLL_CONF_FILE	"insteoncoll.conf"
+#define COLLECTOR_NAME		"insteoncoll"
 
 /* PLM defines */
 
@@ -164,6 +165,7 @@ typedef struct _connection_t {
 	int lastcmd;
 	char *host;
 	struct bufferevent *bev;
+	int shutdown;
 } connection_t;
 
 /****************

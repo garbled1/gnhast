@@ -1,6 +1,11 @@
 #ifndef _BRULTECH_H_
 #define _BRULTECH_H_
 
+#define COLLECTOR_NAME		"brulcoll"
+#define BRULCOLL_CONFIG_FILE	"brulcoll.conf"
+#define BRULCOLL_LOG_FILE	"brulcoll.log"
+#define BRULCOLL_PID_FILE	"brulcoll.pid"
+
 #define BRUL_MODEL_GEM		1
 #define BRUL_MODEL_ECM1240	2
 

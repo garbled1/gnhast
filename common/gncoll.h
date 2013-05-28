@@ -7,5 +7,7 @@
 
 void gn_register_device(device_t *dev, struct bufferevent *out);
 void gn_update_device(device_t *dev, int what, struct bufferevent *out);
+void gn_disconnect(struct bufferevent *bev);
+void gn_client_name(struct bufferevent *bev, char *name);
 
 #endif /*_GNCOLL_H_*/

@@ -51,9 +51,10 @@ extern int debugmode;
 cfg_t *cfg;
 struct event_base *base;	/**< The primary event base */
 extern TAILQ_HEAD(, _device_t) alldevs;
+extern TAILQ_HEAD(, _client_t) clients;
 
 /* debugging */
-_malloc_options = "AJ";
+/*_malloc_options = "AJ";*/
 
 /* Configuration options for the server */
 
@@ -74,6 +75,7 @@ cfg_opt_t options[] = {
 	CFG_SEC("device", device_opts, CFGF_MULTI | CFGF_TITLE),
 	CFG_STR("devconf", GNHASTD_DEVICE_FILE, CFGF_NONE),
 	CFG_INT("devconf_update", 300, CFGF_NONE),
+	CFG_INT("infodump", 600, CFGF_NONE),
 	CFG_FUNC("include", cfg_include),
 	CFG_STR("logfile", GNHASTD_LOG_FILE, CFGF_NONE),
 	CFG_STR("pidfile", GNHASTD_PID_FILE, CFGF_NONE),
@@ -95,6 +97,8 @@ void devconf_dump_cb(int nada, short what, void *arg)
 	int madebuf=0;
 
 	p = cfg_getstr(cfg, "devconf");
+	if (p == NULL)
+		return;
 	buf = NULL;
 	if (strlen(p) >= 2) {
 		if (p[0] == '.' && p[1] == '/')
@@ -117,6 +121,59 @@ void devconf_dump_cb(int nada, short what, void *arg)
 	dump_conf(cfg, CONF_DUMP_DEVONLY, buf);
 	if (madebuf)
 		free(buf);
+}
+
+/**
+   \brief SIGTERM handler
+   \param fd unused
+   \param what what happened?
+   \param arg unused
+*/
+
+void cb_sigterm(int fd, short what, void *arg)
+{
+	LOG(LOG_NOTICE, "Recieved SIGTERM, shutting down");
+	network_shutdown();
+	event_base_loopexit(base, NULL);
+}
+
+/**
+   \brief SIGINFO handler
+   \param fd unused
+   \param what what happened?
+   \param arg unused
+*/
+
+void cb_siginfo(int fd, short what, void *arg)
+{
+	client_t *client;
+	wrap_device_t *wrap;
+	device_t *dev;
+	int i, w, d;
+
+	i = 0;
+	TAILQ_FOREACH(client, &clients, next)
+		i++;
+	LOG(LOG_NOTICE, "gnhastd reporting statistics:");
+	LOG(LOG_NOTICE, "Number of clients connected: %d", i);
+	TAILQ_FOREACH(client, &clients, next) {
+		w = 0;
+		d = 0;
+		TAILQ_FOREACH(dev, &client->devices, next_client)
+			d++;
+		TAILQ_FOREACH(wrap, &client->wdevices, next)
+			w++;
+		LOG(LOG_NOTICE, "Client %s %s %s devices:%d wrapdevs:%d "
+		    "updates:%d", client->provider ? "provider" : "reciever",
+		    client->name ? client->name : "generic",
+		    client->addr ? client->addr : "unknown",
+		    d, w, client->updates);
+	}
+	i = 0;
+	TAILQ_FOREACH(dev, &alldevs, next_all)
+		i++;
+	LOG(LOG_NOTICE, "Total number of devices: %d", i);
+	LOG(LOG_NOTICE, "End statistics");
 }
 
 /** \brief main, um, duh */
@@ -156,6 +213,8 @@ int main(int argc, char **argv)
 
 	/* Parse the config file */
 	cfg = parse_conf(conffile);
+	if (cfg == NULL)
+		LOG(LOG_FATAL, "Failed to parse config file");
 
 	/* Fire up logging if not debugging */
 	if (!debugmode)
@@ -176,13 +235,31 @@ int main(int argc, char **argv)
 	/* schedule periodic rewrites of devices.conf */
 	if (cfg_getint(cfg, "devconf_update") > 0) {
 		secs.tv_sec = cfg_getint(cfg, "devconf_update");
-		ev = event_new(base, -1, EV_PERSIST, devconf_dump_cb,
-					NULL);
+		ev = event_new(base, -1, EV_PERSIST, devconf_dump_cb, NULL);
+		event_add(ev, &secs);
+	}
+
+	/* schedule periodic statistic dumps to the log */
+	if (cfg_getint(cfg, "infodump") > 0) {
+		secs.tv_sec = cfg_getint(cfg, "infodump");
+		ev = event_new(base, -1, EV_PERSIST, cb_siginfo, NULL);
 		event_add(ev, &secs);
 	}
 
 	/* setup signal handlers */
 	ev = evsignal_new(base, SIGHUP, cb_sighup, conffile);
+	event_add(ev, NULL);
+	ev = evsignal_new(base, SIGTERM, cb_sigterm, NULL);
+	event_add(ev, NULL);
+	ev = evsignal_new(base, SIGINT, cb_sigterm, NULL);
+	event_add(ev, NULL);
+	ev = evsignal_new(base, SIGQUIT, cb_sigterm, NULL);
+	event_add(ev, NULL);
+#ifdef SIGINFO
+	ev = evsignal_new(base, SIGINFO, cb_siginfo, NULL);
+	event_add(ev, NULL);
+#endif
+	ev = evsignal_new(base, SIGUSR1, cb_siginfo, NULL);
 	event_add(ev, NULL);
 
 	pid = getpid();
@@ -193,6 +270,8 @@ int main(int argc, char **argv)
 	event_base_dispatch(base);
 
 	/* Close it all down */
+	devconf_dump_cb(0, 0, 0);
 	cfg_free(cfg);
+	closelog();
 	return 0;
 }

@@ -576,12 +576,17 @@ void connect_event_cb(struct bufferevent *ev, short what, void *arg)
 		    conntype[conn->type]);
 		bufferevent_free(ev);
 
-		/* we need to reconnect! */
-		need_rereg = 1;
-		tev = evtimer_new(base, connect_server_cb, conn);
-		evtimer_add(tev, &secs); /* XXX this leaks, doesn't it? Consider event_base_once? */
-		LOG(LOG_NOTICE, "Attempting reconnection to %s @ %s:%d in %d seconds",
-		    conntype[conn->type], conn->host, conn->port, secs.tv_sec);
+		if (!conn->shutdown) {
+			/* we need to reconnect! */
+			need_rereg = 1;
+			tev = evtimer_new(base, connect_server_cb, conn);
+			evtimer_add(tev, &secs); /* XXX leak? */
+			LOG(LOG_NOTICE, "Attempting reconnection to "
+			    "%s @ %s:%d in %d seconds",
+			    conntype[conn->type], conn->host, conn->port,
+			    secs.tv_sec);
+		} else 
+			event_base_loopexit(base, NULL);
 	}
 }
 
@@ -613,6 +618,39 @@ void parse_devices(cfg_t *cfg)
 		if (dev->name != NULL)
 			gn_register_device(dev, gnhastd_conn->bev);
 	}
+}
+
+/**
+   \brief Shutdown timer
+   \param fd unused
+   \param what what happened?
+   \param arg unused
+*/
+
+void cb_shutdown(int fd, short what, void *arg)
+{
+	LOG(LOG_WARNING, "Clean shutdown timed out, stopping");
+	event_base_loopexit(base, NULL);
+}
+
+/**
+   \brief A sigterm handler
+   \param fd unused
+   \param what what happened?
+   \param arg unused
+*/
+
+void cb_sigterm(int fd, short what, void *arg)
+{
+	struct timeval secs = { 30, 0 };
+	struct event *ev;
+
+	LOG(LOG_NOTICE, "Recieved SIGTERM, shutting down");
+	gnhastd_conn->shutdown = 1;
+	gn_disconnect(gnhastd_conn->bev);
+	bufferevent_free(plm_conn->bev);
+	ev = evtimer_new(base, cb_shutdown, NULL);
+	evtimer_add(ev, &secs);
 }
 
 /**
@@ -725,9 +763,16 @@ main(int argc, char *argv[])
 	/* cheat, and directly call the timer callback
 	   This sets up a connection to the server. */
 	connect_server_cb(0, 0, gnhastd_conn);
+	gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
 
 	/* setup signal handlers */
 	ev = evsignal_new(base, SIGHUP, cb_sighup, conffile);
+	event_add(ev, NULL);
+	ev = evsignal_new(base, SIGTERM, cb_sigterm, NULL);
+	event_add(ev, NULL);
+	ev = evsignal_new(base, SIGINT, cb_sigterm, NULL);
+	event_add(ev, NULL);
+	ev = evsignal_new(base, SIGQUIT, cb_sigterm, NULL);
 	event_add(ev, NULL);
 
 	parse_devices(cfg);
@@ -737,5 +782,6 @@ main(int argc, char *argv[])
 	event_base_dispatch(base);
 
 	(void)close(fd);
+	closelog();
 	return 0;
 }

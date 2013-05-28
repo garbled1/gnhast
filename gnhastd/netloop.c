@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * Copyright (c) 2013
  *      Tim Rightnour.  All rights reserved.
@@ -30,7 +28,9 @@
  */
 
 /**
-	\file netloop.c
+   \file netloop.c
+   \author Tim Rightnour
+   \brief Network code for the server
 */
 
 #include <sys/types.h>
@@ -63,6 +63,7 @@
 
 extern cfg_t *cfg;
 extern struct event_base *base;
+TAILQ_HEAD(, _client_t) clients = TAILQ_HEAD_INITIALIZER(clients);
 
 static int setnonblock(int fd)
 {
@@ -72,6 +73,12 @@ static int setnonblock(int fd)
 	f |= O_NONBLOCK;
 	fcntl(fd, F_SETFL, f);
 }
+
+/**
+   \brief Buffer read callback
+   \param in buffervent of input data
+   \param arg pointer to client_t
+*/
 
 void buf_read_cb(struct bufferevent *in, void *arg)
 {
@@ -116,17 +123,32 @@ void buf_read_cb(struct bufferevent *in, void *arg)
 	}
 }
 
+/**
+   \brief Write callback
+   \param out bufferevent to write out to
+   \param arg pointer to client_t
+   \note Only enabled during shutdown
+*/
+
 void buf_write_cb(struct bufferevent *out, void *arg)
 {
-/*
-	struct evbuffer *reply;
+	client_t *client = (client_t *)arg;
+	struct evbuffer *output = bufferevent_get_output(client->ev);
+	size_t len;
 
-	reply = evbuffer_new();
-	evbuffer_add_printf(reply, "Got data %s\n", data);
-	bufferevent_write_buffer(in, reply);
-	evbuffer_free(reply);
-*/
+	if (client->close_on_empty) {
+		len = evbuffer_get_length(output);
+		if (len == 0)
+			buf_error_cb(client->ev, 0, arg);
+	}
 }
+
+/**
+   \brief socket error callback
+   \param ev bufferevent that errored
+   \param what what kind of error
+   \param arg pointer to client_t
+*/
 
 void buf_error_cb(struct bufferevent *ev, short what, void *arg)
 {
@@ -134,6 +156,7 @@ void buf_error_cb(struct bufferevent *ev, short what, void *arg)
 	device_t *dev;
 	wrap_device_t *wrap;
 	int err;
+	char buf[256];
 
 	if (what & BEV_EVENT_ERROR) {
 		err = bufferevent_get_openssl_error(ev);
@@ -141,10 +164,16 @@ void buf_error_cb(struct bufferevent *ev, short what, void *arg)
 			LOG(LOG_ERROR,
 			    "SSL Error: %s", ERR_error_string(err, NULL));
 	}
-	LOG(LOG_NOTICE, "Closing connection");
+	LOG(LOG_NOTICE, "Closing %s connection from %s",
+	    client->name ? client->name : "generic",
+	    client->addr ? client->addr : "unknown");
 	bufferevent_free(client->ev);
 	if (client->tev)
 		event_free(client->tev);
+	if (client->name)
+		free(client->name);
+	if (client->addr)
+		free(client->addr);
 	close(client->fd);
 	/* remove all the tailq entries on the device list */
 	if (client->provider)
@@ -158,14 +187,25 @@ void buf_error_cb(struct bufferevent *ev, short what, void *arg)
 		wrap->onq &= ~(DEVONQ_CLIENT);
 		free(wrap);
 	}
+	TAILQ_REMOVE(&clients, client, next);
 	free(client);
 }
+
+/**
+   \brief accept an insecure connection
+   \param serv conneciton listener
+   \param sock socket
+   \param sa connection data (struct sockaddr)
+   \param sa_len sockaddr len
+   \param arg unused
+*/
 
 void accept_cb(struct evconnlistener *serv, int sock, struct sockaddr *sa,
 	       int sa_len, void *arg)
 {
 	struct sockaddr_in *client_addr = (struct sockaddr_in *)sa;
 	client_t *client;
+	char buf[256];
 
 	client = smalloc(client_t);
 	client->fd = sock;
@@ -173,19 +213,33 @@ void accept_cb(struct evconnlistener *serv, int sock, struct sockaddr *sa,
 	client->ev = bufferevent_socket_new(base, sock,
             BEV_OPT_CLOSE_ON_FREE);
 
-	LOG(LOG_NOTICE, "Connection on insecure port from %s",
-	    inet_ntoa(client_addr->sin_addr));
+	sprintf(buf, "%s:%d", inet_ntoa(client_addr->sin_addr),
+		ntohs(client_addr->sin_port));
+	client->addr = strdup(buf);
+	LOG(LOG_NOTICE, "Connection on insecure port from %s", buf);
 
 	bufferevent_setcb(client->ev, buf_read_cb, NULL,
 			  buf_error_cb, client);
 	bufferevent_enable(client->ev, EV_READ|EV_PERSIST);
+	TAILQ_INSERT_TAIL(&clients, client, next);
 }
+
+/**
+   \brief accept an SSL connection
+   \param serv conneciton listener
+   \param sock socket
+   \param sa connection data (struct sockaddr)
+   \param sa_len sockaddr len
+   \param arg pointer to SSL context
+   \note Currently broken XXX
+*/
 
 void sslaccept_cb(struct evconnlistener *serv, int sock, struct sockaddr *sa,
 	       int sa_len, void *arg)
 {
 	struct sockaddr_in *client_addr = (struct sockaddr_in *)sa;
 	client_t *client;
+	char buf[256];
 
 	client = smalloc(client_t);
 	client->fd = sock;
@@ -197,13 +251,22 @@ void sslaccept_cb(struct evconnlistener *serv, int sock, struct sockaddr *sa,
 	    client->cli_ctx, BUFFEREVENT_SSL_ACCEPTING,
             BEV_OPT_CLOSE_ON_FREE);
 
+	sprintf(buf, "%s:%d", inet_ntoa(client_addr->sin_addr),
+		ntohs(client_addr->sin_port));
+	client->addr = strdup(buf);
 	LOG(LOG_NOTICE, "Connection on secure port from %s",
 	    inet_ntoa(client_addr->sin_addr));
 
 	bufferevent_setcb(client->ev, buf_read_cb, NULL,
 			  buf_error_cb, client);
 	bufferevent_enable(client->ev, EV_READ|EV_PERSIST);
+	TAILQ_INSERT_TAIL(&clients, client, next);
 }
+
+/**
+   \brief initialize ssl stack
+   \note Currently broken XXX
+*/
 
 static SSL_CTX *evssl_init(void)
 {
@@ -244,6 +307,9 @@ static SSL_CTX *evssl_init(void)
 	return server_ctx;
 }
 
+/**
+   \brief Initialize the network loop
+*/
 
 void init_netloop(void)
 {
@@ -306,4 +372,21 @@ void init_netloop(void)
 		    cfg_getint(network, "port"));
 	}
 	return;
+}
+
+/**
+   \brief Commence a shutdown sequence of network connections
+*/
+
+void network_shutdown(void)
+{
+	client_t *client;
+
+	LOG(LOG_NOTICE, "Commencing network shutdown, disconnecting all "
+	    "clients");
+	while (client = TAILQ_FIRST(&clients)) {
+		/* directly call the error callback */
+		buf_error_cb(client->ev, 0, client);
+	}
+	LOG(LOG_NOTICE, "All clients disconnected");
 }

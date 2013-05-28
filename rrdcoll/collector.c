@@ -78,6 +78,7 @@ int usecache = 0;
 #define RRDCOLL_CONFIG_FILE	"rrdcoll.conf"
 #define RRDCOLL_LOG_FILE	"rrdcoll.log"
 #define RRDCOLL_PID_FILE	"rrdcoll.pid"
+#define COLLECTOR_NAME		"rrdcoll"
 
 /* debugging */
 //_malloc_options = "AJ";
@@ -103,6 +104,7 @@ typedef struct _connection_t {
 	time_t lastdata;
 	SSL_CTX *ssl_ctx;
 	SSL *ssl;
+	int shutdown;
 } connection_t;
 
 /** The connection streams for our two connections */
@@ -669,15 +671,21 @@ void connect_event_cb(struct bufferevent *ev, short what, void *arg)
 		LOG(LOG_NOTICE, "Lost connection to %s, closing", conn->server);
 		bufferevent_free(ev);
 
-		/* we need to reconnect! */
-		need_rereg = 1;
-		if (secure && strcmp(conn->server, "gnhastd") == 0)
-			tev = evtimer_new(base, ssl_connect_server_cb, conn);
-		else
-			tev = evtimer_new(base, connect_server_cb, conn);
-		evtimer_add(tev, &secs); /* XXX this leaks, doesn't it? Consider event_base_once? */
-		LOG(LOG_NOTICE, "Attempting reconnection to conn->server @ %s:%d in %d seconds",
-		    conn->host, conn->port, secs.tv_sec);
+		if (!conn->shutdown) {
+			/* we need to reconnect! */
+			need_rereg = 1;
+			if (secure && strcmp(conn->server, "gnhastd") == 0)
+				tev = evtimer_new(base, ssl_connect_server_cb,
+						  conn);
+			else
+				tev = evtimer_new(base, connect_server_cb,
+						  conn);
+			evtimer_add(tev, &secs); /* XXX leaks? */
+			LOG(LOG_NOTICE, "Attempting reconnection to "
+			    "conn->server @ %s:%d in %d seconds",
+			    conn->host, conn->port, secs.tv_sec);
+		} else
+			event_base_loopexit(base, NULL);
 	}
 }
 
@@ -700,6 +708,39 @@ void parse_devices(cfg_t *cfg)
 		if (dumpconf == NULL && dev->name != NULL)
 			gn_register_device(dev, gnhastd_conn->bev);
 	}
+}
+
+/**
+   \brief Shutdown timer
+   \param fd unused
+   \param what what happened?
+   \param arg unused
+*/
+
+void cb_shutdown(int fd, short what, void *arg)
+{
+	LOG(LOG_WARNING, "Clean shutdown timed out, stopping");
+	event_base_loopexit(base, NULL);
+}
+
+/**
+   \brief A sigterm handler
+   \param fd unused
+   \param what what happened?
+   \param arg unused
+*/
+
+void cb_sigterm(int fd, short what, void *arg)
+{
+	struct timeval secs = { 30, 0 };
+	struct event *ev;
+
+	LOG(LOG_NOTICE, "Recieved SIGTERM, shutting down");
+	gnhastd_conn->shutdown = 1;
+	gn_disconnect(gnhastd_conn->bev);
+	bufferevent_free(rrdc_conn->bev);
+	ev = evtimer_new(base, cb_shutdown, NULL);
+	evtimer_add(ev, &secs);
 }
 
 /**
@@ -804,6 +845,7 @@ int main(int argc, char **argv)
 		ssl_connect_server_cb(0, 0, gnhastd_conn);
 	else
 		connect_server_cb(0, 0, gnhastd_conn);
+	gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
 
 	rrdcoll_c = cfg_getsec(cfg, "rrdcoll");
 	if (cfg_getint(rrdcoll_c, "userrdcached")) {
@@ -825,9 +867,16 @@ int main(int argc, char **argv)
 	/* setup signal handlers */
 	ev = evsignal_new(base, SIGHUP, cb_sighup, conffile);
 	event_add(ev, NULL);
+	ev = evsignal_new(base, SIGTERM, cb_sigterm, NULL);
+	event_add(ev, NULL);
+	ev = evsignal_new(base, SIGINT, cb_sigterm, NULL);
+	event_add(ev, NULL);
+	ev = evsignal_new(base, SIGQUIT, cb_sigterm, NULL);
+	event_add(ev, NULL);
 
 	/* go forth and destroy */
 	event_base_dispatch(base);
 
+	closelog();
 	return(0);
 }

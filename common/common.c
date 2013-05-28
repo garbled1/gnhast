@@ -106,6 +106,7 @@ FILE *openlog(char *logname)
 */
 void closelog(void)
 {
+	LOG(LOG_NOTICE, "Exiting");
 	if (logfile != NULL)
 		fclose(logfile);
 }

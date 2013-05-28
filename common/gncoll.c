@@ -149,10 +149,10 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 
 	/* fill in the details */
 	evbuffer_add_printf(send, "%s:%s ", ARGNM(SC_UID), dev->uid);
-	if (what & GNC_UPD_NAME)
+	if (what & GNC_UPD_NAME && dev->name != NULL)
 		evbuffer_add_printf(send, "%s:\"%s\" ",  ARGNM(SC_NAME),
 				    dev->name);
-	if (what & GNC_UPD_RRDNAME)
+	if (what & GNC_UPD_RRDNAME && dev->rrdname != NULL)
 		evbuffer_add_printf(send, "%s:%s ",  ARGNM(SC_RRDNAME),
 				    dev->rrdname);
 
@@ -168,5 +168,40 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 	}
 
 	bufferevent_write_buffer(out, send);
+	evbuffer_free(send);
+}
+
+/**
+   \brief Request a clean disconnect from the server
+   \param bev bufferevent connected to a gnhast server
+*/
+
+void gn_disconnect(struct bufferevent *bev)
+{
+	struct evbuffer *send;
+
+	LOG(LOG_NOTICE, "Requesting disconnect from gnhastd");
+	send = evbuffer_new();
+	evbuffer_add_printf(send, "disconnect\n");
+	bufferevent_write_buffer(bev, send);
+	evbuffer_free(send);
+}
+
+/**
+   \brief Register client name
+   \param bev bufferevent connected to a gnhast server
+   \param name client name
+*/
+
+void gn_client_name(struct bufferevent *bev, char *name)
+{
+	struct evbuffer *send;
+
+	if (name == NULL)
+		return;
+	LOG(LOG_NOTICE, "Registering client name %s with gnhastd", name);
+	send = evbuffer_new();
+	evbuffer_add_printf(send, "client client:%s\n", name);
+	bufferevent_write_buffer(bev, send);
 	evbuffer_free(send);
 }

@@ -74,6 +74,7 @@ argtable_t argtable[] = {
 	{"volts", SC_VOLTAGE, PTDOUBLE},
 	{"watt", SC_WATT, PTDOUBLE},
 	{"amps", SC_AMPS, PTDOUBLE},
+	{"client", SC_CLIENT, PTCHAR},
 };
 
 /** \brief size of the args table */ 

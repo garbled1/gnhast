@@ -157,6 +157,8 @@ void insert_device(device_t *dev)
 		TAILQ_INSERT_TAIL(&alldevs, dev, next_all);
 		dev->onq |= DEVONQ_ALL;
 	}
+	/* we have no current data for this device */
+	dev->flags |= DEVFLAG_NODATA;
 }
 
 /**
@@ -263,6 +265,9 @@ void get_data_dev(device_t *dev, int where, void *data)
 	case DATALOC_DATA:
 		store = &dev->data;
 		break;
+	case DATALOC_LAST:
+		store = &dev->last;
+		break;
 	case DATALOC_MIN:
 		store = &dev->min;
 		break;
@@ -349,6 +354,12 @@ void store_data_dev(device_t *dev, int where, void *data)
 	switch (where) {
 	case DATALOC_DATA:
 		store = &dev->data;
+		/* special handling, copy current to prev */
+		memcpy(&dev->data, &dev->last, sizeof(data_t));
+		dev->flags &= ~DEVFLAG_NODATA;
+		break;
+	case DATALOC_LAST:
+		store = &dev->last;
 		break;
 	case DATALOC_MIN:
 		store = &dev->min;
@@ -447,44 +458,73 @@ int datatype_dev(device_t *dev)
    \brief Is a device beyond the watermark?
    \param dev device
    \return 0 no, 1 above hiwat, -1 below lowat, 2 no watermark
+   Check if we are spamming the handler.  If not, check only if we CROSSED
+   a watermark.
 */
 
 int device_watermark(device_t *dev)
 {
-	double lwd, hwd, dd;
-	uint32_t lwu, hwu, du;
-	int64_t lwj, hwj, dj;
+	double lwd, hwd, dd, pdd;
+	uint32_t lwu, hwu, du, pdu;
+	int64_t lwj, hwj, dj, pdj;
+	int spam = (dev->flags & DEVFLAG_SPAMHANDLER);
 
 	if (datatype_dev(dev) == DATATYPE_UINT) {
 		get_data_dev(dev, DATALOC_LOWAT, &lwu);
 		get_data_dev(dev, DATALOC_HIWAT, &hwu);
 		get_data_dev(dev, DATALOC_DATA, &du);
+		get_data_dev(dev, DATALOC_LAST, &pdu);
 		if (lwu == 0 && hwu == 0)
 			return 2;
-		if (du < lwu)
-			return -1;
-		if (du > hwu)
-			return 1;
+		if (spam) {
+			if (du < lwu)
+				return -1;
+			if (du > hwu)
+				return 1;
+		} else {
+		/* if we aren't spamming, make sure we actually CROSSED
+		   the watermark */
+			if (du < lwu && pdu > lwu)
+				return -1;
+			if (du > hwu && pdu < hwu)
+				return 1;
+		}
 	} else if (datatype_dev(dev) == DATATYPE_LL) {
 		get_data_dev(dev, DATALOC_LOWAT, &lwj);
 		get_data_dev(dev, DATALOC_HIWAT, &hwj);
 		get_data_dev(dev, DATALOC_DATA, &dj);
+		get_data_dev(dev, DATALOC_LAST, &pdj);
 		if (lwj == 0 && hwj == 0)
 			return 2;
-		if (dj < lwj)
-			return -1;
-		if (dj > hwj)
-			return 1;
+		if (spam) {
+			if (dj < lwj)
+				return -1;
+			if (dj > hwj)
+				return 1;
+		} else {
+			if (dj < lwj && pdj > lwj)
+				return -1;
+			if (dj > hwj && pdj < hwj)
+				return 1;
+		}
 	} else {
 		get_data_dev(dev, DATALOC_LOWAT, &lwd);
 		get_data_dev(dev, DATALOC_HIWAT, &hwd);
 		get_data_dev(dev, DATALOC_DATA, &dd);
+		get_data_dev(dev, DATALOC_LAST, &pdd);
 		if (lwd == 0.0 && hwd == 0.0)
 			return 2;
-		if (dd < lwd)
-			return -1;
-		if (dd > hwd)
-			return 1;
+		if (spam) {
+			if (dd < lwd)
+				return -1;
+			if (dd > hwd)
+				return 1;
+		} else {
+			if (dd < lwd && pdd > lwd)
+				return -1;
+			if (dd > hwd && pdd < hwd)
+				return 1;
+		}
 	}
 	return 0;
 }

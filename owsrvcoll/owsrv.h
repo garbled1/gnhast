@@ -1,6 +1,16 @@
 #ifndef _OWSRV_H_
 #define _OWSRV_H_
 
+#define OWSRVCOLL_CONFIG_FILE	"owsrvcoll.conf"
+#define OWSRVCOLL_LOG_FILE	"owsrvcoll.log"
+#define OWSRVCOLL_PID_FILE	"owsrvcoll.pid"
+#define COLLECTOR_NAME		"owsrvcoll"
+
+#define OWSRV_BASE_F	0
+#define OWSRV_BASE_C	1
+#define OWSRV_BASE_K	2
+#define OWSRV_BASE_R	3
+
 /* Cobbled together from owfs docs, owtap, etc */
 
 enum OWS_MESSAGE_TYPES {
