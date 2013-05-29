@@ -115,7 +115,7 @@ int parsed_command(char *command, pargs_t *args, void *arg)
 
 int cmd_register(pargs_t *args, void *arg)
 {
-	int i, new=0;
+	int i, new=0, ret=0;
 	uint8_t devtype=0, proto=0, subtype=0;
 	char *uid=NULL, *name=NULL, *rrdname=NULL;
 	device_t *dev, *tdev;
@@ -145,7 +145,11 @@ int cmd_register(pargs_t *args, void *arg)
 
 	if (uid == NULL) {
 		LOG(LOG_ERROR, "Got register command without UID");
-		return(-1); /* MUST have UID */
+		if (name != NULL)
+			free(name);
+		if (rrdname != NULL)
+			free(rrdname);
+		return -1; /* MUST have UID */
 	}
 
 	LOG(LOG_DEBUG, "Register device: uid=%s name=%s rrd=%s type=%d proto=%d subtype=%d",
@@ -365,6 +369,13 @@ void gnhastd_read_cb(struct bufferevent *in, void *arg)
 		parsed_command(cmdword, args, arg);
 		free(cmdword);
 		free(data);
+		if (args) {
+			for (i=0; args[i].cword != -1; i++)
+				if (args[i].type == PTCHAR)
+					free(args[i].arg.c);
+			free(args);
+			args=NULL;
+		}
 	}
 
 out:

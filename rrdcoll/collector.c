@@ -368,6 +368,7 @@ void rra_default_rras(cfg_t *cfg)
 void rrd_update_dev(device_t *dev)
 {
 	char *rrdparams[4];
+	char buf[64];
 	cfg_t *devconf;
 	uint32_t u;
 	double d;
@@ -378,28 +379,28 @@ void rrd_update_dev(device_t *dev)
 	devconf = find_rrddevconf_byuid(cfg, dev->uid);
 	rrdparams[0] = "rrdupdate";
 	rrdparams[1] = cfg_getstr(devconf, "file");
-	rrdparams[2] = safer_malloc(64);
 
 	switch (datatype_dev(dev)) {
 	case DATATYPE_UINT:
 		get_data_dev(dev, DATALOC_DATA, &u);
-		sprintf(rrdparams[2], "%jd:%d", (intmax_t)dev->last_upd, u);
+		sprintf(buf, "%jd:%d", (intmax_t)dev->last_upd, u);
 		break;
 	case DATATYPE_DOUBLE:
 		get_data_dev(dev, DATALOC_DATA, &d);
-		sprintf(rrdparams[2], "%jd:%f", (intmax_t)dev->last_upd, d);
+		sprintf(buf, "%jd:%f", (intmax_t)dev->last_upd, d);
 		break;
 	case DATATYPE_LL:
 		get_data_dev(dev, DATALOC_DATA, &ll);
-		sprintf(rrdparams[2], "%jd:%jd", (intmax_t)dev->last_upd, ll);
+		sprintf(buf, "%jd:%jd", (intmax_t)dev->last_upd, ll);
 		break;
 	}
+	rrdparams[2] = buf;
 	rrdparams[3] = NULL;
 
 	if (usecache) {
 		send = evbuffer_new();
 		evbuffer_add_printf(send, "UPDATE %s %s\n", rrdparams[1],
-				    rrdparams[2]);
+				    buf);
 		bufferevent_write_buffer(rrdc_conn->bev, send);
 		evbuffer_free(send);
 	} else {
@@ -409,8 +410,6 @@ void rrd_update_dev(device_t *dev)
 		if (rrd_test_error())
 			LOG(LOG_ERROR, "%s", rrd_get_error());
 	}
-
-	free(rrdparams[2]);
 }
 
 /**
