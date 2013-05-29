@@ -196,7 +196,6 @@ static int conf_parse_brul_conn(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 
 void brul_setup_gem(connection_t *conn)
 {
-	char *buf;
 	struct evbuffer *send, *in;
 	size_t len;
 
@@ -273,7 +272,6 @@ static void brul_handle_tstpst(char *data, int type)
 	char *p, *buf;
 	device_t *dev;
 	int t;
-	cfg_t *devconf;
 
 	if (type == BRUL_HANDLE_TST)
 		t = 8;
@@ -309,7 +307,7 @@ static void brul_handle_tstpst(char *data, int type)
 				dev->subtype = SUBTYPE_TEMP;
 			else
 				dev->subtype = SUBTYPE_COUNTER;
-			devconf = new_conf_from_dev(cfg, dev);
+			(void)new_conf_from_dev(cfg, dev);
 		}
 		insert_device(dev);
        		if (dumpconf == NULL && dev->name != NULL)
@@ -333,7 +331,6 @@ static void brul_build_devices(int channels, int amps, int proto)
 {
 	int i;
 	device_t *dev;
-	cfg_t *devconf;
 	char buf[64];
 
 	/* first, the channels */
@@ -352,7 +349,7 @@ static void brul_build_devices(int channels, int amps, int proto)
 			dev->proto = proto;
 			dev->type = DEVICE_SENSOR;
 			dev->subtype = SUBTYPE_WATTSEC;
-			devconf = new_conf_from_dev(cfg, dev);
+			(void) new_conf_from_dev(cfg, dev);
 		}
 		insert_device(dev);
        		if (dumpconf == NULL && dev->name != NULL)
@@ -373,7 +370,7 @@ static void brul_build_devices(int channels, int amps, int proto)
 			dev->proto = proto;
 			dev->type = DEVICE_SENSOR;
 			dev->subtype = SUBTYPE_WATT;
-			devconf = new_conf_from_dev(cfg, dev);
+			(void)new_conf_from_dev(cfg, dev);
 		}
 		insert_device(dev);
        		if (dumpconf == NULL && dev->name != NULL)
@@ -396,7 +393,7 @@ static void brul_build_devices(int channels, int amps, int proto)
 			dev->proto = proto;
 			dev->type = DEVICE_SENSOR;
 			dev->subtype = SUBTYPE_AMPS;
-			devconf = new_conf_from_dev(cfg, dev);
+			(void)new_conf_from_dev(cfg, dev);
 		}
 		insert_device(dev);
        		if (dumpconf == NULL && dev->name != NULL)
@@ -418,7 +415,7 @@ static void brul_build_devices(int channels, int amps, int proto)
 		dev->proto = proto;
 		dev->type = DEVICE_SENSOR;
 		dev->subtype = SUBTYPE_COUNTER;
-		devconf = new_conf_from_dev(cfg, dev);
+		(void)new_conf_from_dev(cfg, dev);
 	}
 	insert_device(dev);
 	if (dumpconf == NULL && dev->name != NULL)
@@ -439,7 +436,7 @@ static void brul_build_devices(int channels, int amps, int proto)
 		dev->proto = proto;
 		dev->type = DEVICE_SENSOR;
 		dev->subtype = SUBTYPE_VOLTAGE;
-		devconf = new_conf_from_dev(cfg, dev);
+		(void)new_conf_from_dev(cfg, dev);
 	}
 	insert_device(dev);
 	if (dumpconf == NULL && dev->name != NULL)
@@ -702,8 +699,8 @@ void brul_buf_read_cb(struct bufferevent *in, void *arg)
 {
 	connection_t *conn = (connection_t *)arg;
 	struct evbuffer *evbuf;
-	int32_t itmp, freedata=1;
-	char *data, buf[16];
+	int32_t freedata=1;
+	char *data;
 	size_t len;
 	threebyte_t *header;
 
@@ -828,7 +825,6 @@ void brul_netconnect_event_cb(struct bufferevent *ev, short what, void *arg)
 {
 	int err;
 	connection_t *conn = (connection_t *)arg;
-	char *buf;
 
 	if (what & BEV_EVENT_CONNECTED)
 		LOG(LOG_DEBUG, "Connected to %s", conntype[conn->type]);

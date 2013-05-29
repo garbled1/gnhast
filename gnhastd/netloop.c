@@ -156,7 +156,6 @@ void buf_error_cb(struct bufferevent *ev, short what, void *arg)
 	device_t *dev;
 	wrap_device_t *wrap;
 	int err;
-	char buf[256];
 
 	if (what & BEV_EVENT_ERROR) {
 		err = bufferevent_get_openssl_error(ev);
@@ -316,7 +315,6 @@ void init_netloop(void)
 	int lsock;
 	cfg_t *network;
 	struct sockaddr_in sin;
-	struct event *accept_event;
 	struct evconnlistener *listener, *listen_nossl;
 	int reuse = 1;
 	SSL_CTX *ctx;

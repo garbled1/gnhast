@@ -115,10 +115,10 @@ int parsed_command(char *command, pargs_t *args, void *arg)
 
 int cmd_register(pargs_t *args, void *arg)
 {
-	int i, new=0, ret=0;
+	int i, new=0;
 	uint8_t devtype=0, proto=0, subtype=0;
 	char *uid=NULL, *name=NULL, *rrdname=NULL;
-	device_t *dev, *tdev;
+	device_t *dev;
 
 	for (i=0; args[i].cword != -1; i++) {
 		switch (args[i].cword) {

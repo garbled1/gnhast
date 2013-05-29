@@ -217,13 +217,12 @@ cfg_t *new_rrdconf_from_dev(cfg_t *cfg, device_t *dev)
 int cmd_endldevs(pargs_t *args, void *arg)
 {
 	device_t *dev;
-	cfg_t *dc;
 
 	if (dumpconf == NULL)
 		return 0;
 
 	TAILQ_FOREACH(dev, &alldevs, next_all) {
-		dc = new_rrdconf_from_dev(cfg, dev);
+		(void)new_rrdconf_from_dev(cfg, dev);
 	}
 	dump_conf(cfg, 0, dumpconf);
 	exit(0);
@@ -589,7 +588,6 @@ void buf_error_cb(struct bufferevent *ev, short what, void *arg)
 void connect_server_cb(int nada, short what, void *arg)
 {
 	connection_t *conn = (connection_t *)arg;
-	device_t *dev;
 
 	conn->bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
 	if (strcmp(conn->server, "gnhastd") == 0)
@@ -621,7 +619,6 @@ void connect_server_cb(int nada, short what, void *arg)
 void ssl_connect_server_cb(int nada, short what, void *arg)
 {
 	connection_t *conn = (connection_t *)arg;
-	device_t *dev;
 
 	conn->bev = bufferevent_openssl_socket_new(base, -1, conn->ssl,
 	    BUFFEREVENT_SSL_CONNECTING, BEV_OPT_CLOSE_ON_FREE);
@@ -754,11 +751,8 @@ int main(int argc, char **argv)
 	extern char *optarg;
 	extern int optind;
 	int ch;
-	char *buf;
 	char *conffile = SYSCONFDIR "/" RRDCOLL_CONFIG_FILE;
-	struct timeval secs = { 0, 0 };
 	struct event *ev;
-	struct evbuffer *send;
 
 	/* process command line arguments */
 	while ((ch = getopt(argc, argv, "?c:dm:s")) != -1)

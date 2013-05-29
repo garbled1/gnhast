@@ -75,7 +75,6 @@ char *conntype[3] = {
 */
 int plm_get_hops(device_t *dev)
 {
-	int hop;
 	insteon_devdata_t *dd = (insteon_devdata_t *)dev->localdata;
 
 	if (dd->hopflag == 255)
@@ -130,7 +129,6 @@ void plm_enq_std(device_t *dev, uint8_t com1, uint8_t com2, uint8_t waitflags)
 {
 	cmdq_t *cmd;
 	insteon_devdata_t *dd;
-	uint8_t *daddr;
 
 	if (dev->proto == PROTO_INSTEON_V2CS) {
 		plm_enq_stdcs(dev, com1, com2, waitflags);
@@ -167,7 +165,6 @@ void plm_enq_ext(device_t *dev, uint8_t com1, uint8_t com2, uint8_t *data,
 {
 	cmdq_t *cmd;
 	insteon_devdata_t *dd;
-	uint8_t *daddr;
 
 	cmd = smalloc(cmdq_t);
 	dd = (insteon_devdata_t *)dev->localdata;
@@ -353,7 +350,6 @@ void plm_runq(int fd, short what, void *arg)
 	struct timespec tp, chk, qsec = { 3 , 500000000L };
 	struct timespec alink = { 5, 0 };
 	struct timespec aldb = { 10, 0 };
-	int i;
 
 	//LOG(LOG_DEBUG, "Queue runner entered");
 	plm_condense_runq();
@@ -718,7 +714,6 @@ void plm_write_aldb(device_t *dev)
 int plm_handle_aldb(device_t *dev, char *data)
 {
 	int i, recno;
-	uint16_t addr;
 	aldb_t rec;
 	insteon_devdata_t *dd = (insteon_devdata_t *)dev->localdata;
 	device_group_t *devgrp;

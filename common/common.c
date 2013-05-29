@@ -174,8 +174,8 @@ void _bailout(char *file, int line)
 	pname = program_invocation_name;
 #endif
 
-	/* the fprintf catches cases where malloc failed, as it will likely fail
-	   again in LOG() */
+	/* the fprintf catches cases where malloc failed, as it will
+	   likely fail again in LOG() */
 	(void)fprintf(stderr, "%s: Failed in %s:%d: %s %d\n",
 	    pname, file, line, strerror(errno), errno);
 	(void)LOG(LOG_FATAL, "%s: Failed in %s:%d: %s %d\n",

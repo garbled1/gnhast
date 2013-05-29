@@ -196,6 +196,7 @@ void dump_aldb(device_t *dev, char *filename)
 			dd->aldb[i].ldata1, dd->aldb[i].ldata2,
 			dd->aldb[i].ldata3, dd->aldb[i].lflags);
 	}
+	fclose(f);
 }
 
 /**
@@ -271,8 +272,6 @@ void parse_aldbfile(device_t *dev, char *filename)
 void plm_queue_empty_cb(void *arg)
 {
 	connection_t *conn = (connection_t *)arg;
-	device_t *dev;
-	int done = 0;
 
 	return; /* for now */
 }
@@ -289,7 +288,7 @@ void plm_handle_alink_complete(uint8_t *data)
 	uint8_t devaddr[3];
 	device_t *dev;
 	cmdq_t *cmd;
-	cfg_t *db, *devconf;
+	cfg_t *db;
 
 	cmd = SIMPLEQ_FIRST(&cmdfifo);
 
@@ -319,7 +318,7 @@ void plm_handle_alink_complete(uint8_t *data)
 	dev->name = strdup(cfg_getstr(db, "name"));
 	dev->type = cfg_getint(db, "type");
 	dev->subtype = cfg_getint(db, "subtype");
-	devconf = new_conf_from_dev(cfg, dev);
+	(void)new_conf_from_dev(cfg, dev);
 }
 
 /**
@@ -451,16 +450,14 @@ cfg_t *parse_insteondb(const char *filename)
 int
 main(int argc, char *argv[])
 {
-	int timeout = 1, c, error, fd, groupnum = 1, i, x;
-	char *device = NULL, buf[256], head[5], *devaddr;
+	int c, fd, x;
+	char *device = NULL, *devaddr;
 	char *idbfile = SYSCONFDIR "/" INSTEON_DB_FILE;
 	char *conffile = SYSCONFDIR "/" INSTEONCOLL_CONF_FILE;
-	struct termios tio;
 	struct ev_token_bucket_cfg *ratelim;
 	struct timeval rate = { 1, 0 };
 	struct timeval runq = { 0, 500 };
 	struct event *ev;
-	cfg_t *icoll;
 	device_t *dev;
 	insteon_devdata_t *dd;
 
@@ -509,6 +506,7 @@ main(int argc, char *argv[])
 	addr_to_string(dev->uid, dd->daddr);
 	addr_to_string(dev->loc, dd->daddr);
 	insert_device(dev);
+	free(devaddr);
 
 	/* Initialize the command fifo */
 	SIMPLEQ_INIT(&cmdfifo);

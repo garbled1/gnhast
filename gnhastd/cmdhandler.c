@@ -120,7 +120,6 @@ int cmd_update(pargs_t *args, void *arg)
 {
 	int i;
 	int hadnodata = 0;
-	double wlevel;
 	device_t *dev;
 	char *uid=NULL;
 	client_t *client = (client_t *)arg;
@@ -195,7 +194,6 @@ int cmd_update(pargs_t *args, void *arg)
 int cmd_change(pargs_t *args, void *arg)
 {
 	int i;
-	double wlevel;
 	device_t *dev;
 	char *uid=NULL;
 	client_t *client = (client_t *)arg;
@@ -284,7 +282,7 @@ int cmd_register(pargs_t *args, void *arg)
 	int i, new=0;
 	uint8_t devtype=0, proto=0, subtype=0;
 	char *uid=NULL, *name=NULL, *rrdname=NULL;
-	device_t *dev, *tdev;
+	device_t *dev;
 	client_t *client = (client_t *)arg;
 
 	for (i=0; args[i].cword != -1; i++) {
@@ -370,7 +368,6 @@ int cmd_register(pargs_t *args, void *arg)
 void feeddata_cb(int nada, short what, void *arg)
 {
 	client_t *client = (client_t *)arg;
-	device_t *dev;
 	wrap_device_t *wrap;
 	time_t now, diff;
 

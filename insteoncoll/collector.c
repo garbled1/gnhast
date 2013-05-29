@@ -230,9 +230,7 @@ void plm_handle_alink_complete(uint8_t *data)
 {
 	char im[16];
 	uint8_t devaddr[3];
-	device_t *dev;
 	cmdq_t *cmd;
-	cfg_t *db, *devconf;
 
 	cmd = SIMPLEQ_FIRST(&cmdfifo);
 
@@ -660,10 +658,8 @@ void cb_sigterm(int fd, short what, void *arg)
 int
 main(int argc, char *argv[])
 {
-	int c, error, fd, i;
-	char *device = NULL;
+	int c, fd;
 	char *conffile = SYSCONFDIR "/" INSTEONCOLL_CONF_FILE;
-	struct termios tio;
 	struct ev_token_bucket_cfg *ratelim;
 	struct timeval rate = { 1, 0 };
 	struct timeval runq = { 0, 500 };

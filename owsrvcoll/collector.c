@@ -313,7 +313,6 @@ void ows_handle_dirall(connection_t *conn, char *buf)
 {
 	char *p;
 	device_t *dev;
-	cfg_t *devconf;
 
 	for ((p = strtok(buf, ",")); p; (p = strtok(NULL, ","))) {
 		if (p[0] == '/')
@@ -349,7 +348,7 @@ void ows_handle_dirall(connection_t *conn, char *buf)
 				/* set it to humid for now */
 				dev->subtype = SUBTYPE_NONE;
 			}
-			devconf = new_conf_from_dev(cfg, dev);
+			(void)new_conf_from_dev(cfg, dev);
 		}
 		insert_device(dev);
        		if (dumpconf == NULL && dev->name != NULL)
@@ -373,7 +372,6 @@ void ows_buf_read_cb(struct bufferevent *in, void *arg)
 {
 	connection_t *conn = (connection_t *)arg;
 	struct client_msg msg;
-	struct server_msg sendmsg;
 	struct event *tev;
 	struct timeval secs = { 0, 0};
 	int32_t itmp;
@@ -556,7 +554,6 @@ void ows_connect_event_cb(struct bufferevent *ev, short what, void *arg)
 {
 	int err;
 	connection_t *conn = (connection_t *)arg;
-	char *buf;
 
 	if (what & BEV_EVENT_CONNECTED)
 		LOG(LOG_DEBUG, "Connected to %s", conntype[conn->type]);
