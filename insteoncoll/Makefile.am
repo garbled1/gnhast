@@ -7,6 +7,7 @@ insteon_discover_SOURCES = \
 	../common/common.c \
 	../common/devices.c \
 	../common/confparser.c \
+	../common/serial_common.c \
 	insteon_common.c \
 	insteon_discover.c
 
@@ -17,6 +18,7 @@ insteoncoll_SOURCES = \
 	../common/netparser.c \
 	../common/gncoll.c \
 	../common/collcmd.c \
+	../common/serial_common.c \
 	insteon_common.c \
 	collector.c
 
@@ -24,6 +26,7 @@ insteon_aldb_SOURCES = \
 	../common/common.c \
 	../common/devices.c \
 	../common/confparser.c \
+	../common/serial_common.c \
 	insteon_common.c \
 	insteon_aldb.c
 

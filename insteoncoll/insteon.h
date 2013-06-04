@@ -200,8 +200,6 @@ void plm_handle_extrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 			uint8_t com1, uint8_t com2, uint8_t *ext,
 			connection_t *conn);
 void plm_readcb(struct bufferevent *bev, void *arg);
-int serial_connect(char *devnode, int speed, int cflags);
-void serial_eventcb(struct bufferevent *bev, short events, void *arg);
 
 
 #endif /*_INSTEON_H_*/

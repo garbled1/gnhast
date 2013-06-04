@@ -153,6 +153,8 @@ static int conf_parse_proto(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		*(int *)result = PROTO_SENSOR_BRULTECH_GEM;
 	else if (strcmp(value, "brultech-ecm1240") == 0)
 		*(int *)result = PROTO_SENSOR_BRULTECH_ECM1240;
+	else if (strcmp(value, "wmr918") == 0)
+		*(int *)result = PROTO_SENSOR_WMR918;
 	else {
 		cfg_error(cfg, "invalid value for option '%s': %s",
 		    cfg_opt_name(opt), value);
@@ -191,6 +193,9 @@ static void conf_print_proto(cfg_opt_t *opt, unsigned int index, FILE *fp)
 		break;
 	case PROTO_SENSOR_BRULTECH_ECM1240:
 		fprintf(fp, "brultech-ecm1240");
+		break;
+	case PROTO_SENSOR_WMR918:
+		fprintf(fp, "wmr918");
 		break;
 	default:
 		fprintf(fp, "NONE");
@@ -309,6 +314,8 @@ int conf_parse_subtype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		*(int *)result = SUBTYPE_WATT;
 	else if (strcmp(value, "amps") == 0)
 		*(int *)result = SUBTYPE_AMPS;
+	else if (strcmp(value, "rainrate") == 0)
+		*(int *)result = SUBTYPE_RAINRATE;
 	else {
 		cfg_error(cfg, "invalid value for option '%s': %s",
 		    cfg_opt_name(opt), value);
@@ -382,11 +389,211 @@ static void conf_print_subtype(cfg_opt_t *opt, unsigned int index, FILE *fp)
 	case SUBTYPE_AMPS:
 		fprintf(fp, "amps");
 		break;
+	case SUBTYPE_RAINRATE:
+		fprintf(fp, "rainrate");
+		break;
 	default:
 		fprintf(fp, "NONE");
 		break;
 	}
 }
+
+/**
+   \brief parse a temperature scale
+*/
+int conf_parse_tscale(cfg_t *cfg, cfg_opt_t *opt, const char *value,
+		    void *result)
+{
+	if (strcasecmp(value, "F") == 0)
+		*(int *)result = TSCALE_F;
+	else if (strcasecmp(value, "FAHRENHEIT") == 0)
+		*(int *)result = TSCALE_F;
+	else if (strcasecmp(value, "C") == 0)
+		*(int *)result = TSCALE_C;
+	else if (strcasecmp(value, "CELCIUS") == 0)
+		*(int *)result = TSCALE_C;
+	else if (strcasecmp(value, "K") == 0)
+		*(int *)result = TSCALE_K;
+	else if (strcasecmp(value, "KELVIN") == 0)
+		*(int *)result = TSCALE_K;
+	else {
+		cfg_error(cfg, "invalid temp scale value for option '%s': %s",
+		    cfg_opt_name(opt), value);
+		return -1;
+	}
+	return 0;
+}
+
+/**
+   \brief Used to print temp scale values
+   \param opt option structure
+   \param index number of option to print
+   \param fp passed FILE
+*/
+
+void conf_print_tscale(cfg_opt_t *opt, unsigned int index, FILE *fp)
+{
+	switch (cfg_opt_getnint(opt, index)) {
+	case TSCALE_F:
+		fprintf(fp, "F");
+		break;
+	case TSCALE_C:
+		fprintf(fp, "C");
+		break;
+	case TSCALE_K:
+		fprintf(fp, "K");
+		break;
+	default:
+		fprintf(fp, "C");
+		break;
+	}
+}
+
+
+/**
+   \brief parse a speed scale
+*/
+int conf_parse_speedscale(cfg_t *cfg, cfg_opt_t *opt, const char *value,
+		    void *result)
+{
+	if (strcasecmp(value, "MPH") == 0)
+		*(int *)result = SPEED_MPH;
+	else if (strcasecmp(value, "MS") == 0)
+		*(int *)result = SPEED_MS;
+	else if (strcasecmp(value, "KPH") == 0)
+		*(int *)result = SPEED_KPH;
+	else if (strcasecmp(value, "KNOTS") == 0)
+		*(int *)result = SPEED_KNOTS;
+	else {
+		cfg_error(cfg, "invalid speed scale value for option '%s': %s",
+		    cfg_opt_name(opt), value);
+		return -1;
+	}
+	return 0;
+}
+
+/**
+   \brief Used to print speed scale values
+   \param opt option structure
+   \param index number of option to print
+   \param fp passed FILE
+*/
+
+void conf_print_speedscale(cfg_opt_t *opt, unsigned int index, FILE *fp)
+{
+	switch (cfg_opt_getnint(opt, index)) {
+	case SPEED_MS:
+		fprintf(fp, "ms");
+		break;
+	case SPEED_KPH:
+		fprintf(fp, "kph");
+		break;
+	case SPEED_KNOTS:
+		fprintf(fp, "knots");
+		break;
+	default:
+		fprintf(fp, "mph");
+		break;
+	}
+}
+
+/**
+   \brief parse a length scale
+*/
+int conf_parse_lscale(cfg_t *cfg, cfg_opt_t *opt, const char *value,
+		    void *result)
+{
+	if (strcasecmp(value, "IN") == 0)
+		*(int *)result = LENGTH_IN;
+	else if (strcasecmp(value, "INCHES") == 0)
+		*(int *)result = LENGTH_IN;
+	else if (strcasecmp(value, "MM") == 0)
+		*(int *)result = LENGTH_MM;
+	else if (strcasecmp(value, "MILLIMETER") == 0)
+		*(int *)result = LENGTH_MM;
+	else {
+		cfg_error(cfg, "invalid len scale value for option '%s': %s",
+		    cfg_opt_name(opt), value);
+		return -1;
+	}
+	return 0;
+}
+
+/**
+   \brief Used to print temp scale values
+   \param opt option structure
+   \param index number of option to print
+   \param fp passed FILE
+*/
+
+void conf_print_lscale(cfg_opt_t *opt, unsigned int index, FILE *fp)
+{
+	switch (cfg_opt_getnint(opt, index)) {
+	case LENGTH_IN:
+		fprintf(fp, "in");
+		break;
+	case LENGTH_MM:
+		fprintf(fp, "mm");
+		break;
+	default:
+		fprintf(fp, "in");
+		break;
+	}
+}
+
+/**
+   \brief parse a barometer scale
+*/
+int conf_parse_baroscale(cfg_t *cfg, cfg_opt_t *opt, const char *value,
+		    void *result)
+{
+	if (strcasecmp(value, "IN") == 0)
+		*(int *)result = BAROSCALE_IN;
+	else if (strcasecmp(value, "INCHES") == 0)
+		*(int *)result = BAROSCALE_IN;
+	else if (strcasecmp(value, "MM") == 0)
+		*(int *)result = BAROSCALE_MM;
+	else if (strcasecmp(value, "MB") == 0)
+		*(int *)result = BAROSCALE_MB;
+	else if (strcasecmp(value, "HPA") == 0)
+		*(int *)result = BAROSCALE_MB;
+	else {
+		cfg_error(cfg, "invalid baro scale value for option '%s': %s",
+		    cfg_opt_name(opt), value);
+		return -1;
+	}
+	return 0;
+}
+
+/**
+   \brief Used to print barometer scale values
+   \param opt option structure
+   \param index number of option to print
+   \param fp passed FILE
+*/
+
+void conf_print_baroscale(cfg_opt_t *opt, unsigned int index, FILE *fp)
+{
+	switch (cfg_opt_getnint(opt, index)) {
+	case BAROSCALE_IN:
+		fprintf(fp, "in");
+		break;
+	case BAROSCALE_MM:
+		fprintf(fp, "mm");
+		break;
+	case BAROSCALE_MB:
+		fprintf(fp, "mb");
+		break;
+	default:
+		fprintf(fp, "mb");
+		break;
+	}
+}
+
+/*****
+      General routines
+*****/
+
 
 /**
 	\brief Find the cfg entry for a device by it's UID

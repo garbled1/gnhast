@@ -1,5 +1,3 @@
-/* $Id$ */
-
 #ifndef _COMMON_H_
 #define _COMMON_H_
 
@@ -36,6 +34,25 @@
 #define BETOH32(x)	((LITTLE_E) ? bswap32(x) : x)
 #define BETOH16(x)	((LITTLE_E) ? bswap16(x) : x)
 
+#define CTOF(x)		((x * 1.8) + 32.0)
+#define FTOC(x)		((x - 32.0) / 1.8)
+#define CTOK(x)		(x + 273.15)
+
+#define BARO_INTOMB(x)	(x * 33.8639)
+#define BARO_MBTOIN(x)	(x * 0.02953)
+#define BARO_MMTOMB(x)	(x * 1.333224)
+#define BARO_MBTOMM(x)	(x * 0.750062)
+
+#define INTOMM(x)	(x * 25.4)
+#define MMTOIN(x)	(x * 0.0393701)
+
+#define KPHTOMPH(x)	(x * 0.621371)
+#define MSTOMPH(x)	(x * 2.23694)
+#define KNOTSTOMPH(x)	(x * 1.15078)
+#define MPHTOKPH(x)	(x * 1.60934)
+#define MPHTOMS(x)	(x * 0.44704)
+#define MPHTOKNOTS(x)	(x * 0.868976)
+
 /* from common.c */
 FILE *openlog(char *logf);
 void closelog(void);
@@ -69,5 +86,21 @@ int device_watermark(device_t *dev);
 cfg_t *parse_conf(const char *filename);
 int conf_parse_bool(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		    void *result);
+int conf_parse_tscale(cfg_t *cfg, cfg_opt_t *opt, const char *value,
+		      void *result);
+void conf_print_tscale(cfg_opt_t *opt, unsigned int index, FILE *fp);
+int conf_parse_lscale(cfg_t *cfg, cfg_opt_t *opt, const char *value,
+		      void *result);
+void conf_print_lscale(cfg_opt_t *opt, unsigned int index, FILE *fp);
+int conf_parse_speedscale(cfg_t *cfg, cfg_opt_t *opt, const char *value,
+		      void *result);
+void conf_print_speedscale(cfg_opt_t *opt, unsigned int index, FILE *fp);
+int conf_parse_baroscale(cfg_t *cfg, cfg_opt_t *opt, const char *value,
+			 void *result);
+void conf_print_baroscale(cfg_opt_t *opt, unsigned int index, FILE *fp);
+
+/* From serial_common.c */
+int serial_connect(char *devnode, int speed, int cflags);
+void serial_eventcb(struct bufferevent *bev, short events, void *arg);
 
 #endif /* _COMMON_H_ */

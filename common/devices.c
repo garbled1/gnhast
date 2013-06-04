@@ -334,6 +334,9 @@ void get_data_dev(device_t *dev, int where, void *data)
 		case SUBTYPE_AMPS:
 			*((double *)data) = store->amps;
 			break;
+		case SUBTYPE_RAINRATE:
+			*((double *)data) = store->rainrate;
+			break;
 		}
 		break;
 	}
@@ -426,6 +429,9 @@ void store_data_dev(device_t *dev, int where, void *data)
 			break;
 		case SUBTYPE_AMPS:
 			store->amps = *((double *)data);
+			break;
+		case SUBTYPE_RAINRATE:
+			store->rainrate = *((double *)data);
 			break;
 		}
 		break;

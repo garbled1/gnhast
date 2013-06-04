@@ -66,6 +66,7 @@ enum PROTO_TYPES {
 	PROTO_SENSOR_OWFS,
 	PROTO_SENSOR_BRULTECH_GEM,
 	PROTO_SENSOR_BRULTECH_ECM1240,
+	PROTO_SENSOR_WMR918,
 };
 #define PROTO_MAX PROTO_SENSOR_BRULTECH_ECM1240
 
@@ -87,6 +88,7 @@ enum SUBTYPE_TYPES {
 	SUBTYPE_WATTSEC,
 	SUBTYPE_WATT,
 	SUBTYPE_AMPS,
+	SUBTYPE_RAINRATE,
 	SUBTYPE_BOOL,
 };
 #define SUBTYPE_MAX SUBTYPE_BOOL
@@ -94,6 +96,30 @@ enum SUBTYPE_TYPES {
    add new sensor types between these */
 #define SUBTYPE_OWSRV_SENSOR_MIN SUBTYPE_TEMP
 #define SUBTYPE_OWSRV_SENSOR_MAX SUBTYPE_LUX
+
+enum TSCALE_TYPES {
+	TSCALE_F,
+	TSCALE_C,
+	TSCALE_K,
+};
+
+enum BAROSCALE_TYPES {
+	BAROSCALE_IN,
+	BAROSCALE_MM,
+	BAROSCALE_MB,
+};
+
+enum LENGTH_TYPES {
+	LENGTH_IN,
+	LENGTH_MM,
+};
+
+enum SPEED_TYPES {
+	SPEED_MPH,
+	SPEED_KNOTS,
+	SPEED_MS,
+	SPEED_KPH,
+};
 
 struct _device_group_t;
 struct _client_t;
@@ -165,6 +191,7 @@ typedef union _data_t {
 	double volts;	/**< \brief voltage */
 	double watts;	/**< \brief watts */
 	double amps;	/**< \brief amps */
+	double rainrate;/**< \brief rain rate */
 } data_t;
 
 /** The device structure */

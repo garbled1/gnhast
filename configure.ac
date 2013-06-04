@@ -1,6 +1,6 @@
 # $Id$
 
-AC_INIT([gnhast], 0.2)
+AC_INIT([gnhast], 0.2.1)
 AM_INIT_AUTOMAKE
 LT_INIT([disable-shared])
 AC_PROG_CC
@@ -58,6 +58,7 @@ AC_CONFIG_FILES([Makefile \
 		 rrdcoll/Makefile \
 		 brulcoll/Makefile \
 		 insteoncoll/Makefile \
+		 wmr918coll/Makefile \
 		 libconfuse/Makefile])
 
 AC_OUTPUT
