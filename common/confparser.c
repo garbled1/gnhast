@@ -59,6 +59,11 @@ cfg_opt_t device_opts[] = {
 	CFG_INT_CB("subtype", 0, CFGF_NODEFAULT, conf_parse_subtype),
 	CFG_INT_CB("type", 0, CFGF_NODEFAULT, conf_parse_type),
 	CFG_INT_CB("proto", 0, CFGF_NODEFAULT, conf_parse_proto),
+	CFG_INT_CB("tscale", 0, CFGF_NONE, conf_parse_tscale),
+	CFG_INT_CB("baroscale", 0, CFGF_NONE, conf_parse_baroscale),
+	CFG_INT_CB("speedscale", 0, CFGF_NONE, conf_parse_speedscale),
+	CFG_INT_CB("lengthscale", 0, CFGF_NONE, conf_parse_lscale),
+	CFG_INT_CB("lightscale", 0, CFGF_NONE, conf_parse_lightscale),
 	CFG_STR("multimodel", 0, CFGF_NODEFAULT),
 	CFG_STR("handler", 0, CFGF_NODEFAULT),
 	CFG_STR_LIST("hargs", 0, CFGF_NODEFAULT),
@@ -332,7 +337,7 @@ int conf_parse_subtype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 	\param fp passed FILE
 */
 
-static void conf_print_subtype(cfg_opt_t *opt, unsigned int index, FILE *fp)
+void conf_print_subtype(cfg_opt_t *opt, unsigned int index, FILE *fp)
 {
 	switch (cfg_opt_getnint(opt, index)) {
 	case SUBTYPE_NONE:
@@ -416,6 +421,10 @@ int conf_parse_tscale(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		*(int *)result = TSCALE_K;
 	else if (strcasecmp(value, "KELVIN") == 0)
 		*(int *)result = TSCALE_K;
+	else if (strcasecmp(value, "R") == 0)
+		*(int *)result = TSCALE_R;
+	else if (strcasecmp(value, "RANKINE") == 0)
+		*(int *)result = TSCALE_R;
 	else {
 		cfg_error(cfg, "invalid temp scale value for option '%s': %s",
 		    cfg_opt_name(opt), value);
@@ -590,6 +599,50 @@ void conf_print_baroscale(cfg_opt_t *opt, unsigned int index, FILE *fp)
 	}
 }
 
+/**
+   \brief parse a light scale
+*/
+int conf_parse_lightscale(cfg_t *cfg, cfg_opt_t *opt, const char *value,
+		    void *result)
+{
+	if (strcasecmp(value, "WM2") == 0)
+		*(int *)result = LIGHT_WM2;
+	else if (strcasecmp(value, "W/M2") == 0)
+		*(int *)result = LIGHT_WM2;
+	else if (strcasecmp(value, "W/M^2") == 0)
+		*(int *)result = LIGHT_WM2;
+	else if (strcasecmp(value, "LUX") == 0)
+		*(int *)result = LIGHT_LUX;
+	else {
+		cfg_error(cfg, "invalid light scale value for option '%s': %s",
+		    cfg_opt_name(opt), value);
+		return -1;
+	}
+	return 0;
+}
+
+/**
+   \brief Used to print light scale values
+   \param opt option structure
+   \param index number of option to print
+   \param fp passed FILE
+*/
+
+void conf_print_lightscale(cfg_opt_t *opt, unsigned int index, FILE *fp)
+{
+	switch (cfg_opt_getnint(opt, index)) {
+	case LIGHT_WM2:
+		fprintf(fp, "wm2");
+		break;
+	case LIGHT_LUX:
+		fprintf(fp, "lux");
+		break;
+	default:
+		fprintf(fp, "lux");
+		break;
+	}
+}
+
 /*****
       General routines
 *****/
@@ -656,6 +709,23 @@ device_t *new_dev_from_conf(cfg_t *cfg, char *uid)
 	dev->proto = cfg_getint(devconf, "proto");
 	dev->type = cfg_getint(devconf, "type");
 	dev->subtype = cfg_getint(devconf, "subtype");
+	switch (dev->subtype) {
+	case SUBTYPE_TEMP:
+		dev->scale = cfg_getint(devconf, "tscale");
+		break;
+	case SUBTYPE_SPEED:
+		dev->scale = cfg_getint(devconf, "speedscale");
+		break;
+	case SUBTYPE_PRESSURE:
+		dev->scale = cfg_getint(devconf, "baroscale");
+		break;
+	case SUBTYPE_RAINRATE:
+		dev->scale = cfg_getint(devconf, "lengthscale");
+		break;
+	case SUBTYPE_LUX:
+		dev->scale = cfg_getint(devconf, "lightscale");
+		break;
+	}
 	if (cfg_getstr(devconf, "multimodel") != NULL &&
 	    (dev->subtype == SUBTYPE_HUMID ||
 	     dev->subtype == SUBTYPE_LUX ||
@@ -711,6 +781,25 @@ cfg_t *new_conf_from_dev(cfg_t *cfg, device_t *dev)
 		cfg_setstr(devconf, "handler", dev->handler);
 	if (dev->subtype)
 		cfg_setint(devconf, "subtype", dev->subtype);
+	if (dev->subtype && dev->scale) {
+		switch (dev->subtype) {
+		case SUBTYPE_TEMP:
+			cfg_setint(devconf, "tscale", dev->scale);
+			break;
+		case SUBTYPE_SPEED:
+			cfg_setint(devconf, "speedscale", dev->scale);
+			break;
+		case SUBTYPE_PRESSURE:
+			cfg_setint(devconf, "baroscale", dev->scale);
+			break;
+		case SUBTYPE_RAINRATE:
+			cfg_setint(devconf, "lengthscale", dev->scale);
+			break;
+		case SUBTYPE_LUX:
+			cfg_setint(devconf, "lightscale", dev->scale);
+			break;
+		}
+	}
 	if (dev->type)
 		cfg_setint(devconf, "type", dev->type);
 	if (dev->proto)
@@ -760,6 +849,16 @@ cfg_t *dump_conf(cfg_t *cfg, int flags, const char *filename)
 		cfg_opt_set_print_func(a, conf_print_proto);
 		a = cfg_getopt(section, "spamhandler");
 		cfg_opt_set_print_func(a, conf_print_bool);
+		a = cfg_getopt(section, "tscale");
+		cfg_opt_set_print_func(a, conf_print_tscale);
+		a = cfg_getopt(section, "baroscale");
+		cfg_opt_set_print_func(a, conf_print_baroscale);
+		a = cfg_getopt(section, "lengthscale");
+		cfg_opt_set_print_func(a, conf_print_lscale);
+		a = cfg_getopt(section, "speedscale");
+		cfg_opt_set_print_func(a, conf_print_speedscale);
+		a = cfg_getopt(section, "lightscale");
+		cfg_opt_set_print_func(a, conf_print_lightscale);
 		if (flags & CONF_DUMP_DEVONLY) {
 			fprintf(fp, "device \"%s\" {\n", cfg_title(section));
 			cfg_print_indent(section, fp, 2);

@@ -123,13 +123,15 @@ device_group_t *find_devgroup_byuid(char *uid)
    \param dev device to add
    \param client client_t to add to
    \param rate rate of feed, if used
+   \param scale (temp) scale, if used
 */
-void add_wrapped_device(device_t *dev, client_t *client, int rate)
+void add_wrapped_device(device_t *dev, client_t *client, int rate, int scale)
 {
 	wrap_device_t *wrap = smalloc(wrap_device_t);
 
 	wrap->dev = dev;
 	wrap->rate = rate;
+	wrap->scale = scale;
 	if (TAILQ_EMPTY(&client->wdevices))
 		    TAILQ_INIT(&client->wdevices);
 	if (!(wrap->onq & DEVONQ_CLIENT)) {

@@ -249,7 +249,16 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-SUBDIRS = libconfuse gnhastd fakecoll owsrvcoll rrdcoll brulcoll insteoncoll wmr918coll
+SUBDIRS = libconfuse \
+	gnhastd \
+	fakecoll \
+	owsrvcoll \
+	rrdcoll \
+	brulcoll \
+	insteoncoll \
+	wmr918coll \
+	wupwscoll
+
 all: all-recursive
 
 .SUFFIXES:

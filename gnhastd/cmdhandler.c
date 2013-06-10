@@ -280,7 +280,7 @@ int cmd_change(pargs_t *args, void *arg)
 int cmd_register(pargs_t *args, void *arg)
 {
 	int i, new=0;
-	uint8_t devtype=0, proto=0, subtype=0;
+	uint8_t devtype=0, proto=0, subtype=0, scale=0;
 	char *uid=NULL, *name=NULL, *rrdname=NULL;
 	device_t *dev;
 	client_t *client = (client_t *)arg;
@@ -304,6 +304,9 @@ int cmd_register(pargs_t *args, void *arg)
 			break;
 		case SC_SUBTYPE:
 			subtype = (uint8_t)args[i].arg.i;
+			break;
+		case SC_SCALE:
+			scale = (uint8_t)args[i].arg.i;
 			break;
 		}
 	}
@@ -336,6 +339,7 @@ int cmd_register(pargs_t *args, void *arg)
 	dev->type = devtype;
 	dev->proto = proto;
 	dev->subtype = subtype;
+	dev->scale = scale;
 	(void)time(&dev->last_upd);
 	if (dev->collector != NULL && dev->collector != client)
 		LOG(LOG_ERROR, "Device uid:%s has a collector, but a new one registered it!", dev->uid);
@@ -375,7 +379,8 @@ void feeddata_cb(int nada, short what, void *arg)
 	TAILQ_FOREACH(wrap, &client->wdevices, next) {
 		diff = now - wrap->last_fired;
 		if (diff / wrap->rate >= 1) { /* this dev is ready */
-			gn_update_device(wrap->dev, GNC_UPD_RRDNAME,
+			gn_update_device(wrap->dev, GNC_UPD_RRDNAME |
+					 GNC_UPD_SCALE(wrap->scale),
 					 client->ev);
 			wrap->last_fired = now;
 		}
@@ -390,7 +395,7 @@ void feeddata_cb(int nada, short what, void *arg)
 
 int cmd_feed(pargs_t *args, void *arg)
 {
-	int i, rate=60, lc;
+	int i, rate=60, lc, scale=0;
 	char *uid=NULL;
 	struct timeval secs = {0, 0};
 	device_t *dev;
@@ -405,13 +410,16 @@ int cmd_feed(pargs_t *args, void *arg)
 		case SC_RATE:
 			rate = args[i].arg.i;
 			break;
+		case SC_SCALE:
+			scale = args[i].arg.i;
+			break;
 		}
 	}
 	secs.tv_sec = rate;
 	dev = find_device_byuid(uid);
 	if (dev == NULL)
 		return -1;
-	add_wrapped_device(dev, client, rate);
+	add_wrapped_device(dev, client, rate, scale);
 	if (client->tev == NULL || !event_initialized(client->tev)) {
 		client->tev = event_new(base, -1, EV_PERSIST, feeddata_cb,
 					client);
@@ -516,21 +524,24 @@ int cmd_list_devices(pargs_t *args, void *arg)
 
 int cmd_ask_device(pargs_t *args, void *arg)
 {
-	int i;
+	int i, scale=0;
 	device_t *dev;
 	char *uid = NULL;
 	client_t *client = (client_t *)arg;
 
-	/* the arguments to this command are used as qualifiers for the
-	   device list search */
+	/* check for a scale argument first */
+	for (i=0; args[i].cword != -1; i++)
+		if (args[i].cword == SC_SCALE)
+			scale = args[i].arg.i;
+
 	for (i=0; args[i].cword != -1; i++) {
 		if (args[i].cword == SC_UID) {
 			uid = args[i].arg.c;
 			dev = find_device_byuid(uid);
 			if (dev == NULL)
 				continue;
-			gn_update_device(dev, GNC_UPD_NAME|GNC_UPD_RRDNAME,
-					 client->ev);
+			gn_update_device(dev, GNC_UPD_NAME|GNC_UPD_RRDNAME|
+					 GNC_UPD_SCALE(scale), client->ev);
 		}
 	}
 	return 0;
@@ -544,20 +555,24 @@ int cmd_ask_device(pargs_t *args, void *arg)
 
 int cmd_cactiask_device(pargs_t *args, void *arg)
 {
-	int i;
+	int i, scale=0;
 	device_t *dev;
 	char *uid = NULL;
 	client_t *client = (client_t *)arg;
 
-	/* the arguments to this command are used as qualifiers for the
-	   device list search */
+	/* check for a scale argument first */
+	for (i=0; args[i].cword != -1; i++)
+		if (args[i].cword == SC_SCALE)
+			scale = args[i].arg.i;
+
 	for (i=0; args[i].cword != -1; i++) {
 		if (args[i].cword == SC_UID) {
 			uid = args[i].arg.c;
 			dev = find_device_byuid(uid);
 			if (dev == NULL)
 				continue;
-			gn_update_device(dev, GNC_UPD_CACTI, client->ev);
+			gn_update_device(dev, GNC_UPD_CACTI|
+					 GNC_UPD_SCALE(scale), client->ev);
 		}
 	}
 	return 0;

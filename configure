@@ -12770,7 +12770,7 @@ fi
 done
 
 
-ac_config_files="$ac_config_files Makefile gnhastd/Makefile fakecoll/Makefile owsrvcoll/Makefile rrdcoll/Makefile brulcoll/Makefile insteoncoll/Makefile wmr918coll/Makefile libconfuse/Makefile"
+ac_config_files="$ac_config_files Makefile gnhastd/Makefile fakecoll/Makefile owsrvcoll/Makefile rrdcoll/Makefile brulcoll/Makefile insteoncoll/Makefile wmr918coll/Makefile wupwscoll/Makefile libconfuse/Makefile"
 
 
 cat >confcache <<\_ACEOF
@@ -13772,6 +13772,7 @@ do
     "brulcoll/Makefile") CONFIG_FILES="$CONFIG_FILES brulcoll/Makefile" ;;
     "insteoncoll/Makefile") CONFIG_FILES="$CONFIG_FILES insteoncoll/Makefile" ;;
     "wmr918coll/Makefile") CONFIG_FILES="$CONFIG_FILES wmr918coll/Makefile" ;;
+    "wupwscoll/Makefile") CONFIG_FILES="$CONFIG_FILES wupwscoll/Makefile" ;;
     "libconfuse/Makefile") CONFIG_FILES="$CONFIG_FILES libconfuse/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;

@@ -291,7 +291,7 @@ void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 			store_data_dev(dev, DATALOC_DATA, &s);
 		else
 			store_data_dev(dev, DATALOC_DATA, &d);
-		gn_update_device(dev, 0, gnhastd_conn->bev);
+		gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
 		return;
 	}
 
@@ -334,7 +334,7 @@ void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 			store_data_dev(dev, DATALOC_DATA, &s);
 		else
 			store_data_dev(dev, DATALOC_DATA, &d);
-		gn_update_device(dev, 0, gnhastd_conn->bev);
+		gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
 		/* schedule a query for it too */
 		maybe_need_query++;
 		break;
@@ -353,7 +353,7 @@ void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 			store_data_dev(dev, DATALOC_DATA, &s);
 		else
 			store_data_dev(dev, DATALOC_DATA, &d);
-		gn_update_device(dev, 0, gnhastd_conn->bev);
+		gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
 		/* schedule a query for it too */
 		maybe_need_query++;
 		break;

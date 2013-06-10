@@ -26,6 +26,11 @@
 #define BRUL_MODE_PST		8
 #define BRUL_MODE_CMX		9
 #define BRUL_MODE_DATA		20
+#define BRUL_MODE_WAITREADY	21
+#define BRUL_MODE_ECMREADY	22
+#define BRUL_MODE_WAITTOG	23
+#define BRUL_MODE_ECMTOG	24
+#define BRUL_MODE_ECMDATA	30
 
 /* GEM packet formats */
 #define BRUL_PKT_LIST		0	/* List format */

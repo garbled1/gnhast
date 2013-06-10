@@ -72,6 +72,7 @@ uint32_t loopnr; /**< \brief the number of loops we've made */
 char *dumpconf = NULL;
 int need_rereg = 0;
 int indian = 1;
+int tempscale = TSCALE_F;
 
 bruldata_t bruldata[2];	/**< \brief Prev and current data, converted */
 brulconf_t brulconf;
@@ -185,6 +186,44 @@ static int conf_parse_brul_conn(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		return -1;
 	}
 	return 0;
+}
+
+/**
+   \brief Setup the Brultech ECM1240
+   \param conn the connection_t
+   \note sets current_dev to NULL and requests a connection
+*/
+
+void brul_setup_ecm(connection_t *conn)
+{
+	struct evbuffer *send, *in;
+	size_t len;
+
+	LOG(LOG_DEBUG, "Setting up the ECM, at mode %d", conn->mode);
+	send = evbuffer_new();
+       
+	switch (conn->mode) {
+	case BRUL_MODE_NONE:
+		evbuffer_add_printf(send, "%c", 0xFC);
+		conn->mode = BRUL_MODE_WAITREADY;
+		break;
+	case BRUL_MODE_ECMREADY:
+		evbuffer_add_printf(send, "TOG");
+		conn->mode = BRUL_MODE_WAITTOG;
+		break;
+	case BRUL_MODE_ECMTOG:
+		evbuffer_add_printf(send, "XTD");
+		conn->mode = BRUL_MODE_ECMDATA;
+		break;
+	}
+	/* flush the input buffer*/
+	in = bufferevent_get_input(conn->bev);
+	len = evbuffer_get_length(in);
+	evbuffer_drain(in, len);
+
+	bufferevent_write_buffer(conn->bev, send);
+	evbuffer_free(send);
+	LOG(LOG_DEBUG, "Setup, requesting mode %d", conn->mode);
 }
 
 
@@ -303,9 +342,10 @@ static void brul_handle_tstpst(char *data, int type)
 			dev->uid = strdup(buf);
 			dev->proto = PROTO_SENSOR_BRULTECH_GEM;
 			dev->type = DEVICE_SENSOR;
-			if (type == BRUL_HANDLE_TST)
+			if (type == BRUL_HANDLE_TST) {
 				dev->subtype = SUBTYPE_TEMP;
-			else
+				dev->scale = tempscale;
+			} else
 				dev->subtype = SUBTYPE_COUNTER;
 			(void)new_conf_from_dev(cfg, dev);
 		}
@@ -616,7 +656,7 @@ void calc_devices(void)
 			continue;
 		}
 		store_data_dev(dev, DATALOC_DATA, &cur->channel[i]);
-		gn_update_device(dev, 0, gnhastd_conn->bev);
+		gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
 	}
 
 	/* temp sensors */
@@ -629,7 +669,7 @@ void calc_devices(void)
 				continue;
 			}
 			store_data_dev(dev, DATALOC_DATA, &cur->temp[i]);
-			gn_update_device(dev, 0, gnhastd_conn->bev);
+			gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
 		}
 
 	/* pulse counters */
@@ -642,7 +682,7 @@ void calc_devices(void)
 				continue;
 			}
 			store_data_dev(dev, DATALOC_DATA, &cur->pulse[i]);
-			gn_update_device(dev, 0, gnhastd_conn->bev);
+			gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
 		}
 
 	/* voltage */
@@ -650,14 +690,14 @@ void calc_devices(void)
 	dev = find_device_byuid(uid);
 	if (dev != NULL) {
 		store_data_dev(dev, DATALOC_DATA, &cur->voltage);
-		gn_update_device(dev, 0, gnhastd_conn->bev);
+		gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
 	}
 
 	sprintf(uid, "%0.8d-sec", brulconf.serial);
 	dev = find_device_byuid(uid);
 	if (dev != NULL) {
 		store_data_dev(dev, DATALOC_DATA, &cur->seconds);
-		gn_update_device(dev, 0, gnhastd_conn->bev);
+		gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
 	}
 
 	if (prev->seconds == 0)
@@ -685,7 +725,7 @@ void calc_devices(void)
 			wdiff = cur->channel[i] - prev->channel[i];
 		watts = (float)wdiff/(float)sdelta;
 		store_data_dev(dev, DATALOC_DATA, &watts);
-		gn_update_device(dev, 0, gnhastd_conn->bev);
+		gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
 	}
 }
 
@@ -778,6 +818,21 @@ again:
 			/* we see the on, and switch to data mode */
 			if (strcmp(data, "_ON") == 0)
 				conn->mode = BRUL_MODE_DATA;
+			break;
+		/* ECM1240 code */
+		case BRUL_MODE_WAITTOG:
+		case BRUL_MODE_WAITREADY:
+			evbuf = bufferevent_get_input(in);
+			data = evbuffer_pullup(evbuf, 1);
+			if (data == NULL)
+				return;
+			if (data[0] == 0xFC &&
+			    conn->mode == BRUL_MODE_WAITREADY)
+				conn->mode = BRUL_MODE_ECMREADY;
+			else if (data[0] == 0xFC &&
+				 conn->mode == BRUL_MODE_WAITTOG)
+				conn->mode = BRUL_MODE_ECMTOG;
+			evbuffer_drain(evbuf, 1); /* discard the byte */
 			break;
 		}
 		if (freedata)
@@ -1128,10 +1183,14 @@ int main(int argc, char **argv)
 	buf = cfg_getstr(brulcoll_c, "tscale");
 	switch (*buf) {
 	case 'C':
-		brulnet_conn->tempbase = BRUL_TEMP_C; break;
+		tempscale = TSCALE_C;
+		brulnet_conn->tempbase = BRUL_TEMP_C;
+		break;
 	default:
 	case 'F':
-		brulnet_conn->tempbase = BRUL_TEMP_F; break;
+		tempscale = TSCALE_F;
+		brulnet_conn->tempbase = BRUL_TEMP_F;
+		break;
 	}
 	brulnet_conn->mode = BRUL_MODE_NONE;
 	brulnet_conn->pkttype = cfg_getint(brulcoll_c, "pkttype");

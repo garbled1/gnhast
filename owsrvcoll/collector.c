@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * Copyright (c) 2013
  *      Tim Rightnour.  All rights reserved.
@@ -69,6 +67,7 @@ char *dumpconf = NULL;
 int need_rereg = 0;
 int timer_pending = 0;
 int persistent = 0;
+int tempscale = 0;
 
 /** Need the argtable in scope, so we can generate proper commands
     for the server */
@@ -335,8 +334,10 @@ void ows_handle_dirall(connection_t *conn, char *buf)
 			dev->type = DEVICE_SENSOR;
 			dev->proto = PROTO_SENSOR_OWFS;
 			if (strncmp(p, "10.", 3) == 0 ||
-			    strncmp(p, "28.", 3) == 0)
+			    strncmp(p, "28.", 3) == 0) {
 				dev->subtype = SUBTYPE_TEMP;
+				dev->scale = tempscale;
+			}
 			if (strncmp(p, "1D.", 3) == 0)
 				dev->subtype = SUBTYPE_NONE;
 			if (strncmp(p, "EF.", 3) == 0)
@@ -470,7 +471,7 @@ void ows_buf_read_cb(struct bufferevent *in, void *arg)
 		}
 		dev->last_upd = time(NULL);
 		if (dev->name && datagood)
-			gn_update_device(dev, 0, gnhastd_conn->bev);
+			gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
 	}
 
 	free(buf);
@@ -858,14 +859,22 @@ int main(int argc, char **argv)
 	buf = cfg_getstr(owsrvcoll_c, "tscale");
 	switch (*buf) {
 	case 'C':
-		owserver_conn->owbase = OWFLAG_TEMP_C; break;
+		owserver_conn->owbase = OWFLAG_TEMP_C;
+		tempscale = TSCALE_C;
+		break;
 	case 'K':
-		owserver_conn->owbase = OWFLAG_TEMP_K; break;
+		owserver_conn->owbase = OWFLAG_TEMP_K;
+		tempscale = TSCALE_K;
+		break;
 	case 'R':
-		owserver_conn->owbase = OWFLAG_TEMP_R; break;
+		owserver_conn->owbase = OWFLAG_TEMP_R;
+		tempscale = TSCALE_R;
+		break;
 	default:
 	case 'F':
-		owserver_conn->owbase = OWFLAG_TEMP_F; break;
+		owserver_conn->owbase = OWFLAG_TEMP_F;
+		tempscale = TSCALE_F;
+		break;
 	}
 	owserver_conn->owbase |= OWFLAG_PERSIST;
 	ows_schedule_dirall(owserver_conn);

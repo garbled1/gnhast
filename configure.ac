@@ -59,6 +59,7 @@ AC_CONFIG_FILES([Makefile \
 		 brulcoll/Makefile \
 		 insteoncoll/Makefile \
 		 wmr918coll/Makefile \
+		 wupwscoll/Makefile \
 		 libconfuse/Makefile])
 
 AC_OUTPUT

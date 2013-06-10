@@ -101,6 +101,7 @@ enum TSCALE_TYPES {
 	TSCALE_F,
 	TSCALE_C,
 	TSCALE_K,
+	TSCALE_R,
 };
 
 enum BAROSCALE_TYPES {
@@ -119,6 +120,11 @@ enum SPEED_TYPES {
 	SPEED_KNOTS,
 	SPEED_MS,
 	SPEED_KPH,
+};
+
+enum LIGHT_TYPES {
+	LIGHT_LUX,
+	LIGHT_WM2,
 };
 
 struct _device_group_t;
@@ -203,6 +209,7 @@ typedef struct _device_t {
 	uint8_t proto;		/**< \brief protocol */
 	uint8_t type;		/**< \brief Type */
 	uint8_t subtype;	/**< \brief sub-type */
+	uint8_t scale;		/**< \brief scale (temp/baro/etc) */
 	data_t data;		/**< \brief current data */
 	data_t last;		/**< \brief previous data */
 	data_t min;		/**< \brief 24h min */
@@ -227,6 +234,7 @@ typedef struct _device_t {
 typedef struct _wrap_device_t {
 	device_t *dev;		/**< \brief wrapped device */
 	int rate;		/**< \brief rate of fire */
+	int scale;		/**< \brief data scale (temp/baro/etc) */
 	struct _device_group_t *group; /**< \brief parent group */
 	time_t last_fired;	/**< \brief last time fired */
 	uint32_t onq;		/**< \brief I am on a queue */

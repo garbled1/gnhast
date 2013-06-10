@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * Copyright (c) 2013
  *      Tim Rightnour.  All rights reserved.
@@ -40,6 +38,7 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <errno.h>
 #include <time.h>
 #include <event2/dns.h>
@@ -56,6 +55,172 @@
 /* Need the argtable in scope, so we can generate proper commands
    for the server */
 extern argtable_t argtable[];
+
+
+/**
+   \brief convert a temperature
+   \param temp current temp value
+   \param cur current scale
+   \param new new scale
+   \return scaled value
+*/
+
+double gn_scale_temp(double temp, int cur, int new)
+{
+	double d = temp;
+
+	/* first, convert to Fahrenheit */
+	switch (cur) {
+	case TSCALE_K: d = KTOF(temp); break;
+	case TSCALE_C: d = CTOF(temp); break;
+	case TSCALE_R: d = RTOF(temp); break;
+	}
+	/* now, from F -> new scale */
+	switch (new) {
+	case TSCALE_K: return CTOK(FTOC(d)); break;
+	case TSCALE_C: return FTOC(d); break;
+	case TSCALE_R: return FTOR(d); break;
+	}
+	return d;
+}
+
+/**
+   \brief convert a pressure reading
+   \param press current pressure value
+   \param cur current scale
+   \param new new scale
+   \return scaled value
+*/
+
+double gn_scale_pressure(double press, int cur, int new)
+{
+	double d = press;
+
+	/* first, convert to millibars */
+	switch (cur) {
+	case BAROSCALE_IN: d = BARO_INTOMB(press); break;
+	case BAROSCALE_MM: d = BARO_MMTOMB(press); break;
+	}
+	/* now from MB -> new scale */
+	switch (new) {
+	case BAROSCALE_IN: return BARO_MBTOIN(d); break;
+	case BAROSCALE_MM: return BARO_MBTOMM(d); break;
+	}
+	return d;
+}
+
+/**
+   \brief convert a speed reading
+   \param speed current speed value
+   \param cur current scale
+   \param new new scale
+   \return scaled value
+*/
+
+double gn_scale_speed(double speed, int cur, int new)
+{
+	double d = speed;
+
+	/* first, convert to MPH */
+	switch (cur) {
+	case SPEED_KNOTS: d = KNOTSTOMPH(speed); break;
+	case SPEED_MS: d = MSTOMPH(speed); break;
+	case SPEED_KPH: d = KPHTOMPH(speed); break;
+	}
+	/* now, from MPH, to new speed */
+	switch (new) {
+	case SPEED_KNOTS: return MPHTOKNOTS(d); break;
+	case SPEED_MS: return MPHTOMS(d); break;
+	case SPEED_KPH: return MPHTOKPH(d); break;
+	}
+	return d;
+}
+
+/**
+   \brief convert a length reading
+   \param length current length value
+   \param cur current scale
+   \param new new scale
+   \return scaled value
+*/
+
+double gn_scale_length(double length, int cur, int new)
+{
+	double d = length;
+
+	/* first, convert to inches */
+	switch (cur) {
+	case LENGTH_MM: d = MMTOIN(length); break;
+	}
+	/* now, from inches, to new length */
+	switch (new) {
+	case LENGTH_MM: return INTOMM(d); break;
+	}
+	return d;
+}
+
+/**
+   \brief convert a light reading
+   \param light current light value
+   \param cur current scale
+   \param new new scale
+   \return scaled value
+*/
+
+double gn_scale_light(double light, int cur, int new)
+{
+	double d = light;
+
+	/* first, convert to LUX */
+	switch (cur) {
+	case LIGHT_WM2: d = LIGHT_WM2TOLUX(light); break;
+	}
+	/* now, from LUX -> new scale */
+	switch (new) {
+	case LIGHT_WM2: return LIGHT_LUXTOWM2(d); break;
+	}
+	return d;
+}
+
+/**
+   \brief Maybe scale a device
+   \param dev the device
+   \param scale the new scale
+   \param val the current value (avoids second call to get_data_dev)
+   \return scaled value
+   \note This only works on type double
+*/
+
+double gn_maybe_scale(device_t *dev, int scale, double val)
+{
+	double d;
+
+	if (dev->scale == scale)
+		return val;
+		
+	/* is this a device that is scalable? */
+	switch (dev->subtype) {
+	case SUBTYPE_TEMP:
+		return gn_scale_temp(val, dev->scale, scale);
+		break;
+	case SUBTYPE_PRESSURE:
+		return gn_scale_pressure(val, dev->scale, scale);
+		break;
+	case SUBTYPE_SPEED:
+		return gn_scale_speed(val, dev->scale, scale);
+		break;
+	case SUBTYPE_RAINRATE:
+		return gn_scale_length(val, dev->scale, scale);
+		break;
+	case SUBTYPE_LUX:
+		return gn_scale_light(val, dev->scale, scale);
+		break;
+	default:
+		return val;
+		break;
+	}
+	return val;
+}
 
 /**
    \brief Register a device with the server
@@ -90,6 +255,9 @@ void gn_register_device(device_t *dev, struct bufferevent *out)
 	if (dev->rrdname)
 		evbuffer_add_printf(send, "%s:%s ", ARGNM(SC_RRDNAME),
 				    dev->rrdname);
+	if (dev->scale)
+		evbuffer_add_printf(send, "%s:%d ", ARGNM(SC_SCALE),
+				    dev->scale);
 	evbuffer_add_printf(send, "%s:%d %s:%d %s:%d\n", ARGNM(SC_DEVTYPE),
 			    dev->type, ARGNM(SC_PROTO), dev->proto,
 			    ARGNM(SC_SUBTYPE), dev->subtype);
@@ -113,6 +281,7 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 	double d;
 	uint32_t u;
 	int64_t ll;
+	int scale;
 
 	/* Verify device sanity first */
 	if (dev->name == NULL || dev->uid == NULL) {
@@ -125,6 +294,9 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 		return;
 	}
 
+	scale = GNC_GET_SCALE(what);
+	if (what & GNC_NOSCALE)
+		scale = dev->scale; /* short circuit gn_maybe scale */
 	send = evbuffer_new();
 
 	/* special handling for cacti updates */
@@ -138,7 +310,8 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 			evbuffer_add_printf(send, "%jd\n", ll);
 		} else {
 			get_data_dev(dev, DATALOC_DATA, &d);
-			evbuffer_add_printf(send, "%f\n", d);
+			evbuffer_add_printf(send, "%f\n",
+					    gn_maybe_scale(dev, scale, d));
 		}
 		bufferevent_write_buffer(out, send);
 		evbuffer_free(send);
@@ -164,7 +337,8 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 		evbuffer_add_printf(send, "%s:%jd\n", ARGDEV(dev), ll);
 	} else {
 		get_data_dev(dev, DATALOC_DATA, &d);
-		evbuffer_add_printf(send, "%s:%f\n", ARGDEV(dev), d);
+		evbuffer_add_printf(send, "%s:%f\n", ARGDEV(dev),
+				    gn_maybe_scale(dev, scale, d));
 	}
 
 	bufferevent_write_buffer(out, send);

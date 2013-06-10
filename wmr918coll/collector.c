@@ -199,13 +199,27 @@ device_t *new_dev(int subtype, double val, char *suffix)
 		dev->type = DEVICE_SENSOR;
 		dev->proto = PROTO_SENSOR_WMR918;
 		dev->subtype = subtype;
+		switch (subtype) {
+		case SUBTYPE_TEMP:
+			dev->scale = cfg_getint(wmr918_c, "tscale");
+			break;
+		case SUBTYPE_PRESSURE:
+			dev->scale = cfg_getint(wmr918_c, "baroscale");
+			break;
+		case SUBTYPE_SPEED:
+			dev->scale = cfg_getint(wmr918_c, "speedscale");
+			break;
+		case SUBTYPE_RAINRATE:
+			dev->scale = cfg_getint(wmr918_c, "lengthscale");
+			break;
+		}
 		(void)new_conf_from_dev(cfg, dev);
 	}
 	insert_device(dev);
 	store_data_dev(dev, DATALOC_DATA, &val);
 	if (dumpconf == NULL && dev->name != NULL) {
 		gn_register_device(dev, gnhastd_conn->bev);
-		gn_update_device(dev, 0, gnhastd_conn->bev);
+		gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
 	}
 	return dev;
 }
@@ -227,7 +241,7 @@ void update_dev(double val, char *suffix)
 		LOG(LOG_FATAL, "Cannot find dev %s", buf);
 	store_data_dev(dev, DATALOC_DATA, &val);
 	if (dev->name)
-		gn_update_device(dev, 0, gnhastd_conn->bev);
+		gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
 }
 
 /**

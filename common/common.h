@@ -37,6 +37,10 @@
 #define CTOF(x)		((x * 1.8) + 32.0)
 #define FTOC(x)		((x - 32.0) / 1.8)
 #define CTOK(x)		(x + 273.15)
+#define KTOC(x)		(x - 273.15)
+#define KTOF(x)		(CTOF(KTOC(x)))
+#define FTOR(x)		(x + 459.67)
+#define RTOF(x)		(x - 459.67)
 
 #define BARO_INTOMB(x)	(x * 33.8639)
 #define BARO_MBTOIN(x)	(x * 0.02953)
@@ -52,6 +56,9 @@
 #define MPHTOKPH(x)	(x * 1.60934)
 #define MPHTOMS(x)	(x * 0.44704)
 #define MPHTOKNOTS(x)	(x * 0.868976)
+
+#define LIGHT_LUXTOWM2(x)	(x * 0.0079)
+#define LIGHT_WM2TOLUX(x)	(x / 0.0079)
 
 /* from common.c */
 FILE *openlog(char *logf);
@@ -70,7 +77,7 @@ int compare_command(const void *a, const void *b);
 /* from devices.c */
 device_t *find_device_byuid(char *uid);
 device_group_t *find_devgroup_byuid(char *uid);
-void add_wrapped_device(device_t *dev, client_t *client, int rate);
+void add_wrapped_device(device_t *dev, client_t *client, int rate, int scale);
 void insert_device(device_t *dev);
 device_group_t *new_devgroup(char *uid);
 void add_dev_group(device_t *dev, device_group_t *devgrp);
@@ -98,6 +105,12 @@ void conf_print_speedscale(cfg_opt_t *opt, unsigned int index, FILE *fp);
 int conf_parse_baroscale(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 			 void *result);
 void conf_print_baroscale(cfg_opt_t *opt, unsigned int index, FILE *fp);
+int conf_parse_lightscale(cfg_t *cfg, cfg_opt_t *opt, const char *value,
+		      void *result);
+void conf_print_lightscale(cfg_opt_t *opt, unsigned int index, FILE *fp);
+int conf_parse_subtype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
+		       void *result);
+void conf_print_subtype(cfg_opt_t *opt, unsigned int index, FILE *fp);
 
 /* From serial_common.c */
 int serial_connect(char *devnode, int speed, int cflags);

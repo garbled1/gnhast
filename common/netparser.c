@@ -74,7 +74,9 @@ argtable_t argtable[] = {
 	{"volts", SC_VOLTAGE, PTDOUBLE},
 	{"watt", SC_WATT, PTDOUBLE},
 	{"amps", SC_AMPS, PTDOUBLE},
+	{"rain", SC_RAINRATE, PTDOUBLE},
 	{"client", SC_CLIENT, PTCHAR},
+	{"scale", SC_SCALE, PTINT},
 };
 
 /** \brief size of the args table */ 
@@ -149,6 +151,7 @@ int find_arg_bydev(device_t *dev)
 	case SUBTYPE_WATTSEC: return find_arg_byid(SC_WATTSEC); break;
 	case SUBTYPE_WATT: return find_arg_byid(SC_WATT); break;
 	case SUBTYPE_AMPS: return find_arg_byid(SC_AMPS); break;
+	case SUBTYPE_RAINRATE: return find_arg_byid(SC_RAINRATE); break;
 	}
 	return -1;
 }
