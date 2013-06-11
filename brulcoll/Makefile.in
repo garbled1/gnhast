@@ -66,9 +66,9 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_brulcoll_OBJECTS = common.$(OBJEXT) devices.$(OBJEXT) \
-	netparser.$(OBJEXT) confparser.$(OBJEXT) gncoll.$(OBJEXT) \
-	collector.$(OBJEXT)
+am_brulcoll_OBJECTS = common.$(OBJEXT) serial_common.$(OBJEXT) \
+	devices.$(OBJEXT) netparser.$(OBJEXT) confparser.$(OBJEXT) \
+	gncoll.$(OBJEXT) collector.$(OBJEXT)
 brulcoll_OBJECTS = $(am_brulcoll_OBJECTS)
 brulcoll_DEPENDENCIES =
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/common
@@ -216,6 +216,7 @@ top_srcdir = @top_srcdir@
 AM_CPPFLAGS = -DLOCALSTATEDIR=\"$(localstatedir)\" -DSYSCONFDIR=\"$(sysconfdir)\"
 brulcoll_SOURCES = \
 	../common/common.c \
+	../common/serial_common.c \
 	../common/devices.c \
 	../common/netparser.c \
 	../common/confparser.c \
@@ -319,6 +320,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/devices.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gncoll.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/netparser.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/serial_common.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -354,6 +356,20 @@ common.obj: ../common/common.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='../common/common.c' object='common.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o common.obj `if test -f '../common/common.c'; then $(CYGPATH_W) '../common/common.c'; else $(CYGPATH_W) '$(srcdir)/../common/common.c'; fi`
+
+serial_common.o: ../common/serial_common.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT serial_common.o -MD -MP -MF $(DEPDIR)/serial_common.Tpo -c -o serial_common.o `test -f '../common/serial_common.c' || echo '$(srcdir)/'`../common/serial_common.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/serial_common.Tpo $(DEPDIR)/serial_common.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='../common/serial_common.c' object='serial_common.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o serial_common.o `test -f '../common/serial_common.c' || echo '$(srcdir)/'`../common/serial_common.c
+
+serial_common.obj: ../common/serial_common.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT serial_common.obj -MD -MP -MF $(DEPDIR)/serial_common.Tpo -c -o serial_common.obj `if test -f '../common/serial_common.c'; then $(CYGPATH_W) '../common/serial_common.c'; else $(CYGPATH_W) '$(srcdir)/../common/serial_common.c'; fi`
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/serial_common.Tpo $(DEPDIR)/serial_common.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='../common/serial_common.c' object='serial_common.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o serial_common.obj `if test -f '../common/serial_common.c'; then $(CYGPATH_W) '../common/serial_common.c'; else $(CYGPATH_W) '$(srcdir)/../common/serial_common.c'; fi`
 
 devices.o: ../common/devices.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT devices.o -MD -MP -MF $(DEPDIR)/devices.Tpo -c -o devices.o `test -f '../common/devices.c' || echo '$(srcdir)/'`../common/devices.c

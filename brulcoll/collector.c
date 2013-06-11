@@ -45,6 +45,7 @@
 #include <errno.h>
 #include <time.h>
 #include <signal.h>
+#include <termios.h>
 #include <event2/dns.h>
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
@@ -1098,7 +1099,7 @@ int main(int argc, char **argv)
 {
 	extern char *optarg;
 	extern int optind;
-	int ch;
+	int ch, fd;
 	char *buf;
 	char *conffile = SYSCONFDIR "/" BRULCOLL_CONFIG_FILE;
 	struct event *ev;
@@ -1177,9 +1178,6 @@ int main(int argc, char **argv)
 			LOG(LOG_FATAL, "Error reading config file, brultech section");
 	}
 	brulnet_conn = smalloc(connection_t);
-	brulnet_conn->port = cfg_getint(brultech_c, "port");
-	brulnet_conn->type = CONN_TYPE_BRUL;
-	brulnet_conn->host = cfg_getstr(brultech_c, "hostname");
 	buf = cfg_getstr(brulcoll_c, "tscale");
 	switch (*buf) {
 	case 'C':
@@ -1194,8 +1192,32 @@ int main(int argc, char **argv)
 	}
 	brulnet_conn->mode = BRUL_MODE_NONE;
 	brulnet_conn->pkttype = cfg_getint(brulcoll_c, "pkttype");
-	connect_server_cb(0, 0, brulnet_conn);
-	brul_setup_gem(brulnet_conn);
+	if (cfg_getint(brultech_c, "connection") == BRUL_COMM_NET) {
+		brulnet_conn->port = cfg_getint(brultech_c, "port");
+		brulnet_conn->type = CONN_TYPE_BRUL;
+		brulnet_conn->host = cfg_getstr(brultech_c, "hostname");
+		connect_server_cb(0, 0, brulnet_conn);
+	} else if (cfg_getint(brultech_c, "connection") == BRUL_COMM_SERIAL) {
+		if (cfg_getstr(brultech_c, "serialdev") == NULL)
+			LOG(LOG_FATAL, "Serial device not set in conf file");
+		fd = serial_connect(cfg_getstr(brultech_c, "serialdev"),
+				    B19200, CS8|CREAD|CLOCAL);
+		brulnet_conn->bev = bufferevent_socket_new(base, fd,
+					    BEV_OPT_CLOSE_ON_FREE);
+		brulnet_conn->type = CONN_TYPE_BRUL;
+		bufferevent_setcb(brulnet_conn->bev, brul_buf_read_cb,
+				  NULL, serial_eventcb, brulnet_conn);
+		bufferevent_enable(brulnet_conn->bev, EV_READ|EV_WRITE);
+	} else {
+		LOG(LOG_FATAL, "No connection type specified, punting");
+	}
+
+	if (cfg_getint(brultech_c, "model") == BRUL_MODEL_GEM)
+		brul_setup_gem(brulnet_conn);
+	else if (cfg_getint(brultech_c, "model") == BRUL_MODEL_ECM1240)
+		brul_setup_ecm(brulnet_conn);
+	else
+		LOG(LOG_FATAL, "No model specified, punting");
 
 	parse_devices(cfg);
 

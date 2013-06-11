@@ -5,6 +5,7 @@ bin_PROGRAMS = brulcoll
 
 brulcoll_SOURCES = \
 	../common/common.c \
+	../common/serial_common.c \
 	../common/devices.c \
 	../common/netparser.c \
 	../common/confparser.c \
