@@ -37,7 +37,13 @@
 #include <string.h>
 #include <errno.h>
 #include <time.h>
-#include <sys/queue.h>
+#include <sys/time.h>
+#ifdef __linux__
+ #include "../linux/queue.h"
+ #include "../linux/time.h"
+#else
+ #include <sys/queue.h>
+#endif
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
 #include <event2/event.h>

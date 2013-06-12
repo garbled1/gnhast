@@ -12,4 +12,12 @@ brulcoll_SOURCES = \
 	../common/gncoll.c \
 	collector.c
 
+if NEED_RBTREE
+brulcoll_SOURCES += \
+	../linux/bswap16.c \
+	../linux/bswap32.c \
+	../linux/bswap64.c \
+	../linux/rb.c
+endif
+
 brulcoll_LDADD = -L../libconfuse -lconfuse

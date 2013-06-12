@@ -10,4 +10,12 @@ wupwscoll_SOURCES = \
 	../common/collcmd.c \
 	collector.c
 
+if NEED_RBTREE
+wupwscoll_SOURCES += \
+	../linux/bswap16.c \
+	../linux/bswap32.c \
+	../linux/bswap64.c \
+	../linux/rb.c
+endif
+
 wupwscoll_LDADD = -L../libconfuse -lconfuse

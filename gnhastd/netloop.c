@@ -45,7 +45,11 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <sys/queue.h>
-#include <sys/rbtree.h>
+#ifdef HAVE_SYS_RBTREE_H
+ #include <sys/rbtree.h>
+#else
+ #include "../linux/rbtree.h"
+#endif
 #include <event2/event.h>
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>

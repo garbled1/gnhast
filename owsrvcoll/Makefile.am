@@ -11,4 +11,12 @@ owsrvcoll_SOURCES = \
 	../common/gncoll.c \
 	collector.c
 
+if NEED_RBTREE
+owsrvcoll_SOURCES += \
+	../linux/bswap16.c \
+	../linux/bswap32.c \
+	../linux/bswap64.c \
+	../linux/rb.c
+endif
+
 owsrvcoll_LDADD = -L../libconfuse -lconfuse

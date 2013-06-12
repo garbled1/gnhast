@@ -14,4 +14,12 @@ gnhastd_SOURCES = \
 	script_handler.c \
 	gnhastd.c
 
+if NEED_RBTREE
+gnhastd_SOURCES += \
+	../linux/bswap16.c \
+	../linux/bswap32.c \
+	../linux/bswap64.c \
+	../linux/rb.c
+endif
+
 gnhastd_LDADD = -L../libconfuse -lconfuse

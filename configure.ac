@@ -34,6 +34,7 @@ AC_CHECK_LIB(event_core, event_base_new,, AC_MSG_ERROR(["Unable to find libevent
 AC_CHECK_LIB(event_extra, evdns_base_new,, AC_MSG_ERROR(["Unable to find libevent2 extra"]))
 AC_CHECK_LIB(event_openssl, bufferevent_get_openssl_error,, AC_MSG_ERROR(["Unable to find libevent2 openssl"]))
 AC_CHECK_LIB(ssl, SSL_CTX_new,,AC_MSG_ERROR(["Unable to find openSSL library"]))
+AC_CHECK_LIB(crypto, RAND_poll,,AC_MSG_ERROR(["Unable to find crypto library"]))
 AC_CHECK_LIB(m, lrint,,AC_MSG_ERROR(["Unable to find math library"]))
 #AC_CHECK_LIB(rrd, rrd_create,,AC_MSG_ERROR(["Unable to find rrd library"]))
 #AC_CHECK_LIB(event_pthreads, evthread_use_pthreads,, AC_MSG_ERROR(["Unable to find libevent2 pthreads"]))
@@ -50,6 +51,12 @@ AC_HEADER_TIME
 AC_CHECK_FUNCS([gethostbyaddr gettimeofday inet_ntoa \
 	memset select socket strcspn strrchr strcasecmp \
 	strdup strndup])
+
+# Check for BSD rbtree implementation
+AC_CHECK_FUNC(rb_tree_init, [HAVE_RBTREE=1],)
+AC_CHECK_FUNC(getprogname, , AC_CHECK_LIB(bsd, getprogname,, AC_MSG_ERROR(["No libbsd compat lib"])))
+AM_CONDITIONAL([NEED_RBTREE], [test "x$HAVE_RBTREE" = x])
+AC_CHECK_FUNC(clock_gettime, , AC_CHECK_LIB(rt, clock_gettime,, AC_MSG_ERROR(["No librt"])))
 
 AC_CONFIG_FILES([Makefile \
 		 gnhastd/Makefile \

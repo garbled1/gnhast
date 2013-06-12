@@ -10,4 +10,12 @@ wmr918coll_SOURCES = \
 	../common/gncoll.c \
 	collector.c
 
+if NEED_RBTREE
+wmr918coll_SOURCES += \
+	../linux/bswap16.c \
+	../linux/bswap32.c \
+	../linux/bswap64.c \
+	../linux/rb.c
+endif
+
 wmr918coll_LDADD = -L../libconfuse -lconfuse

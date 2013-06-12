@@ -166,11 +166,7 @@ void _bailout(char *file, int line)
 	char *pname;
 	extern int errno;
 
-#if defined(__NetBSD__)
 	pname = (char *)getprogname();
-#elif defined(__linux__)
-	pname = program_invocation_name;
-#endif
 
 	/* the fprintf catches cases where malloc failed, as it will
 	   likely fail again in LOG() */

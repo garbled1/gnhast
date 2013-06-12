@@ -1,6 +1,10 @@
 #ifndef _BRULTECH_H_
 #define _BRULTECH_H_
 
+#ifndef __packed
+#define __packed __attribute__((packed))
+#endif
+
 #define COLLECTOR_NAME		"brulcoll"
 #define BRULCOLL_CONFIG_FILE	"brulcoll.conf"
 #define BRULCOLL_LOG_FILE	"brulcoll.log"

@@ -38,15 +38,19 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/queue.h>
-#include <sys/rbtree.h>
+#ifdef HAVE_SYS_RBTREE_H
+ #include <sys/rbtree.h>
+#else
+ #include "../linux/rbtree.h"
+#endif
 
 #include "gnhast.h"
 #include "common.h"
 #include "confparser.h"
 
 int nrofdevs;
-rb_tree_t devices;
-rb_tree_t devgroups;
+static rb_tree_t devices;
+static rb_tree_t devgroups;
 TAILQ_HEAD(, _device_t) alldevs = TAILQ_HEAD_INITIALIZER(alldevs);
 
 static int compare_device_byuid(void *ctx, const void *a, const void *b);

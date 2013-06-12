@@ -33,7 +33,12 @@
 #define _GNHAST_H_
 /* need queue.h for the devices */
 #include <sys/queue.h>
-#include <sys/rbtree.h>
+
+#ifdef HAVE_SYS_RBTREE_H
+ #include <sys/rbtree.h>
+#else
+ #include "../linux/rbtree.h"
+#endif
 
 /* For the timeval */
 #include <sys/time.h>
