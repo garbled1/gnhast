@@ -734,7 +734,8 @@ void cb_sigterm(int fd, short what, void *arg)
 	LOG(LOG_NOTICE, "Recieved SIGTERM, shutting down");
 	gnhastd_conn->shutdown = 1;
 	gn_disconnect(gnhastd_conn->bev);
-	bufferevent_free(rrdc_conn->bev);
+	if (rrdc_conn && rrdc_conn->bev)
+		bufferevent_free(rrdc_conn->bev);
 	ev = evtimer_new(base, cb_shutdown, NULL);
 	evtimer_add(ev, &secs);
 }
@@ -871,5 +872,8 @@ int main(int argc, char **argv)
 	event_base_dispatch(base);
 
 	closelog();
+	cfg_free(cfg);
+	evdns_base_free(dns_base, 0);
+	event_base_free(base);
 	return(0);
 }

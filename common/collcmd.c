@@ -123,13 +123,13 @@ int cmd_register(pargs_t *args, void *arg)
 	for (i=0; args[i].cword != -1; i++) {
 		switch (args[i].cword) {
 		case SC_UID:
-			uid = strdup(args[i].arg.c);
+			uid = args[i].arg.c;
 			break;
 		case SC_NAME:
-			name = strdup(args[i].arg.c);
+			name = args[i].arg.c;
 			break;
 		case SC_RRDNAME:
-			rrdname = strndup(args[i].arg.c, 19);
+			rrdname = args[i].arg.c;
 			break;
 		case SC_DEVTYPE:
 			devtype = (uint8_t)args[i].arg.i;
@@ -145,10 +145,6 @@ int cmd_register(pargs_t *args, void *arg)
 
 	if (uid == NULL) {
 		LOG(LOG_ERROR, "Got register command without UID");
-		if (name != NULL)
-			free(name);
-		if (rrdname != NULL)
-			free(rrdname);
 		return -1; /* MUST have UID */
 	}
 
@@ -168,12 +164,16 @@ int cmd_register(pargs_t *args, void *arg)
 		if (rrdname == NULL)
 			rrdname = strndup(name, 19);
 		dev = smalloc(device_t);
-		dev->uid = uid;
+		dev->uid = strdup(uid);
 		new = 1;
 	} else
 		LOG(LOG_DEBUG, "Updating existing device uid:%s", uid);
-	dev->name = name;
-	dev->rrdname = rrdname;
+	if (dev->name != NULL)
+		free(dev->name);
+	dev->name = strdup(name);
+	if (dev->rrdname != NULL)
+		free(dev->rrdname);
+	dev->rrdname = strndup(rrdname, 19);
 	dev->type = devtype;
 	dev->proto = proto;
 	dev->subtype = subtype;

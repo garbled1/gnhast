@@ -281,13 +281,15 @@ void writepidfile(char *filename)
 	if (buf == NULL) {
 		buf = safer_malloc(64 + strlen(filename));
 		sprintf(buf, "%s/run/%s", LOCALSTATEDIR, filename);
-		madebuf++;
+		madebuf = 1;
 	}
 
 	l = fopen(buf, "w");
 	if (l == NULL) {
 		LOG(LOG_WARNING, "Cannot open pidfile: %s, %s\n", 
 		    buf, strerror(errno));
+		if (madebuf)
+			free(buf);
 		return;
 	}
 	mypid = getpid();

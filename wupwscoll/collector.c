@@ -211,7 +211,7 @@ void create_calcdata(void)
 	int i, j;
 	char *uid;
 
-	for (i = 0; i < cfg_size(cfg, "pwsdev"); i++) {
+	for (i = 0, j = 0; i < cfg_size(cfg, "pwsdev"); i++) {
 		pwsdev = cfg_getnsec(cfg, "pwsdev", i);
 		uid = cfg_getstr(pwsdev, "uid");
 		if (uid == NULL)
@@ -379,12 +379,16 @@ void request_cb(struct evhttp_request *req, void *arg)
 	len = evbuffer_get_length(data);
 	LOG(LOG_DEBUG, "input buf len= %d", len);
 	buf = evbuffer_pullup(data, len);
-	LOG(LOG_DEBUG, "input buf: %s", buf);
-	result1 = strcasestr(buf, "success");
-	result2 = strcasestr(buf, "logged");
+	result1 = result2 = NULL;
+	if (buf) {
+		LOG(LOG_DEBUG, "input buf: %s", buf);
+		result1 = strcasestr(buf, "success");
+		result2 = strcasestr(buf, "logged");
+	}
 	if (result1 == NULL && result2 == NULL) {
 		LOG(LOG_ERROR, "Data not sent! Check password/ID");
-		LOG(LOG_ERROR, "Message from server follows:\n%s", buf);
+		if (buf)
+			LOG(LOG_ERROR, "Message from server follows:\n%s", buf);
 	}
 	evbuffer_drain(data, len); /* toss it */
 }
@@ -408,7 +412,7 @@ void wupws_connect(int fd, short what, void *arg)
 	device_t *dev;
 	double data;
 
-	uri = evhttp_uri_new();
+	//uri = evhttp_uri_new();
 
 	switch (cfg_getint(wupws_c, "pwstype")) {
 	case PWS_WUNDERGROUND:
@@ -496,6 +500,7 @@ void wupws_connect(int fd, short what, void *arg)
 	evhttp_add_header(req->output_headers, "Host",
 			  evhttp_uri_get_host(uri));
 	free(query);
+	evhttp_uri_free(uri);
 }
 
 /**
@@ -788,5 +793,8 @@ int main(int argc, char **argv)
 	event_base_dispatch(base);
 
 	closelog();
+	cfg_free(cfg);
+	evdns_base_free(dns_base, 0);
+	event_base_free(base);
 	return(0);
 }
