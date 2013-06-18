@@ -6,11 +6,18 @@
 #define WUPWSCOLL_PID_FILE	"wupwscoll.pid"
 #define COLLECTOR_NAME		"wupwscoll"
 
-#define WUPWS_DEBUG	"http://127.0.0.1/update"
-#define WUPWS_DEBUG2	"http://127.0.0.1/rapid"
-#define WUPWS_URL	"http://weatherstation.wunderground.com/weatherstation/updateweatherstation.php"
-#define WUPWS_RAPID	"http://rtupdate.wunderground.com/weatherstation/updateweatherstation.php"
-#define WUPWS_PWS	"http://www.pwsweather.com/pwsupdate/pwsupdate.php"
+#define WUPWS_DEBUG_URL		"http://127.0.0.1"
+#define WUPWS_DEBUG_PATH	"/debug"
+#define WUPWS_DEBUG_RAPID	"/rapid"
+
+#define WUPWS_URL		"http://weatherstation.wunderground.com"
+#define WUPWS_PATH		"/weatherstation/updateweatherstation.php"
+
+#define WUPWS_RAPID_URL		"http://rtupdate.wunderground.com"
+#define WUPWS_RAPID_PATH	"/weatherstation/updateweatherstation.php"
+
+#define WUPWS_PWS_URL		"http://www.pwsweather.com"
+#define WUPWS_PWS_PATH		"/pwsupdate/pwsupdate.php"
 
 #define CALCDATA_AVG	1
 #define CALCDATA_DIFF	2

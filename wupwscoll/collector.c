@@ -412,24 +412,29 @@ void wupws_connect(int fd, short what, void *arg)
 	device_t *dev;
 	double data;
 
-	//uri = evhttp_uri_new();
+	query = safer_malloc(4096); /* alloc a big buffer */
 
 	switch (cfg_getint(wupws_c, "pwstype")) {
 	case PWS_WUNDERGROUND:
-		if (cfg_getint(wupws_c, "rapidfire") == 1)
-			uri = evhttp_uri_parse(WUPWS_RAPID);
-		else
+		if (cfg_getint(wupws_c, "rapidfire") == 1) {
+			uri = evhttp_uri_parse(WUPWS_RAPID_URL);
+			sprintf(query, "%s?", WUPWS_RAPID_PATH);
+		} else {
 			uri = evhttp_uri_parse(WUPWS_URL);
+			sprintf(query, "%s?", WUPWS_PATH);
+		}
 		break;
 	case PWS_PWSWEATHER:
-		uri = evhttp_uri_parse(WUPWS_PWS);
+		uri = evhttp_uri_parse(WUPWS_PWS_URL);
+		sprintf(query, "%s?", WUPWS_PWS_PATH);
 		break;
 	case PWS_DEBUG: /* no breaking people's stuff */
 	default:
+		uri = evhttp_uri_parse(WUPWS_DEBUG_URL);
 		if (cfg_getint(wupws_c, "rapidfire") == 1)
-			uri = evhttp_uri_parse(WUPWS_DEBUG2);
+			sprintf(query, "%s?", WUPWS_DEBUG_RAPID);
 		else
-			uri = evhttp_uri_parse(WUPWS_DEBUG);
+			sprintf(query, "%s?", WUPWS_DEBUG_PATH);
 		break;
 	}
 
@@ -438,12 +443,13 @@ void wupws_connect(int fd, short what, void *arg)
 		return;
 	}
 
-	query = safer_malloc(4096); /* alloc a big buffer */
 
-	sprintf(query, "%sID=%s&PASSWORD=%s&dateutc=",
+	sprintf(buf, "%sID=%s&PASSWORD=%s&dateutc=",
 		cfg_getint(wupws_c, "pwstype") == PWS_WUNDERGROUND ?
 		"action=updateraw&" : "", cfg_getstr(wupws_c, "pwsid"),
 		cfg_getstr(wupws_c, "pwspasswd"));
+
+	strcat(query, buf);
 
 	time(&rawtime);
 	utc = gmtime(&rawtime);
@@ -469,7 +475,7 @@ void wupws_connect(int fd, short what, void *arg)
 		sprintf(buf, "&%s=%0.3f", cfg_title(pwsdev), data);
 		strcat(query, buf);
 	}
-	sprintf(buf, "&softwaretype=gnhast/%s", VERSION);
+	sprintf(buf, "&softwaretype=gnhast-%s", VERSION);
 	strcat(query, buf);
 	if (cfg_getint(wupws_c, "pwstype") == PWS_PWSWEATHER) {
 		sprintf(buf, "&action=updateraw");
@@ -481,8 +487,6 @@ void wupws_connect(int fd, short what, void *arg)
 		}
 	}
 	LOG(LOG_DEBUG, "Generated PWS String:\n%s", query);
-	if (evhttp_uri_set_query(uri, query) != 0)
-		LOG(LOG_ERROR, "Bad query string: %s", query);
 
 	evhttp_uri_set_port(uri, 80);
 
@@ -495,8 +499,7 @@ void wupws_connect(int fd, short what, void *arg)
 						     evhttp_uri_get_port(uri));
 	
 	req = evhttp_request_new(request_cb, NULL);
-	evhttp_make_request(http_cn, req, EVHTTP_REQ_GET,
-			    evhttp_uri_get_query(uri));
+	evhttp_make_request(http_cn, req, EVHTTP_REQ_GET, query);
 	evhttp_add_header(req->output_headers, "Host",
 			  evhttp_uri_get_host(uri));
 	free(query);

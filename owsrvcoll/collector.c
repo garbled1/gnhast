@@ -388,7 +388,9 @@ void ows_buf_read_cb(struct bufferevent *in, void *arg)
 		goto readcbout;
 	}
 	if (msg.ret < 0)
-		LOG(LOG_ERROR, "Got bad return code from %s: %d",	
+		LOG(LOG_ERROR, "Got bad return code from %s: %d."
+		    " curuid: %s",
+		    conn->current_dev ? conn->current_dev->uid : "none",
 		    conntype[conn->type], ntohl(msg.ret));
 
 	itmp = (int32_t)ntohl(msg.control_flags);
@@ -406,7 +408,7 @@ void ows_buf_read_cb(struct bufferevent *in, void *arg)
 	}
 
 	if (msg.payload < 1) {
-		LOG(LOG_WARNING, "Got message with no payload from %s",
+		LOG(LOG_ERROR, "Got message with no payload from %s",
 		    conntype[conn->type]);
 		goto readcbout;
 	}
