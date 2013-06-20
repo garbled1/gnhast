@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * Copyright (c) 2013
  *      Tim Rightnour.  All rights reserved.
@@ -151,6 +149,7 @@ int cmd_update(pargs_t *args, void *arg)
 	for (i=0; args[i].cword != -1; i++) {
 		switch (args[i].cword) {
 		case SC_SWITCH:
+		case SC_WEATHER:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.i);
 			break;
 		case SC_LUX:
@@ -226,6 +225,7 @@ int cmd_change(pargs_t *args, void *arg)
 
 	for (i=0; args[i].cword != -1; i++) {
 		switch (args[i].cword) {
+		case SC_WEATHER:
 		case SC_SWITCH:
 			evbuffer_add_printf(send, " %s:%d",
 					    ARGNM(args[i].cword),

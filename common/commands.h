@@ -82,6 +82,7 @@ enum SC_COMMANDS {
 	SC_RAINRATE,	/**< \brief rainrate */
 	SC_CLIENT,	/**< \brief client name */
 	SC_SCALE,	/**< \brief scale (temp scale, baro, etc) */
+	SC_WEATHER,	/**< \brief weather status */
 };
 
 /* commands */

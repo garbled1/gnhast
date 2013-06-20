@@ -221,6 +221,7 @@ int cmd_update(pargs_t *args, void *arg)
 	for (i=0; args[i].cword != -1; i++) {
 		switch (args[i].cword) {
 		case SC_SWITCH:
+		case SC_WEATHER:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.i);
 			break;
 		case SC_LUX:

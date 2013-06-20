@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * Copyright (c) 2013
  *      Tim Rightnour.  All rights reserved.
@@ -77,6 +75,7 @@ argtable_t argtable[] = {
 	{"rain", SC_RAINRATE, PTDOUBLE},
 	{"client", SC_CLIENT, PTCHAR},
 	{"scale", SC_SCALE, PTINT},
+	{"weather", SC_WEATHER, PTINT},
 };
 
 /** \brief size of the args table */ 
@@ -152,6 +151,7 @@ int find_arg_bydev(device_t *dev)
 	case SUBTYPE_WATT: return find_arg_byid(SC_WATT); break;
 	case SUBTYPE_AMPS: return find_arg_byid(SC_AMPS); break;
 	case SUBTYPE_RAINRATE: return find_arg_byid(SC_RAINRATE); break;
+	case SUBTYPE_WEATHER: return find_arg_byid(SC_WEATHER); break;
 	}
 	return -1;
 }

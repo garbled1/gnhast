@@ -321,6 +321,8 @@ int conf_parse_subtype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		*(int *)result = SUBTYPE_AMPS;
 	else if (strcmp(value, "rainrate") == 0)
 		*(int *)result = SUBTYPE_RAINRATE;
+	else if (strcmp(value, "weather") == 0)
+		*(int *)result = SUBTYPE_WEATHER;
 	else {
 		cfg_error(cfg, "invalid value for option '%s': %s",
 		    cfg_opt_name(opt), value);
@@ -396,6 +398,9 @@ void conf_print_subtype(cfg_opt_t *opt, unsigned int index, FILE *fp)
 		break;
 	case SUBTYPE_RAINRATE:
 		fprintf(fp, "rainrate");
+		break;
+	case SUBTYPE_WEATHER:
+		fprintf(fp, "weather");
 		break;
 	default:
 		fprintf(fp, "NONE");
@@ -760,8 +765,8 @@ cfg_t *new_conf_from_dev(cfg_t *cfg, device_t *dev)
 {
 	cfg_opt_t *option;
 	cfg_t *devconf;
-	double d;
-	uint32_t u;
+	double d=0;
+	uint32_t u=0;
 
 	devconf = find_devconf_byuid(cfg, dev->uid);
 	if (devconf == NULL) {

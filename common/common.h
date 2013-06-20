@@ -34,6 +34,9 @@
 #define BETOH32(x)	((LITTLE_E) ? bswap32(x) : x)
 #define BETOH16(x)	((LITTLE_E) ? bswap16(x) : x)
 
+#define BCDHI(x)	((x & 0xF0)/16)
+#define BCDLO(x)	((x & 0xF)%16)
+
 #define CTOF(x)		((x * 1.8) + 32.0)
 #define FTOC(x)		((x - 32.0) / 1.8)
 #define CTOK(x)		(x + 273.15)

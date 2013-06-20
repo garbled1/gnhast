@@ -81,12 +81,11 @@ extern TAILQ_HEAD(, _device_t) alldevs;
 struct event_base *base;
 struct evdns_base *dns_base;
 
-#define CONN_TYPE_WX200D       	1
-#define CONN_TYPE_WMRSERIAL	2
-#define CONN_TYPE_GNHASTD	3
-char *conntype[4] = {
+
+char *conntype[5] = {
 	"none",
 	"wx200d",
+	"wx200_serial",
 	"wmr918_serial",
 	"gnhastd",
 };
@@ -148,8 +147,14 @@ static int conf_parse_conntype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 {
 	if (strcasecmp(value, "net") == 0)
 		*(int *)result = CONN_TYPE_WX200D;
-	else if (strcmp(value,"serial") == 0)
+	else if (strcasecmp(value, "wx200d") == 0)
+		*(int *)result = CONN_TYPE_WX200D;
+	else if (strcmp(value,"wmr918") == 0)
 		*(int *)result = CONN_TYPE_WMRSERIAL;
+	else if (strcmp(value,"wx200") == 0)
+		*(int *)result = CONN_TYPE_WX200SERIAL;
+	else if (strcmp(value,"wx200serial") == 0)
+		*(int *)result = CONN_TYPE_WX200SERIAL;
 	else {
 		cfg_error(cfg, "invalid value for option '%s': %s",
 		    cfg_opt_name(opt), value);
@@ -166,13 +171,16 @@ static void conf_print_conntype(cfg_opt_t *opt, unsigned int index, FILE *fp)
 {
 	switch (cfg_opt_getnint(opt, index)) {
 	case CONN_TYPE_WX200D:
-		fprintf(fp, "net");
+		fprintf(fp, "wx200d");
 		break;
 	case CONN_TYPE_WMRSERIAL:
-		fprintf(fp, "serial");
+		fprintf(fp, "wmr918");
+		break;
+	case CONN_TYPE_WX200SERIAL:
+		fprintf(fp, "wx200");
 		break;
 	default:
-		fprintf(fp, "net");
+		fprintf(fp, "wx200d");
 		break;
 	}
 }
@@ -245,16 +253,72 @@ void update_dev(double val, char *suffix)
 }
 
 /**
-   \brief check if the conf is ready to dump, and do so if needed
+   \brief Create a new integer dev with subtype, value, and uid suffix
+   \param subtype SUBTYPE_*
+   \param val current reading
+   \param suffix a uid suffix
+   \return device_t of new dev
 */
 
-void maybe_dump_conf(void)
+device_t *new_int_dev(int subtype, int val, char *suffix)
+{
+	char buf[256];
+	device_t *dev;
+
+	sprintf(buf, "%s-%s", uidprefix, suffix);
+	dev = new_dev_from_conf(cfg, buf);
+	if (dev == NULL) {
+		dev = smalloc(device_t);
+		dev->uid = strdup(buf);
+		dev->loc = strdup(buf);
+		dev->type = DEVICE_SENSOR;
+		dev->proto = PROTO_SENSOR_WMR918;
+		dev->subtype = subtype;
+		(void)new_conf_from_dev(cfg, dev);
+	}
+	insert_device(dev);
+	store_data_dev(dev, DATALOC_DATA, &val);
+	if (dumpconf == NULL && dev->name != NULL) {
+		gn_register_device(dev, gnhastd_conn->bev);
+		gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
+	}
+	return dev;
+}
+
+/**
+   \brief Update a integer device
+   \param val current reading
+   \param suffix a uid suffix
+*/
+
+void update_int_dev(int val, char *suffix)
+{
+	char buf[256];
+	device_t *dev;
+
+	sprintf(buf, "%s-%s", uidprefix, suffix);
+	dev = find_device_byuid(buf);
+	if (dev == NULL)
+		LOG(LOG_FATAL, "Cannot find dev %s", buf);
+	store_data_dev(dev, DATALOC_DATA, &val);
+	if (dev->name)
+		gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
+}
+
+
+/**
+   \brief check if the conf is ready to dump, and do so if needed
+   \param forcedump force the dump
+*/
+
+void maybe_dump_conf(int forcedump)
 {
 	int i;
 	cfg_opt_t *a;
 	cfg_t *section;
 
-	if (dumpconf != NULL && gotdata == DGROUP_ALL) {
+	if ((forcedump && dumpconf != NULL) ||
+	    (dumpconf != NULL && gotdata == DGROUP_ALL)) {
 		LOG(LOG_NOTICE, "Dumping config file to %s and exiting",
 		    dumpconf);
 		for (i=0; i < cfg_size(cfg, "wmr918"); i++) {
@@ -400,7 +464,7 @@ void wx2_handle_time(uint8_t *data)
 {
 	LOG(LOG_DEBUG, "Time data: %0.2X:%0.2X:%0.2X", data[3],
 	    data[2], data[1]);
-	maybe_dump_conf();
+	maybe_dump_conf(0);
 }
 
 /**
@@ -429,7 +493,7 @@ void wx2_handle_humid(uint8_t *data)
 		update_dev(ih, "inhumid");
 		update_dev(oh, "outhumid");
 	}
-	maybe_dump_conf();
+	maybe_dump_conf(0);
 }
 
 
@@ -455,7 +519,7 @@ void wx2_handle_temp(uint8_t *data)
 		update_dev(itemp, "intemp");
 		update_dev(otemp, "outtemp");
 	}
-	maybe_dump_conf();
+	maybe_dump_conf(0);
 }
 
 /**
@@ -466,9 +530,10 @@ void wx2_handle_temp(uint8_t *data)
 void wx2_handle_baro(uint8_t *data)
 {
 	double idew, odew, local, sealevel;
-	int tscale;
+	int tscale, bscale;
 
 	tscale = cfg_getint(wmr918_c, "tscale");
+	bscale = cfg_getint(wmr918_c, "baroscale");
 
 	local = wx2_calc_baro(data[1], data[2], 0, data[5], 0);
 	sealevel = wx2_calc_baro(data[3], data[4], data[5], data[5], 1);
@@ -489,6 +554,17 @@ void wx2_handle_baro(uint8_t *data)
 	}
 	LOG(LOG_DEBUG, "indoor dewpt %f outdoor %f", idew, odew);
 
+	switch (bscale) {
+	case BAROSCALE_IN:
+		local = BARO_MBTOIN(local);
+		sealevel = BARO_MBTOIN(sealevel);
+		break;
+	case BAROSCALE_MM:
+		local = BARO_MBTOMM(local);
+		sealevel = BARO_MBTOMM(sealevel);
+		break;
+	}
+
 	if ((gotdata & DGROUP_BARO) == 0) {
 		(void)new_dev(SUBTYPE_TEMP, idew, "indew");
 		(void)new_dev(SUBTYPE_TEMP, odew, "outdew");
@@ -500,7 +576,7 @@ void wx2_handle_baro(uint8_t *data)
 		update_dev(local, "localbaro");
 		update_dev(sealevel, "sealevelbaro");
 	}
-	maybe_dump_conf();
+	maybe_dump_conf(0);
 }
 
 /**
@@ -544,7 +620,7 @@ void wx2_handle_rain(uint8_t *data)
 		update_dev(yest, "ydayrain");
 		update_dev(total, "totalrain");
 	}
-	maybe_dump_conf();
+	maybe_dump_conf(0);
 }
 
 /**
@@ -629,7 +705,7 @@ void wx2_handle_wind(uint8_t *data)
 		update_dev(avgdir, "windavgdir");
 		update_dev(windchill, "windchill");
 	}
-	maybe_dump_conf();
+	maybe_dump_conf(0);
 
 }
 
@@ -770,6 +846,594 @@ void wx200d_connect_event_cb(struct bufferevent *ev, short what, void *arg)
 		connect_server_cb(0, 0, conn);
 	}
 }
+
+/*****
+      WMR918/968 Functions
+*****/
+
+/**
+   \brief Calculate WMR918 style temp
+   \param d1 first byte
+   \param d2 second byte
+   \return temp temperature in double, in desired format
+*/
+double wmr_calc_temp(uint8_t d1, uint8_t d2)
+{
+	double temp;
+	uint8_t x;
+	int tscale;
+
+	temp = BCDLO(d1)/10.0 ;
+	temp += BCDHI(d1);
+	temp += BCDLO(d2) * 10.0;
+	temp += (d2 & 0x30) * 100.0;
+
+	if (d2 & 0x80)
+		temp = 0.0-temp;
+
+	tscale = cfg_getint(wmr918_c, "tscale");
+	switch (tscale) {
+	case TSCALE_F:
+		temp = CTOF(temp);
+		break;
+	case TSCALE_K:
+		temp = CTOK(temp);
+		break;
+	}
+	return temp;
+}
+
+/**
+   \brief handle a GROUP_WIND data chunk
+   \param data data block
+*/
+
+void wmr_handle_wind(uint8_t *data)
+{
+	int sscale, tscale, battery;
+	double gust, avg, dir, windchill;
+
+	sscale = cfg_getint(wmr918_c, "speedscale");
+	tscale = cfg_getint(wmr918_c, "tscale");
+
+	LOG(LOG_DEBUG, "head %X/%X, type:%X over %X dir %X,%X spd %X,%X,"
+	    "chill %X/%X cs %X",
+	    data[0], data[1], data[2], data[3], data[4], data[5],
+	    data[6], data[7], data[8], data[9], data[10]);
+
+	battery = (data[3]&0x40);
+
+	dir = BCDLO(data[4]);
+	dir += BCDHI(data[4]) * 10.0;
+	dir += BCDLO(data[5]) * 100.0;
+
+	gust = BCDHI(data[5]) / 10.0;
+	gust += BCDLO(data[6]);
+	gust += BCDHI(data[6]) * 10.0;
+
+	avg = BCDLO(data[7]) / 10.0;
+	avg += BCDHI(data[7]);
+	avg += BCDLO(data[8]) * 10.0;
+
+	windchill = BCDLO(data[9]) + (BCDHI(data[9]) * 10.0);
+	if (data[8] & 0x80)
+		windchill = 0.0 - windchill;
+
+	switch (tscale) {
+	case TSCALE_F: windchill = CTOF(windchill); break;
+	case TSCALE_K: windchill = CTOK(windchill); break;
+	}
+
+	/* speed is natively in m/s */
+	switch (sscale) {
+	case SPEED_KPH:
+		gust = MPHTOKPH(MSTOMPH(gust));
+		avg = MPHTOKPH(MSTOMPH(avg));
+		break;
+	case SPEED_MPH:
+		gust = MSTOMPH(gust);
+		avg = MSTOMPH(avg);
+		break;
+	case SPEED_KNOTS:
+		gust = MPHTOKNOTS(MSTOMPH(gust));
+		avg = MPHTOKNOTS(MSTOMPH(avg));
+		break;
+	}
+
+	LOG(LOG_DEBUG, "gust= %f avg= %f dir= %f wc= %f battery %d", gust, avg,
+	    dir, windchill, battery);
+
+	if ((gotdata & DWMR_WIND) == 0) {
+		(void)new_dev(SUBTYPE_SPEED, gust, "windgust");
+		(void)new_dev(SUBTYPE_SPEED, avg, "windavg");
+		(void)new_dev(SUBTYPE_DIR, dir, "winddir");
+		(void)new_dev(SUBTYPE_TEMP, windchill, "windchill");
+		(void)new_int_dev(SUBTYPE_SWITCH, battery, "windbattery");
+	} else {
+		update_dev(gust, "windgust");
+		update_dev(avg, "windavg");
+		update_dev(dir, "winddir");
+		update_dev(windchill, "windchill");
+		update_int_dev(battery, "windbattery");
+	}
+}
+
+/**
+   \brief handle a thermohygro data chunk
+   \param data data block
+   \param prefix sensor name prefix
+   \param hygro 1 if has hygro sensor
+*/
+
+void wmr_handle_th(uint8_t *data, char *prefix, int hygro)
+{
+	double temp, dewtemp, humid;
+	int channel, battery, tscale, thnum;
+	device_t *dev;
+	char buf[256];
+
+	channel = (data[3]&0xF);
+	battery = (data[3]&0x40);
+	temp = wmr_calc_temp(data[4], data[5]);
+	LOG(LOG_DEBUG, "channel %d battery %d temp %f %X/%X/%X",
+	    channel, battery, temp, data[3], data[4], data[5]);
+
+	if (hygro) {
+		humid = BCDLO(data[6]) + (BCDHI(data[6]) * 10.0);
+		dewtemp = BCDLO(data[7]) + (BCDHI(data[7]) * 10.0);
+		tscale = cfg_getint(wmr918_c, "tscale");
+		switch (tscale) {
+		case TSCALE_F:
+			dewtemp = CTOF(dewtemp);
+			break;
+		case TSCALE_K:
+			dewtemp = CTOK(dewtemp);
+			break;
+		}
+		LOG(LOG_DEBUG, "humid %f dew %f %X/%X", humid, dewtemp,
+		    data[6], data[7]);
+		if (data[2] == WMR_TYPE_MUSH)
+			thnum = DWMR_MUSH;
+		else
+			switch (channel) {
+			case 0: thnum = DWMR_TH0; break;
+			case 1: thnum = DWMR_TH1; break;
+			case 2: thnum = DWMR_TH2; break;
+			case 3: thnum = DWMR_TH3; break;
+			}
+	} else {
+		switch (channel) {
+			case 0: thnum = DWMR_T0; break;
+			case 1: thnum = DWMR_T1; break;
+			case 2: thnum = DWMR_T2; break;
+			case 3: thnum = DWMR_T3; break;
+			}
+	}
+
+	if ((gotdata & thnum) == 0) {
+		sprintf(buf, "%s%dtemp", prefix, channel);
+		(void)new_dev(SUBTYPE_TEMP, temp, buf);
+		sprintf(buf, "%s%dbattery", prefix, channel);
+		(void)new_int_dev(SUBTYPE_SWITCH, battery, buf);
+		if (hygro) {
+			sprintf(buf, "%s%dhumid", prefix, channel);
+			(void)new_dev(SUBTYPE_HUMID, humid, buf);
+			sprintf(buf, "%s%ddew", prefix, channel);
+			(void)new_dev(SUBTYPE_TEMP, dewtemp, buf);
+		}
+		gotdata |= thnum;
+	} else {
+		sprintf(buf, "%s%dtemp", prefix, channel);
+		update_dev(temp, buf);
+		sprintf(buf, "%s%dbattery", prefix, channel);
+		update_int_dev(battery, buf);
+		if (hygro) {
+			sprintf(buf, "%s%dhumid", prefix, channel);
+			update_dev(humid, buf);
+			sprintf(buf, "%s%ddew", prefix, channel);
+			update_dev(dewtemp, buf);
+		}
+	}
+}
+
+
+/**
+   \brief handle a barothermohygro data chunk
+   \param data data block
+   \param prefix sensor name prefix
+*/
+
+void wmr_handle_bth(uint8_t *data)
+{
+	double temp, dewtemp, humid, baro, seabaro, seaoff;
+	int battery, tscale, bscale, wstatus, adcbaro;
+	device_t *dev;
+	char buf[256];
+
+	battery = (data[3]&0x40);
+	temp = wmr_calc_temp(data[4], data[5]);
+	LOG(LOG_DEBUG, "battery %d temp %f %X/%X/%X",
+	    battery, temp, data[3], data[4], data[5]);
+
+	humid = BCDLO(data[6]) + (BCDHI(data[6]) * 10.0);
+	dewtemp = BCDLO(data[7]) + (BCDHI(data[7]) * 10.0);
+	tscale = cfg_getint(wmr918_c, "tscale");
+	switch (tscale) {
+	case TSCALE_F:
+		dewtemp = CTOF(dewtemp);
+		break;
+	case TSCALE_K:
+		dewtemp = CTOK(dewtemp);
+		break;
+	}
+	adcbaro = data[8]; /* not BCD, conv to int */
+
+	seaoff = BCDLO(data[10]) / 10.0;
+	seaoff += BCDHI(data[10]);
+	seaoff += BCDLO(data[11]) * 10.0;
+	seaoff += BCDHI(data[11]) * 100.0;
+
+	/* for baro, adcbaro + 795mb */
+	/* for sealevel baro, adcbaro + crazy (see note 2) */
+	baro = adcbaro + 795.0;
+	if (seaoff < 400.0)
+		seabaro = adcbaro + seaoff + 1000.0;
+	else
+		seabaro = adcbaro + seaoff;
+	bscale = cfg_getint(wmr918_c, "baroscale");
+	switch (bscale) {
+	case BAROSCALE_IN:
+		baro = BARO_MBTOIN(baro);
+		seabaro = BARO_MBTOIN(seabaro);
+		break;
+	case BAROSCALE_MM:
+		baro = BARO_MBTOMM(baro);
+		seabaro = BARO_MBTOMM(seabaro);
+		break;
+	}
+
+	switch (BCDLO(data[9])) {
+	case DWEATHER_SUNNY: wstatus = WEATHER_SUNNY; break;
+	case DWEATHER_PARTCLOUD: wstatus = WEATHER_PARTCLOUD; break;
+	case DWEATHER_CLOUDY: wstatus = WEATHER_CLOUDY; break;
+	case DWEATHER_RAINY: wstatus = WEATHER_RAINY; break;
+	}
+
+	LOG(LOG_DEBUG, "ADCBARO= 0x%X /%X seaoff = %f", adcbaro, data[8], seaoff);
+
+	LOG(LOG_DEBUG, "humid %f dew %f %X/%X", humid, dewtemp, data[6], data[7]);
+
+	if ((gotdata & DWMR_THB) == 0) {
+		(void)new_dev(SUBTYPE_HUMID, humid, "thbhumid");
+		(void)new_dev(SUBTYPE_TEMP, temp, "thbtemp");
+		(void)new_dev(SUBTYPE_TEMP, dewtemp, "thbdew");
+		(void)new_dev(SUBTYPE_PRESSURE, baro, "thblocalbaro");
+		(void)new_dev(SUBTYPE_PRESSURE, seabaro, "thbsealevelbaro");
+		(void)new_int_dev(SUBTYPE_SWITCH, battery, "thbbattery");
+		(void)new_int_dev(SUBTYPE_WEATHER, wstatus, "thbweather");
+	} else {
+		update_dev(humid, "thbhumid");
+		update_dev(temp, "thbtemp");
+		update_dev(dewtemp, "thbdew");
+		update_dev(baro, "thblocalbaro");
+		update_dev(seabaro, "thbsealevelbaro");
+		update_int_dev(battery, "thbbattery");
+		update_int_dev(wstatus, "thbweather");
+	}
+}
+
+/**
+   \brief handle a EXT barothermohygro data chunk
+   \param data data block
+   \param prefix sensor name prefix
+*/
+
+void wmr_handle_extbth(uint8_t *data)
+{
+	double temp, dewtemp, humid, baro, seabaro, seaoff;
+	int battery, tscale, bscale, wstatus, adcbaro;
+	device_t *dev;
+	char buf[256];
+
+	battery = (data[3]&0x40);
+	temp = wmr_calc_temp(data[4], data[5]);
+	LOG(LOG_DEBUG, "battery %d temp %f %X/%X/%X",
+	    battery, temp, data[3], data[4], data[5]);
+
+	humid = BCDLO(data[6]) + (BCDHI(data[6]) * 10.0);
+	dewtemp = BCDLO(data[7]) + (BCDHI(data[7]) * 10.0);
+	tscale = cfg_getint(wmr918_c, "tscale");
+	switch (tscale) {
+	case TSCALE_F:
+		dewtemp = CTOF(dewtemp);
+		break;
+	case TSCALE_K:
+		dewtemp = CTOK(dewtemp);
+		break;
+	}
+	adcbaro = data[8] | ((data[9]&0x1)<<8); /* not BCD, conv to int */
+
+	seaoff = BCDHI(data[10]) / 10.0;
+	seaoff += BCDLO(data[11]);
+	seaoff += BCDHI(data[11]) * 10.0;
+	seaoff += BCDLO(data[12]) * 100.0;
+	seaoff += BCDHI(data[12]) * 1000.0;
+
+	/* for baro, adcbaro + 600mb */
+	/* for sealevel baro, adcbaro + seaoff */
+	baro = adcbaro + 600.0;
+	seabaro = adcbaro + seaoff;
+	bscale = cfg_getint(wmr918_c, "baroscale");
+	switch (bscale) {
+	case BAROSCALE_IN:
+		baro = BARO_MBTOIN(baro);
+		seabaro = BARO_MBTOIN(seabaro);
+		break;
+	case BAROSCALE_MM:
+		baro = BARO_MBTOMM(baro);
+		seabaro = BARO_MBTOMM(seabaro);
+		break;
+	}
+
+	switch (BCDHI(data[9])) {
+	case DWEATHER_SUNNY: wstatus = WEATHER_SUNNY; break;
+	case DWEATHER_PARTCLOUD: wstatus = WEATHER_PARTCLOUD; break;
+	case DWEATHER_CLOUDY: wstatus = WEATHER_CLOUDY; break;
+	case DWEATHER_RAINY: wstatus = WEATHER_RAINY; break;
+	}
+
+	LOG(LOG_DEBUG, "ADCBARO= 0x%X /%X seaoff = %f", adcbaro, data[8], seaoff);
+
+	LOG(LOG_DEBUG, "humid %f dew %f %X/%X", humid, dewtemp, data[6], data[7]);
+
+	if ((gotdata & DWMR_EXTTHB) == 0) {
+		(void)new_dev(SUBTYPE_HUMID, humid, "inhumid");
+		(void)new_dev(SUBTYPE_TEMP, temp, "intemp");
+		(void)new_dev(SUBTYPE_TEMP, dewtemp, "indew");
+		(void)new_dev(SUBTYPE_PRESSURE, baro, "localbaro");
+		(void)new_dev(SUBTYPE_PRESSURE, seabaro, "sealevelbaro");
+		(void)new_int_dev(SUBTYPE_SWITCH, battery, "inthbbattery");
+		(void)new_int_dev(SUBTYPE_WEATHER, wstatus, "inthbweather");
+	} else {
+		update_dev(humid, "inhumid");
+		update_dev(temp, "intemp");
+		update_dev(dewtemp, "indew");
+		update_dev(baro, "localbaro");
+		update_dev(seabaro, "sealevelbaro");
+		update_int_dev(battery, "inthbbattery");
+		update_int_dev(wstatus, "inthbweather");
+	}
+}
+
+
+/**
+   \brief handle a WMR918 rain data chunk
+   \param data data block
+*/
+
+void wmr_handle_rain(uint8_t *data)
+{
+	int lscale, battery;
+	double rate, yest, total;
+
+	lscale = cfg_getint(wmr918_c, "lengthscale");
+
+	battery = (data[3]&0x40);
+
+	rate = BCDLO(data[4]);
+	rate += BCDHI(data[4]) * 10.0;
+	rate += BCDLO(data[5]) * 100.0;
+
+	yest = BCDLO(data[8]);
+	yest += BCDHI(data[8]) * 10.0;
+	yest += BCDLO(data[9]) * 100.0;
+	yest += BCDHI(data[9]) * 1000.0;
+
+	total = BCDHI(data[5]) / 10.0;
+	total += BCDLO(data[6]);
+	total += BCDHI(data[6]) * 10.0;
+	total += BCDLO(data[7]) * 100.0;
+	total += BCDHI(data[7]) * 1000.0;
+	total -= 0.5; /* per http://www.netsky.org/WMR/Protocol.htm note #5 */
+
+	if (lscale == LENGTH_IN) {
+		rate = MMTOIN(rate);
+		yest = MMTOIN(yest);
+		total = MMTOIN(total);
+	}
+
+	LOG(LOG_DEBUG, "rate = %f, yest = %f, total = %f, battery = %d",
+	    rate, yest, total, battery);
+	if ((gotdata & DWMR_RAIN) == 0) {
+		(void)new_dev(SUBTYPE_RAINRATE, rate, "rain");
+		(void)new_dev(SUBTYPE_RAINRATE, yest, "ydayrain");
+		(void)new_dev(SUBTYPE_RAINRATE, total, "totalrain");
+		(void)new_int_dev(SUBTYPE_SWITCH, battery, "rainbattery");
+	} else {
+		update_dev(rate, "rain");
+		update_dev(yest, "ydayrain");
+		update_dev(total, "totalrain");
+		update_int_dev(battery, "rainbattery");
+	}
+}
+
+/**
+   \brief handle a WMR918 time chunk
+   \param data data block
+   \note we really only care about the battery status, punt the rest
+*/
+
+void wmr_handle_clock(uint8_t *data)
+{
+	int battery;
+	static int count;
+
+	battery = (data[3] & 0x80);
+	LOG(LOG_DEBUG, "WMR918 battery status = %d", battery);
+	if ((gotdata & DWMR_MIN) == 0)
+		(void)new_int_dev(SUBTYPE_SWITCH, battery, "mainbattery");
+	else
+		update_int_dev(battery, "mainbattery");
+
+	/* wait 2 minutes, assume all sensors reported, then dump conf */
+	if (dumpconf != NULL) {
+		if (count > 1)
+			maybe_dump_conf(1);
+		count++;
+	}
+}
+
+
+/**
+   \brief wmr918 read callback
+   \param in the bufferevent that fired
+   \param arg the connection_t
+   \note Used for both serial and network connection. (yay wx200d!)
+*/
+
+void wmr_buf_read_cb(struct bufferevent *in, void *arg)
+{
+	connection_t *conn = (connection_t *)arg;
+	size_t len;
+	uint8_t *data, cs;
+	device_t *dev;
+	struct evbuffer *evbuf;
+
+	evbuf = bufferevent_get_input(in);
+	data = evbuffer_pullup(evbuf, 3);
+
+	while (data != NULL && data[0] == 0xff && data[1] == 0xff) {
+		switch (data[2]) {
+		case WMR_TYPE_WIND:
+			LOG(LOG_DEBUG, "WMR wind data recieved");
+			data = evbuffer_pullup(evbuf, WMR_TYPE_WIND_SIZE);
+			if (data == NULL)
+				return; /* too small, wait */
+			cs = wx2_calc_cs(data, WMR_TYPE_WIND_SIZE);
+			if (cs == data[WMR_TYPE_WIND_SIZE-1]) {
+				wmr_handle_wind(data);
+				gotdata |= DWMR_WIND;
+			} else
+				LOG(LOG_ERROR, "WMR wind bad chksum,"
+				    " discarding update!");
+			evbuffer_drain(evbuf, WMR_TYPE_WIND_SIZE);
+			break;
+		case WMR_TYPE_RAIN:
+			LOG(LOG_DEBUG, "WMR rain data recieved");
+			data = evbuffer_pullup(evbuf, WMR_TYPE_RAIN_SIZE);
+			if (data == NULL)
+				return; /* too small, wait */
+			cs = wx2_calc_cs(data, WMR_TYPE_RAIN_SIZE);
+			if (cs == data[WMR_TYPE_RAIN_SIZE-1]) {
+				wmr_handle_rain(data);
+				gotdata |= DWMR_RAIN;
+			} else
+				LOG(LOG_ERROR, "WMR rain bad chksum,"
+				    " discarding update!");
+			evbuffer_drain(evbuf, WMR_TYPE_RAIN_SIZE);
+			break;
+		case WMR_TYPE_TH:
+			LOG(LOG_DEBUG, "WMR thermohygro data recieved");
+			data = evbuffer_pullup(evbuf, WMR_TYPE_TH_SIZE);
+			if (data == NULL)
+				return; /* too small, wait */
+			cs = wx2_calc_cs(data, WMR_TYPE_TH_SIZE);
+			if (cs == data[WMR_TYPE_TH_SIZE-1]) {
+				wmr_handle_th(data, "th", 1);
+			} else
+				LOG(LOG_ERROR, "WMR thermohygro bad chksum,"
+				    " discarding update!");
+			evbuffer_drain(evbuf, WMR_TYPE_TH_SIZE);
+			break;
+		case WMR_TYPE_MUSH:
+			LOG(LOG_DEBUG, "WMR mushroom data recieved");
+			data = evbuffer_pullup(evbuf, WMR_TYPE_MUSH_SIZE);
+			if (data == NULL)
+				return; /* too small, wait */
+			cs = wx2_calc_cs(data, WMR_TYPE_MUSH_SIZE);
+			if (cs == data[WMR_TYPE_MUSH_SIZE-1]) {
+				wmr_handle_th(data, "outside", 1);
+			} else
+				LOG(LOG_ERROR, "WMR mushroom bad chksum,"
+				    " discarding update!");
+			evbuffer_drain(evbuf, WMR_TYPE_MUSH_SIZE);
+			break;
+		case WMR_TYPE_THERM:
+			LOG(LOG_DEBUG, "WMR therm data recieved");
+			data = evbuffer_pullup(evbuf, WMR_TYPE_THERM_SIZE);
+			if (data == NULL)
+				return; /* too small, wait */
+			cs = wx2_calc_cs(data, WMR_TYPE_THERM_SIZE);
+			if (cs == data[WMR_TYPE_THERM_SIZE-1]) {
+				wmr_handle_th(data, "temp", 0);
+			} else
+				LOG(LOG_ERROR, "WMR therm bad chksum,"
+				    " discarding update!");
+			evbuffer_drain(evbuf, WMR_TYPE_THERM_SIZE);
+			break;
+		case WMR_TYPE_THB:
+			LOG(LOG_DEBUG, "WMR thermohygrobaro data recieved");
+			data = evbuffer_pullup(evbuf, WMR_TYPE_THB_SIZE);
+			if (data == NULL)
+				return; /* too small, wait */
+			cs = wx2_calc_cs(data, WMR_TYPE_THB_SIZE);
+			if (cs == data[WMR_TYPE_THB_SIZE-1]) {
+				wmr_handle_bth(data);
+				gotdata |= DWMR_THB;
+			} else
+				LOG(LOG_ERROR, "WMR thermohygrobaro bad "
+				    "chksum, discarding update!");
+			evbuffer_drain(evbuf, WMR_TYPE_THB_SIZE);
+			break;
+		case WMR_TYPE_MIN:
+			LOG(LOG_DEBUG, "WMR minute data recieved");
+			data = evbuffer_pullup(evbuf, WMR_TYPE_MIN_SIZE);
+			if (data == NULL)
+				return; /* too small, wait */
+			cs = wx2_calc_cs(data, WMR_TYPE_MIN_SIZE);
+			if (cs == data[WMR_TYPE_MIN_SIZE-1]) {
+				wmr_handle_clock(data);
+				gotdata |= DWMR_MIN;
+			} else
+				LOG(LOG_ERROR, "WMR minute bad chksum,"
+				    " discarding update!");
+			evbuffer_drain(evbuf, WMR_TYPE_MIN_SIZE);
+			break;
+		case WMR_TYPE_CLOCK:
+			LOG(LOG_DEBUG, "WMR clock data recieved");
+			data = evbuffer_pullup(evbuf, WMR_TYPE_CLOCK_SIZE);
+			if (data == NULL)
+				return; /* too small, wait */
+			cs = wx2_calc_cs(data, WMR_TYPE_CLOCK_SIZE);
+			if (cs == data[WMR_TYPE_CLOCK_SIZE-1]) {
+				wmr_handle_clock(data);
+				gotdata |= DWMR_CLOCK;
+			} else
+				LOG(LOG_ERROR, "WMR clock bad chksum,"
+				    " discarding update!");
+			evbuffer_drain(evbuf, WMR_TYPE_CLOCK_SIZE);
+			break;
+		case WMR_TYPE_EXTTHB:
+			LOG(LOG_DEBUG, "WMR external thermohygrobaro data "
+			    "recieved");
+			data = evbuffer_pullup(evbuf, WMR_TYPE_EXTTHB_SIZE);
+			if (data == NULL)
+				return; /* too small, wait */
+			cs = wx2_calc_cs(data, WMR_TYPE_EXTTHB_SIZE);
+			if (cs == data[WMR_TYPE_EXTTHB_SIZE-1]) {
+				wmr_handle_extbth(data);
+				gotdata |= DWMR_EXTTHB;
+			} else
+				LOG(LOG_ERROR, "WMR external thermohygrobaro"
+				    " bad chksum, discarding update!");
+			evbuffer_drain(evbuf, WMR_TYPE_EXTTHB_SIZE);
+			break;
+		}
+		data = evbuffer_pullup(evbuf, 3);
+	}
+	return;
+}
+
 
 /*****
       General routines/gnhastd connection stuff
@@ -1048,14 +1712,33 @@ int main(int argc, char **argv)
 	connect_server_cb(0, 0, gnhastd_conn);
 	gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
 
-	if (cfg_getint(wmr918_c, "conntype") == CONN_TYPE_WX200D) {
+	switch (cfg_getint(wmr918_c, "conntype")) {
+	case CONN_TYPE_WX200D:
 		wx200d_conn = smalloc(connection_t);
 		wx200d_conn->port = cfg_getint(wmr918_c, "port");
 		wx200d_conn->type = CONN_TYPE_WX200D;
 		wx200d_conn->host = cfg_getstr(wmr918_c, "hostname");
 		wx200d_conn->tscale = cfg_getint(wmr918_c, "tscale");
 		connect_server_cb(0, 0, wx200d_conn);
-	} else if (cfg_getint(wmr918_c, "conntype") == CONN_TYPE_WMRSERIAL) {
+		break;
+	case CONN_TYPE_WX200SERIAL:
+		/* read the serial device name from the conf file */
+		if (cfg_getstr(wmr918_c, "serialdev") == NULL)
+			LOG(LOG_FATAL, "Serial device not set in conf file");
+
+		/* Connect to the WX200 */
+		fd = serial_connect(cfg_getstr(wmr918_c, "serialdev"), B9600,
+				    CS8|CREAD|CLOCAL);
+
+		wmr918serial_conn = smalloc(connection_t);
+		wmr918serial_conn->bev = bufferevent_socket_new(base, fd,
+					    BEV_OPT_CLOSE_ON_FREE);
+		wmr918serial_conn->type = CONN_TYPE_WX200SERIAL;
+		bufferevent_setcb(wmr918serial_conn->bev, wx2_buf_read_cb,
+				  NULL, serial_eventcb, wmr918serial_conn);
+		bufferevent_enable(wmr918serial_conn->bev, EV_READ|EV_WRITE);
+		break;
+	case CONN_TYPE_WMRSERIAL:
 		/* read the serial device name from the conf file */
 		if (cfg_getstr(wmr918_c, "serialdev") == NULL)
 			LOG(LOG_FATAL, "Serial device not set in conf file");
@@ -1068,11 +1751,13 @@ int main(int argc, char **argv)
 		wmr918serial_conn->bev = bufferevent_socket_new(base, fd,
 					    BEV_OPT_CLOSE_ON_FREE);
 		wmr918serial_conn->type = CONN_TYPE_WMRSERIAL;
-		bufferevent_setcb(wmr918serial_conn->bev, wx2_buf_read_cb,
+		bufferevent_setcb(wmr918serial_conn->bev, wmr_buf_read_cb,
 				  NULL, serial_eventcb, wmr918serial_conn);
 		bufferevent_enable(wmr918serial_conn->bev, EV_READ|EV_WRITE);
-	} else {
+		break;
+	default:
 		LOG(LOG_FATAL, "No connection type specified, punting");
+		break;
 	}
 
 	/* setup signal handlers */

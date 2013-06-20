@@ -343,6 +343,12 @@ void get_data_dev(device_t *dev, int where, void *data)
 		case SUBTYPE_RAINRATE:
 			*((double *)data) = store->rainrate;
 			break;
+		case SUBTYPE_SWITCH:
+			*((uint8_t *)data) = store->state;
+			break;
+		case SUBTYPE_WEATHER:
+			*((uint8_t *)data) = store->state;
+			break;
 		}
 		break;
 	}
@@ -439,6 +445,10 @@ void store_data_dev(device_t *dev, int where, void *data)
 		case SUBTYPE_RAINRATE:
 			store->rainrate = *((double *)data);
 			break;
+		case SUBTYPE_SWITCH:
+		case SUBTYPE_WEATHER:
+			store->state = *((uint8_t *)data);
+			break;
 		}
 		break;
 	}
@@ -463,6 +473,8 @@ int datatype_dev(device_t *dev)
 		return DATATYPE_UINT;
 	if (dev->subtype == SUBTYPE_WATTSEC)
 		return DATATYPE_LL;
+	if (dev->subtype == SUBTYPE_WEATHER)
+		return DATATYPE_UINT;
 	return DATATYPE_DOUBLE;
 }
 
