@@ -19,3 +19,10 @@ model "2486DWH6" {
 	type = "dimmer"
 	subtype = "switch"
 }
+model "2634-222" {
+	name = "On/Off Outdoor Module"
+	devcat = 0x02
+	subcat = 0x38
+	type = "switch"
+	subtype = "switch"
+}

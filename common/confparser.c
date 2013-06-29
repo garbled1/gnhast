@@ -767,6 +767,7 @@ cfg_t *new_conf_from_dev(cfg_t *cfg, device_t *dev)
 	cfg_t *devconf;
 	double d=0;
 	uint32_t u=0;
+	int i;
 
 	devconf = find_devconf_byuid(cfg, dev->uid);
 	if (devconf == NULL) {
@@ -784,6 +785,10 @@ cfg_t *new_conf_from_dev(cfg_t *cfg, device_t *dev)
 		cfg_setstr(devconf, "rrdname", dev->rrdname);
 	if (dev->handler != NULL)
 		cfg_setstr(devconf, "handler", dev->handler);
+	if (dev->nrofhargs > 0 && dev->hargs != NULL)
+		for (i = 0; i < dev->nrofhargs; i++)
+			cfg_setnstr(devconf, "hargs", dev->hargs[i], i);
+
 	if (dev->subtype)
 		cfg_setint(devconf, "subtype", dev->subtype);
 	if (dev->subtype && dev->scale) {

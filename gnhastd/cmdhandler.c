@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 #include <sys/queue.h>
 
 #include "gnhast.h"
@@ -55,6 +56,7 @@ commands_t commands[] = {
 	{"chg", cmd_change, 0},
 	{"reg", cmd_register, 0},
 	{"upd", cmd_update, 0},
+	{"mod", cmd_modify, 0},
 	{"feed", cmd_feed, 0},
 	{"ldevs", cmd_list_devices, 0},
 	{"ask", cmd_ask_device, 0},
@@ -328,7 +330,7 @@ int cmd_register(pargs_t *args, void *arg)
 			return(-1);
 		}
 		if (rrdname == NULL)
-			rrdname = strndup(name, 19);
+			rrdname = mk_rrdname(name);
 		dev = smalloc(device_t);
 		dev->uid = uid;
 		new = 1;
@@ -359,6 +361,136 @@ int cmd_register(pargs_t *args, void *arg)
 	if (new)
 		insert_device(dev);
 
+	return(0);
+}
+
+/**
+   \brief Handle a modify device command
+   \param args The list of arguments
+   \param arg void pointer to client_t of provider
+   We modify the device internally, rewrite the conf, and then forward the
+   change to any collectors for that device.
+   We do not need to send hiwat/lowat/handler stuff to the clients, because
+   while thier config files may list it, they do not forward that info to
+   the server.
+*/
+
+int cmd_modify(pargs_t *args, void *arg)
+{
+	int i, j;
+	double d;
+	uint32_t u;
+	device_t *dev;
+	char *uid=NULL, *p, *hold;
+	client_t *client = (client_t *)arg;
+	struct evbuffer *send;
+
+	/* loop through the args and find the UID */
+	for (i=0; args[i].cword != -1; i++) {
+		switch (args[i].cword) {
+		case SC_UID:
+			uid = args[i].arg.c;
+			break;
+		}
+	}
+	if (!uid) {
+		LOG(LOG_ERROR, "modify without UID");
+		return(-1);
+	}
+	dev = find_device_byuid(uid);
+	if (!dev) {
+		LOG(LOG_ERROR, "UID:%s doesn't exist", uid);
+		return(-1);
+	}
+
+	send = evbuffer_new();
+	/* The command to modify is "mod" */
+	evbuffer_add_printf(send, "mod ");
+
+	/* fill in the details */
+	evbuffer_add_printf(send, "%s:%s", ARGNM(SC_UID), dev->uid);
+
+	for (i=0; args[i].cword != -1; i++) {
+		switch (args[i].cword) {
+		case SC_NAME:
+			free(dev->name);
+			dev->name = strdup(args[i].arg.c);
+			evbuffer_add_printf(send, " %s:\"%s\"",
+					    ARGNM(args[i].cword),
+					    args[i].arg.c);
+			LOG(LOG_NOTICE, "Changing uid:%s name to %s",
+			    dev->uid, dev->name);
+			break;
+		case SC_RRDNAME:
+			free(dev->rrdname);
+			dev->rrdname = strdup(args[i].arg.c);
+			evbuffer_add_printf(send, " %s:\"%s\"",
+					    ARGNM(args[i].cword),
+					    args[i].arg.c);
+			LOG(LOG_NOTICE, "Changing uid:%s rrdname to %s",
+			    dev->uid, dev->rrdname);
+			break;
+		case SC_HANDLER:
+			free(dev->handler);
+			dev->handler = strdup(args[i].arg.c);
+			LOG(LOG_NOTICE, "Changing uid:%s handler to %s",
+			    dev->uid, dev->handler);
+			break;
+		case SC_HIWAT:
+		case SC_LOWAT:
+			if (args[i].cword == SC_HIWAT)
+				j = DATALOC_HIWAT;
+			else
+				j = DATALOC_LOWAT;
+			if (datatype_dev(dev) == DATATYPE_UINT) {
+				u = (uint32_t)lrint(args[i].arg.d);
+				store_data_dev(dev, j, &u);
+			} else {
+				d = args[i].arg.d;
+				store_data_dev(dev, j, &d);
+			}
+			LOG(LOG_NOTICE, "Changing uid:%s %s to %d",
+			    dev->uid,
+			    (j == DATALOC_HIWAT) ? "high watermark" :
+			        "low watermark", args[i].arg.d);
+		case SC_HARGS:
+			hold = strdup(args[i].arg.c);
+			/* free the old hargs */
+			for (j = 0; j < dev->nrofhargs; j++)
+				free(dev->hargs[i]);
+			if (dev->hargs)
+				free(dev->hargs);
+			/* count the arguments */
+			for ((p = strtok(hold, ",")), j=0; p;
+			     (p = strtok(NULL, ",")), j++);
+			dev->nrofhargs = j;
+			dev->hargs = safer_malloc(sizeof(char *) *
+						  dev->nrofhargs);
+			free(hold);
+			hold = strdup(args[i].arg.c);
+			for ((p = strtok(hold, ",")), j=0;
+			     p && j < dev->nrofhargs;
+			     (p = strtok(NULL, ",")), j++) {
+				dev->hargs[j] = strdup(p);
+			}
+			free(hold);
+			LOG(LOG_NOTICE, "Handler args uid:%s changed to %s,"
+			    " %d arguments", dev->uid, args[i].arg.c,
+			    dev->nrofhargs);
+			break;
+		}
+	}
+	/* force a device conf rewrite */
+	devconf_dump_cb(0, 0, 0);
+	/* XXX send to wrapped devices? */
+	if (dev->collector == NULL) {
+		LOG(LOG_WARNING, "Got mod for uid:%s, but no collector",
+		    dev->uid);
+		return(0);
+	}
+	/* and send it on it's way */
+	evbuffer_add_printf(send, "\n");
+	bufferevent_write_buffer(dev->collector->ev, send);
 	return(0);
 }
 
@@ -524,15 +656,22 @@ int cmd_list_devices(pargs_t *args, void *arg)
 
 int cmd_ask_device(pargs_t *args, void *arg)
 {
-	int i, scale=0;
+	int i, scale=0, what;
 	device_t *dev;
 	char *uid = NULL;
 	client_t *client = (client_t *)arg;
 
-	/* check for a scale argument first */
+	what = GNC_UPD_NAME|GNC_UPD_RRDNAME;
+
+	/* check for a scale/flag arguments first */
 	for (i=0; args[i].cword != -1; i++)
-		if (args[i].cword == SC_SCALE)
-			scale = args[i].arg.i;
+		switch (args[i].cword) {
+		case SC_SCALE: scale = args[i].arg.i; break;
+		case SC_HIWAT:
+		case SC_LOWAT: what |= GNC_UPD_WATER; break;
+		case SC_HANDLER: what |= GNC_UPD_HANDLER; break;
+		case SC_HARGS: what |= GNC_UPD_HARGS; break;
+		}
 
 	for (i=0; args[i].cword != -1; i++) {
 		if (args[i].cword == SC_UID) {
@@ -540,8 +679,8 @@ int cmd_ask_device(pargs_t *args, void *arg)
 			dev = find_device_byuid(uid);
 			if (dev == NULL)
 				continue;
-			gn_update_device(dev, GNC_UPD_NAME|GNC_UPD_RRDNAME|
-					 GNC_UPD_SCALE(scale), client->ev);
+			gn_update_device(dev, what|GNC_UPD_SCALE(scale),
+					 client->ev);
 		}
 	}
 	return 0;

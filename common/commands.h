@@ -83,6 +83,10 @@ enum SC_COMMANDS {
 	SC_CLIENT,	/**< \brief client name */
 	SC_SCALE,	/**< \brief scale (temp scale, baro, etc) */
 	SC_WEATHER,	/**< \brief weather status */
+	SC_HIWAT,	/**< \brief hiwater mark */
+	SC_LOWAT,	/**< \brief lowater mark */
+	SC_HANDLER,	/**< \brief handler name */
+	SC_HARGS,	/**< \brief handler arguments */
 };
 
 /* commands */

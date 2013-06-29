@@ -281,7 +281,7 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 	double d;
 	uint32_t u;
 	int64_t ll;
-	int scale;
+	int scale, i;
 
 	/* Verify device sanity first */
 	if (dev->name == NULL || dev->uid == NULL) {
@@ -328,19 +328,55 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 	if (what & GNC_UPD_RRDNAME && dev->rrdname != NULL)
 		evbuffer_add_printf(send, "%s:%s ",  ARGNM(SC_RRDNAME),
 				    dev->rrdname);
-
-	if (datatype_dev(dev) == DATATYPE_UINT) {
-		get_data_dev(dev, DATALOC_DATA, &u);
-		evbuffer_add_printf(send, "%s:%d\n", ARGDEV(dev), u);
-	} else if (datatype_dev(dev) == DATATYPE_LL) {
-		get_data_dev(dev, DATALOC_DATA, &ll);
-		evbuffer_add_printf(send, "%s:%jd\n", ARGDEV(dev), ll);
-	} else {
-		get_data_dev(dev, DATALOC_DATA, &d);
-		evbuffer_add_printf(send, "%s:%f\n", ARGDEV(dev),
-				    gn_maybe_scale(dev, scale, d));
+	if (what & GNC_UPD_HANDLER && dev->handler != NULL)
+		evbuffer_add_printf(send, "%s:%s ",  ARGNM(SC_HANDLER),
+				    dev->handler);
+	if (what & GNC_UPD_HARGS && dev->nrofhargs > 0 && dev->hargs != NULL) {
+		evbuffer_add_printf(send, "%s:",  ARGNM(SC_HARGS));
+		evbuffer_add_printf(send, "\"%s\"", dev->hargs[0]);
+		for (i=1; i < dev->nrofhargs; i++)
+			evbuffer_add_printf(send, ",\"%s\"", dev->hargs[i]);
+		evbuffer_add_printf(send, " ");
 	}
-
+	/* switch and do water */
+	switch (datatype_dev(dev)) {
+	case DATATYPE_UINT:
+		get_data_dev(dev, DATALOC_DATA, &u);
+		evbuffer_add_printf(send, "%s:%d", ARGDEV(dev), u);
+		if (what & GNC_UPD_WATER) {
+			get_data_dev(dev, DATALOC_LOWAT, &u);
+			evbuffer_add_printf(send, " %s:%d ",
+					    ARGNM(SC_LOWAT), u);
+			get_data_dev(dev, DATALOC_HIWAT, &u);
+			evbuffer_add_printf(send, "%s:%d ",
+					    ARGNM(SC_HIWAT), u);
+		}
+	case DATATYPE_LL:
+		get_data_dev(dev, DATALOC_DATA, &ll);
+		evbuffer_add_printf(send, "%s:%jd", ARGDEV(dev), ll);
+		if (what & GNC_UPD_WATER) {
+			get_data_dev(dev, DATALOC_LOWAT, &ll);
+			evbuffer_add_printf(send, " %s:%jd ",
+					    ARGNM(SC_LOWAT), ll);
+			get_data_dev(dev, DATALOC_HIWAT, &ll);
+			evbuffer_add_printf(send, "%s:%jd",
+					    ARGNM(SC_HIWAT), ll);
+		}
+	case DATATYPE_DOUBLE:
+	default:
+		get_data_dev(dev, DATALOC_DATA, &d);
+		evbuffer_add_printf(send, "%s:%f", ARGDEV(dev),
+				    gn_maybe_scale(dev, scale, d));
+		if (what & GNC_UPD_WATER) {
+			get_data_dev(dev, DATALOC_LOWAT, &d);
+			evbuffer_add_printf(send, " %s:%f ",
+					    ARGNM(SC_LOWAT), d);
+			get_data_dev(dev, DATALOC_HIWAT, &d);
+			evbuffer_add_printf(send, "%s:%f",
+					    ARGNM(SC_HIWAT), d);
+		}
+	}
+	evbuffer_add_printf(send, "\n");
 	bufferevent_write_buffer(out, send);
 	evbuffer_free(send);
 }

@@ -779,6 +779,7 @@ RRD_CFLAGS
 PKG_CONFIG_LIBDIR
 PKG_CONFIG_PATH
 PKG_CONFIG
+NETCAT
 LEXLIB
 LEX_OUTPUT_ROOT
 LEX
@@ -4580,13 +4581,13 @@ if ${lt_cv_nm_interface+:} false; then :
 else
   lt_cv_nm_interface="BSD nm"
   echo "int some_variable = 0;" > conftest.$ac_ext
-  (eval echo "\"\$as_me:4583: $ac_compile\"" >&5)
+  (eval echo "\"\$as_me:4584: $ac_compile\"" >&5)
   (eval "$ac_compile" 2>conftest.err)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:4586: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
+  (eval echo "\"\$as_me:4587: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
   (eval "$NM \"conftest.$ac_objext\"" 2>conftest.err > conftest.out)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:4589: output\"" >&5)
+  (eval echo "\"\$as_me:4590: output\"" >&5)
   cat conftest.out >&5
   if $GREP 'External.*some_variable' conftest.out > /dev/null; then
     lt_cv_nm_interface="MS dumpbin"
@@ -5792,7 +5793,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 5795 "configure"' > conftest.$ac_ext
+  echo '#line 5796 "configure"' > conftest.$ac_ext
   if { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_compile\""; } >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -7316,11 +7317,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7319: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7320: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:7323: \$? = $ac_status" >&5
+   echo "$as_me:7324: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -7655,11 +7656,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7658: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7659: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:7662: \$? = $ac_status" >&5
+   echo "$as_me:7663: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -7760,11 +7761,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7763: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7764: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:7767: \$? = $ac_status" >&5
+   echo "$as_me:7768: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -7815,11 +7816,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7818: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7819: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:7822: \$? = $ac_status" >&5
+   echo "$as_me:7823: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -10182,7 +10183,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 10185 "configure"
+#line 10186 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -10278,7 +10279,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 10281 "configure"
+#line 10282 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -12462,6 +12463,49 @@ fi
 #AC_CHECK_LIB(event_pthreads, evthread_use_pthreads,, AC_MSG_ERROR(["Unable to find libevent2 pthreads"]))
 #AC_CHECK_LIB(pthread, pthread_mutex_lock,,AC_MSG_ERROR(["Unable to find pthread library"]))
 
+# Checks for programs
+# Extract the first word of "nc", so it can be a program name with args.
+set dummy nc; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_path_NETCAT+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  case $NETCAT in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_NETCAT="$NETCAT" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH$PATH_SEPARATOR/usr/sbin$PATH_SEPARATOR/usr/pkg/sbin$PATH_SEPARATOR/usr/local/sbin
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_path_NETCAT="$as_dir/$ac_word$ac_exec_ext"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  test -z "$ac_cv_path_NETCAT" && ac_cv_path_NETCAT="/usr/pkg/sbin/nc"
+  ;;
+esac
+fi
+NETCAT=$ac_cv_path_NETCAT
+if test -n "$NETCAT"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $NETCAT" >&5
+$as_echo "$NETCAT" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+
 
 
 
@@ -12940,7 +12984,7 @@ fi
 fi
 
 
-ac_config_files="$ac_config_files Makefile gnhastd/Makefile fakecoll/Makefile owsrvcoll/Makefile rrdcoll/Makefile brulcoll/Makefile insteoncoll/Makefile wmr918coll/Makefile wupwscoll/Makefile libconfuse/Makefile"
+ac_config_files="$ac_config_files Makefile gnhastd/Makefile fakecoll/Makefile owsrvcoll/Makefile rrdcoll/Makefile brulcoll/Makefile insteoncoll/Makefile wmr918coll/Makefile wupwscoll/Makefile handlers/Makefile libconfuse/Makefile"
 
 
 cat >confcache <<\_ACEOF
@@ -13947,6 +13991,7 @@ do
     "insteoncoll/Makefile") CONFIG_FILES="$CONFIG_FILES insteoncoll/Makefile" ;;
     "wmr918coll/Makefile") CONFIG_FILES="$CONFIG_FILES wmr918coll/Makefile" ;;
     "wupwscoll/Makefile") CONFIG_FILES="$CONFIG_FILES wupwscoll/Makefile" ;;
+    "handlers/Makefile") CONFIG_FILES="$CONFIG_FILES handlers/Makefile" ;;
     "libconfuse/Makefile") CONFIG_FILES="$CONFIG_FILES libconfuse/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;

@@ -69,6 +69,7 @@ void closelog(void);
 void LOG(int severity, const char * s, ...);
 void _bailout(char *file, int line);
 void *_safer_malloc(size_t size, char *file, int line);
+char *mk_rrdname(char *orig);
 int lcm(int a,int b);
 int gcd(int a, int b);
 void writepidfile(char *filename);

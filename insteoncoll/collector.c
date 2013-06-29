@@ -285,12 +285,14 @@ void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 	cmd = SIMPLEQ_FIRST(&cmdfifo);
 	if (cmd != NULL && cmd->cmd[6] == STDCMD_STATUSREQ) {
 		d = (double)com2 / 255.0;
-		s = com2;
-		LOG(LOG_DEBUG, "Storing data from %s %f", fa, d);
-		if (dev->type == DEVICE_SWITCH)
+		if (dev->type == DEVICE_SWITCH) {
+			s = (com2 > 0) ? 1 : 0;
+			LOG(LOG_DEBUG, "Storing data from %s %d", fa, s);
 			store_data_dev(dev, DATALOC_DATA, &s);
-		else
+		} else {
+			LOG(LOG_DEBUG, "Storing data from %s %f", fa, d);
 			store_data_dev(dev, DATALOC_DATA, &d);
+		}
 		gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
 		return;
 	}
@@ -325,7 +327,7 @@ void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 		LOG(LOG_DEBUG, "Got FAST ON from %s", fa);
 		if ((flags & PLMFLAG_GROUP) && com2 == 0) {
 			d = 100.0; /* for now, lets assume this */
-			s = 0xFF;
+			s = 1;
 		} else {
 			d = (double)com2 / 255.0;
 			s = com2;

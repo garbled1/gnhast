@@ -5,6 +5,9 @@
 #define GNC_UPD_NAME	(1<<1)
 #define GNC_UPD_RRDNAME	(1<<2)
 #define GNC_UPD_CACTI	(1<<3)
+#define GNC_UPD_HANDLER	(1<<4)
+#define GNC_UPD_HARGS	(1<<5)
+#define GNC_UPD_WATER	(1<<6) /* watermarks */
 
 /* GNC_UPD_XXX bits 8-16 are reserved for scale */
 #define GNC_UPD_SCALE(x)	(1<<(8+x))

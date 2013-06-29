@@ -4,6 +4,7 @@
 int cmd_register(pargs_t *args, void *arg);
 int cmd_update(pargs_t *args, void *arg);
 int cmd_change(pargs_t *args, void *arg);
+int cmd_modify(pargs_t *args, void *arg);
 int cmd_feed(pargs_t *args, void *arg);
 int cmd_client(pargs_t *args, void *arg);
 int cmd_list_devices(pargs_t *args, void *arg);

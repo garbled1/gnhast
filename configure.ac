@@ -40,6 +40,10 @@ AC_CHECK_LIB(m, lrint,,AC_MSG_ERROR(["Unable to find math library"]))
 #AC_CHECK_LIB(event_pthreads, evthread_use_pthreads,, AC_MSG_ERROR(["Unable to find libevent2 pthreads"]))
 #AC_CHECK_LIB(pthread, pthread_mutex_lock,,AC_MSG_ERROR(["Unable to find pthread library"]))
 
+# Checks for programs
+AC_PATH_PROG([NETCAT], [nc], [/usr/pkg/sbin/nc],
+	[$PATH$PATH_SEPARATOR/usr/sbin$PATH_SEPARATOR/usr/pkg/sbin$PATH_SEPARATOR/usr/local/sbin])
+
 PKG_CHECK_MODULES([RRD], [librrd])
 
 # Checks for typedefs, structures, and compiler characteristics.
@@ -67,6 +71,7 @@ AC_CONFIG_FILES([Makefile \
 		 insteoncoll/Makefile \
 		 wmr918coll/Makefile \
 		 wupwscoll/Makefile \
+		 handlers/Makefile \
 		 libconfuse/Makefile])
 
 AC_OUTPUT

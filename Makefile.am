@@ -6,4 +6,5 @@ SUBDIRS = libconfuse \
 	brulcoll \
 	insteoncoll \
 	wmr918coll \
-	wupwscoll
+	wupwscoll \
+	handlers

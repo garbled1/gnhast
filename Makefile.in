@@ -172,6 +172,7 @@ LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+NETCAT = @NETCAT@
 NM = @NM@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
@@ -257,7 +258,8 @@ SUBDIRS = libconfuse \
 	brulcoll \
 	insteoncoll \
 	wmr918coll \
-	wupwscoll
+	wupwscoll \
+	handlers
 
 all: all-recursive
 

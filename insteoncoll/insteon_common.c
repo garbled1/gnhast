@@ -130,13 +130,14 @@ void plm_set_hops(device_t *dev, uint8_t flag)
    \param dev device to enqueue for
    \param com1 command 1
    \param com2 command 2
+   \note Some commands, like status, must be sent as std, not cs style.
 */
 void plm_enq_std(device_t *dev, uint8_t com1, uint8_t com2, uint8_t waitflags)
 {
 	cmdq_t *cmd;
 	insteon_devdata_t *dd;
 
-	if (dev->proto == PROTO_INSTEON_V2CS) {
+	if (dev->proto == PROTO_INSTEON_V2CS && com1 != STDCMD_STATUSREQ) {
 		plm_enq_stdcs(dev, com1, com2, waitflags);
 		return;
 	}

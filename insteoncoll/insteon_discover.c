@@ -349,7 +349,8 @@ void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 			break;
 		case 0xFF:
 			dev->proto = PROTO_INSTEON_V2CS;
-			LOG(LOG_WARNING, "Device %s is i2cs not linked to PLM");
+			LOG(LOG_WARNING, "Device %s is i2cs not linked to "
+			    "PLM", fa);
 			break;
 		}
 		break;

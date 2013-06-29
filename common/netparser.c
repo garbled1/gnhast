@@ -76,6 +76,10 @@ argtable_t argtable[] = {
 	{"client", SC_CLIENT, PTCHAR},
 	{"scale", SC_SCALE, PTINT},
 	{"weather", SC_WEATHER, PTINT},
+	{"hiwat", SC_HIWAT, PTDOUBLE},
+	{"lowat", SC_LOWAT, PTDOUBLE},
+	{"handler", SC_HANDLER, PTCHAR},
+	{"hargs", SC_HARGS, PTCHAR},
 };
 
 /** \brief size of the args table */ 
