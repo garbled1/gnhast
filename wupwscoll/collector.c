@@ -60,6 +60,7 @@
 #include "collcmd.h"
 #include "wupws.h"
 
+char *conffile = SYSCONFDIR "/" WUPWSCOLL_CONFIG_FILE;
 FILE *logfile;   /** our logfile */
 cfg_t *cfg, *gnhastd_c, *wupws_c;
 char *dumpconf = NULL;
@@ -199,6 +200,29 @@ int conf_parse_pwstype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		return -1;
 	}
 	return 0;
+}
+
+/**
+   \brief Used to print pwstype values
+   \param opt option structure
+   \param index number of option to print
+   \param fp passed FILE
+*/
+
+void conf_print_pwstype(cfg_opt_t *opt, unsigned int index, FILE *fp)
+{
+	switch (cfg_opt_getnint(opt, index)) {
+	case PWS_WUNDERGROUND:
+		fprintf(fp, "wunderground");
+		break;
+	case PWS_PWSWEATHER:
+		fprintf(fp, "pwsweather");
+		break;
+	case PWS_DEBUG:
+	default:
+		fprintf(fp, "debug");
+		break;
+	}
 }
 
 /**
@@ -699,7 +723,6 @@ int main(int argc, char **argv)
 	extern char *optarg;
 	extern int optind;
 	int ch;
-	char *conffile = SYSCONFDIR "/" WUPWSCOLL_CONFIG_FILE;
 	struct event *ev;
 	struct timeval secs = { 1, 0 };
 

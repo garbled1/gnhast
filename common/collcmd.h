@@ -7,6 +7,7 @@ int parsed_command(char *command, pargs_t *args, void *arg);
 int cmd_register(pargs_t *args, void *arg);
 int cmd_update(pargs_t *args, void *arg);
 int cmd_change(pargs_t *args, void *arg);
+int cmd_modify(pargs_t *args, void *arg);
 void gnhastd_read_cb(struct bufferevent *in, void *arg);
 
 

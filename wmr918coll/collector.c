@@ -64,6 +64,7 @@ void connect_server_cb(int nada, short what, void *arg);
 static int conf_parse_conntype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 			       void *result);
 
+char *conffile = SYSCONFDIR "/" WMR918COLL_CONFIG_FILE;
 FILE *logfile;   /** our logfile */
 extern int debugmode;
 cfg_t *cfg, *gnhastd_c, *wmr918_c;
@@ -1636,7 +1637,6 @@ int main(int argc, char **argv)
 	extern int optind;
 	int ch, fd;
 	char *buf;
-	char *conffile = SYSCONFDIR "/" WMR918COLL_CONFIG_FILE;
 	struct timeval secs = { 0, 0 };
 	struct event *ev;
 

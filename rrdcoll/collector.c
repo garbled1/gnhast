@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * Copyright (c) 2013
  *      Tim Rightnour.  All rights reserved.
@@ -79,6 +77,8 @@ int usecache = 0;
 #define RRDCOLL_LOG_FILE	"rrdcoll.log"
 #define RRDCOLL_PID_FILE	"rrdcoll.pid"
 #define COLLECTOR_NAME		"rrdcoll"
+
+char *conffile = SYSCONFDIR "/" RRDCOLL_CONFIG_FILE;
 
 /* debugging */
 //_malloc_options = "AJ";
@@ -752,7 +752,6 @@ int main(int argc, char **argv)
 	extern char *optarg;
 	extern int optind;
 	int ch;
-	char *conffile = SYSCONFDIR "/" RRDCOLL_CONFIG_FILE;
 	struct event *ev;
 
 	/* process command line arguments */

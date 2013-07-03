@@ -75,6 +75,7 @@ void plm_query_grouped_devices(device_t *dev, uint group);
 
 /* Configuration file details */
 
+char *conffile = SYSCONFDIR "/" INSTEONCOLL_CONF_FILE;
 int need_query = 0;
 cfg_t *cfg, *icoll_c, *gnhastd_c;
 extern cfg_opt_t device_opts[];
@@ -661,7 +662,6 @@ int
 main(int argc, char *argv[])
 {
 	int c, fd;
-	char *conffile = SYSCONFDIR "/" INSTEONCOLL_CONF_FILE;
 	struct ev_token_bucket_cfg *ratelim;
 	struct timeval rate = { 1, 0 };
 	struct timeval runq = { 0, 500 };

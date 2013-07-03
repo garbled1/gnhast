@@ -52,11 +52,16 @@
 #include "gnhast.h"
 #include "gncoll.h"
 #include "collcmd.h"
+#include "confuse.h"
 
 extern int cmd_endldevs(pargs_t *args, void *arg);
 extern void coll_upd_cb(device_t *dev, void *arg);
 extern void coll_chg_switch_cb(device_t *dev, int state, void *arg);
 extern void coll_chg_dimmer_cb(device_t *dev, double level, void *arg);
+
+/* Bring these in scope so mod can dump a conf file */
+extern char *conffile;
+extern cfg_t *cfg;
 
 /** The command table */
 commands_t commands[] = {
@@ -64,6 +69,7 @@ commands_t commands[] = {
 	{"reg", cmd_register, 0},
 	{"endldevs", cmd_endldevs, 0},
 	{"upd", cmd_update, 0},
+	{"mod", cmd_modify, 0},
 };
 
 /** The size of the command table */
@@ -330,6 +336,61 @@ int cmd_change(pargs_t *args, void *arg)
 		LOG(LOG_ERROR, "Unhandled dev type in cmd_change()");
 		return(-1);
 	}
+	return(0);
+}
+
+/**
+   \brief Handle a modify device command
+   \param args The list of arguments
+   \param arg void pointer to client_t of provider
+   We modify the device internally, and rewrite the conf
+*/
+
+int cmd_modify(pargs_t *args, void *arg)
+{
+	int i, j;
+	double d;
+	uint32_t u;
+	device_t *dev;
+	char *uid=NULL, *p, *hold;
+	client_t *client = (client_t *)arg;
+
+	/* loop through the args and find the UID */
+	for (i=0; args[i].cword != -1; i++) {
+		switch (args[i].cword) {
+		case SC_UID:
+			uid = args[i].arg.c;
+			break;
+		}
+	}
+	if (!uid) {
+		LOG(LOG_ERROR, "modify without UID");
+		return(-1);
+	}
+	dev = find_device_byuid(uid);
+	if (!dev) {
+		LOG(LOG_ERROR, "UID:%s doesn't exist", uid);
+		return(-1);
+	}
+
+	for (i=0; args[i].cword != -1; i++) {
+		switch (args[i].cword) {
+		case SC_NAME:
+			free(dev->name);
+			dev->name = strdup(args[i].arg.c);
+			LOG(LOG_NOTICE, "Changing uid:%s name to %s",
+			    dev->uid, dev->name);
+			break;
+		case SC_RRDNAME:
+			free(dev->rrdname);
+			dev->rrdname = strdup(args[i].arg.c);
+			LOG(LOG_NOTICE, "Changing uid:%s rrdname to %s",
+			    dev->uid, dev->rrdname);
+			break;
+		}
+	}
+	/* force a device conf rewrite */
+	dump_conf(cfg, 0, conffile);
 	return(0);
 }
 

@@ -59,6 +59,7 @@ void ows_connect_event_cb(struct bufferevent *ev, short what, void *arg);
 void connect_server_cb(int nada, short what, void *arg);
 void ows_timer_cb(int nada, short what, void *arg);
 
+char *conffile = SYSCONFDIR "/" OWSRVCOLL_CONFIG_FILE;
 FILE *logfile;   /** our logfile */
 extern int debugmode;
 cfg_t *cfg, *gnhastd_c, *owserver_c, *owsrvcoll_c;
@@ -776,7 +777,6 @@ int main(int argc, char **argv)
 	extern int optind;
 	int ch;
 	char *buf;
-	char *conffile = SYSCONFDIR "/" OWSRVCOLL_CONFIG_FILE;
 	struct timeval secs = { 0, 0 };
 	struct event *ev;
 

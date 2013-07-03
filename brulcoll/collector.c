@@ -66,6 +66,7 @@ static int conf_parse_brul_model(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 static int conf_parse_brul_conn(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 				void *result);
 
+char *conffile = SYSCONFDIR "/" BRULCOLL_CONFIG_FILE;
 FILE *logfile;   /** our logfile */
 extern int debugmode;
 cfg_t *cfg, *gnhastd_c, *brultech_c, *brulcoll_c;
@@ -1101,7 +1102,6 @@ int main(int argc, char **argv)
 	extern int optind;
 	int ch, fd;
 	char *buf;
-	char *conffile = SYSCONFDIR "/" BRULCOLL_CONFIG_FILE;
 	struct event *ev;
 
 	/* process command line arguments */
