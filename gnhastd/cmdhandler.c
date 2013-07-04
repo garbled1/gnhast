@@ -453,6 +453,7 @@ int cmd_modify(pargs_t *args, void *arg)
 			    dev->uid,
 			    (j == DATALOC_HIWAT) ? "high watermark" :
 			        "low watermark", args[i].arg.d);
+			break;
 		case SC_HARGS:
 			hold = strdup(args[i].arg.c);
 			/* free the old hargs */

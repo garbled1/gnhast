@@ -322,16 +322,16 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 
 	/* fill in the details */
 	evbuffer_add_printf(send, "%s:%s ", ARGNM(SC_UID), dev->uid);
-	if (what & GNC_UPD_NAME && dev->name != NULL)
+	if ((what & GNC_UPD_NAME) && dev->name != NULL)
 		evbuffer_add_printf(send, "%s:\"%s\" ",  ARGNM(SC_NAME),
 				    dev->name);
-	if (what & GNC_UPD_RRDNAME && dev->rrdname != NULL)
+	if ((what & GNC_UPD_RRDNAME) && dev->rrdname != NULL)
 		evbuffer_add_printf(send, "%s:%s ",  ARGNM(SC_RRDNAME),
 				    dev->rrdname);
-	if (what & GNC_UPD_HANDLER && dev->handler != NULL)
+	if ((what & GNC_UPD_HANDLER) && dev->handler != NULL)
 		evbuffer_add_printf(send, "%s:%s ",  ARGNM(SC_HANDLER),
 				    dev->handler);
-	if (what & GNC_UPD_HARGS && dev->nrofhargs > 0 && dev->hargs != NULL) {
+	if ((what & GNC_UPD_HARGS) && dev->nrofhargs > 0 && dev->hargs != NULL) {
 		evbuffer_add_printf(send, "%s:",  ARGNM(SC_HARGS));
 		evbuffer_add_printf(send, "\"%s\"", dev->hargs[0]);
 		for (i=1; i < dev->nrofhargs; i++)
@@ -351,6 +351,7 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 			evbuffer_add_printf(send, "%s:%d ",
 					    ARGNM(SC_HIWAT), u);
 		}
+		break;
 	case DATATYPE_LL:
 		get_data_dev(dev, DATALOC_DATA, &ll);
 		evbuffer_add_printf(send, "%s:%jd", ARGDEV(dev), ll);
@@ -362,6 +363,7 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 			evbuffer_add_printf(send, "%s:%jd",
 					    ARGNM(SC_HIWAT), ll);
 		}
+		break;
 	case DATATYPE_DOUBLE:
 	default:
 		get_data_dev(dev, DATALOC_DATA, &d);
@@ -375,6 +377,7 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 			evbuffer_add_printf(send, "%s:%f",
 					    ARGNM(SC_HIWAT), d);
 		}
+		break;
 	}
 	evbuffer_add_printf(send, "\n");
 	bufferevent_write_buffer(out, send);

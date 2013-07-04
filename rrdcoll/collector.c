@@ -633,6 +633,7 @@ void ssl_connect_server_cb(int nada, short what, void *arg)
 	if (need_rereg) {
 		rrd_rrdcreate(cfg); /* ask for feeds */
 		request_devlist(conn);
+		gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
 	}
 }
 
@@ -874,5 +875,6 @@ int main(int argc, char **argv)
 	cfg_free(cfg);
 	evdns_base_free(dns_base, 0);
 	event_base_free(base);
+	delete_pidfile();
 	return(0);
 }

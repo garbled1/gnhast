@@ -45,6 +45,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <sys/queue.h>
+#include <sys/wait.h>
 #ifdef HAVE_SYS_RBTREE_H
  #include <sys/rbtree.h>
 #else
@@ -159,7 +160,7 @@ void buf_error_cb(struct bufferevent *ev, short what, void *arg)
 	client_t *client = (client_t *)arg;
 	device_t *dev;
 	wrap_device_t *wrap;
-	int err;
+	int err, status;
 
 	if (what & BEV_EVENT_ERROR) {
 		err = bufferevent_get_openssl_error(ev);
@@ -170,6 +171,18 @@ void buf_error_cb(struct bufferevent *ev, short what, void *arg)
 	LOG(LOG_NOTICE, "Closing %s connection from %s",
 	    client->name ? client->name : "generic",
 	    client->addr ? client->addr : "unknown");
+
+	if (client->pid > 0) {
+		waitpid(client->pid, &status, 0); /* WNOHANG ??? */
+		if (WIFEXITED(status)) {
+			if (WEXITSTATUS(status))
+				LOG(LOG_WARNING, "Handler exited with status"
+				    " %d", WEXITSTATUS(status));
+		} else if (WIFSIGNALED(status))
+			LOG(LOG_WARNING, "Handler got signal %d",
+			    WTERMSIG(status));
+	}
+
 	bufferevent_free(client->ev);
 	if (client->tev)
 		event_free(client->tev);

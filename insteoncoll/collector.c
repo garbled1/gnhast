@@ -541,10 +541,12 @@ void connect_server_cb(int nada, short what, void *arg)
 	if (conn->type == CONN_TYPE_GNHASTD) {
 		LOG(LOG_NOTICE, "Attempting to connect to %s @ %s:%d",
 		    conntype[conn->type], conn->host, conn->port);
-		if (need_rereg)
+		if (need_rereg) {
 			TAILQ_FOREACH(dev, &alldevs, next_all)
 				if (dev->name != NULL)
 					gn_register_device(dev, conn->bev);
+			gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
+		}
 		need_rereg = 0;
 	}
 }
@@ -781,5 +783,6 @@ main(int argc, char *argv[])
 
 	(void)close(fd);
 	closelog();
+	delete_pidfile();
 	return 0;
 }

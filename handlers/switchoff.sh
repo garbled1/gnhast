@@ -26,7 +26,9 @@ else
     DEVS=$*
 fi
 
-(for DEV in $DEVS
+(
+echo "client client:handler"
+for DEV in $DEVS
 do
     TYPE=`echo $DEV | cut -d = -f 2`
     DEVICE=`echo $DEV | cut -d = -f 1`

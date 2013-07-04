@@ -844,6 +844,7 @@ cfg_t *dump_conf(cfg_t *cfg, int flags, const char *filename)
 	int i;
 	time_t t;
 
+	LOG(LOG_NOTICE, "Rewriting configuration file");
 	t = time(NULL);
 	fp = fopen(filename, "w");
 	fprintf(fp, "# Config file for %s\n", getprogname());

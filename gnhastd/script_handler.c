@@ -109,6 +109,7 @@ void run_handler_dev(device_t *dev)
 	client->fd = sv[0];
 	client->name = strdup("handler");
 	client->addr = strdup(dev->handler);
+	client->pid = child;
 
 	client->ev = bufferevent_socket_new(base, sv[0],
             BEV_OPT_CLOSE_ON_FREE);

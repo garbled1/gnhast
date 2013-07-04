@@ -149,6 +149,7 @@ struct _wrap_device_t;
 typedef struct _client_t {
 	int fd;		/**< \brief file descriptor */
 	int provider;	/**< \brief is this client a device provider? */
+	pid_t pid;	/**< \brief pid, if handler */
 	TAILQ_HEAD(, _device_t) devices;  /**< \brief linked list of devices it provides */
 	TAILQ_HEAD(, _wrap_device_t) wdevices; /**< \brief linked list of non-provided devices */
 	struct bufferevent *ev;	/**< \brief the bufferevent */

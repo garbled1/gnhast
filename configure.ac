@@ -1,6 +1,5 @@
-# $Id$
 
-AC_INIT([gnhast], 0.2.2)
+AC_INIT([gnhast], 0.2.3)
 AM_INIT_AUTOMAKE
 LT_INIT([disable-shared])
 AC_PROG_CC

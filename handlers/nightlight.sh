@@ -13,9 +13,11 @@ read update
 shift 1
 
 # find lux val, strip off decimal point and detail
-VAL=`echo $update | sed -e 's/.*lux://' -e 's/\.[0-9]*//`
+VAL=`echo $update | sed -e 's/.*lux://' -e 's/\.[0-9]*//'`
 
-(while [ "$1" != "" ]
+(
+echo "client client:handler"
+while [ "$1" != "" ]
 do
     SWITCH="$1"
     shift 1

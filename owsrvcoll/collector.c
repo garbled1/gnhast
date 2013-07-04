@@ -391,8 +391,8 @@ void ows_buf_read_cb(struct bufferevent *in, void *arg)
 	if (msg.ret < 0)
 		LOG(LOG_ERROR, "Got bad return code from %s: %d."
 		    " curuid: %s",
-		    conn->current_dev ? conn->current_dev->uid : "none",
-		    conntype[conn->type], ntohl(msg.ret));
+		    conntype[conn->type], ntohl(msg.ret),
+		    conn->current_dev ? conn->current_dev->uid : "none");
 
 	itmp = (int32_t)ntohl(msg.control_flags);
 	if (itmp & OWFLAG_PERSIST)
@@ -660,10 +660,12 @@ void connect_server_cb(int nada, short what, void *arg)
 	if (conn->type == CONN_TYPE_GNHASTD) {
 		LOG(LOG_NOTICE, "Attempting to connect to %s @ %s:%d",
 		    conntype[conn->type], conn->host, conn->port);
-		if (need_rereg)
+		if (need_rereg) {
 			TAILQ_FOREACH(dev, &alldevs, next_all)
 				if (dumpconf == NULL && dev->name != NULL)
 					gn_register_device(dev, conn->bev);
+			gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
+		}
 		need_rereg = 0;
 	}
 }
@@ -903,5 +905,6 @@ int main(int argc, char **argv)
 	event_base_dispatch(base);
 
 	closelog();
+	delete_pidfile();
 	return(0);
 }

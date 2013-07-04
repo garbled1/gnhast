@@ -73,6 +73,7 @@ char *mk_rrdname(char *orig);
 int lcm(int a,int b);
 int gcd(int a, int b);
 void writepidfile(char *filename);
+void delete_pidfile(void);
 void cb_sighup(int fd, short what, void *arg);
 
 /* from netparser.c */

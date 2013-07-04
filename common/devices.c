@@ -370,7 +370,7 @@ void store_data_dev(device_t *dev, int where, void *data)
 	case DATALOC_DATA:
 		store = &dev->data;
 		/* special handling, copy current to prev */
-		memcpy(&dev->data, &dev->last, sizeof(data_t));
+		memcpy(&dev->last, &dev->data, sizeof(data_t));
 		dev->flags &= ~DEVFLAG_NODATA;
 		break;
 	case DATALOC_LAST:

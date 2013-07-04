@@ -44,6 +44,7 @@
 #include "common.h"
 
 char *stored_logname = NULL;
+char *stored_pidfile = NULL;
 extern FILE *logfile;
 extern cfg_t *cfg;
 
@@ -295,8 +296,21 @@ void writepidfile(char *filename)
 	mypid = getpid();
 	fprintf(l, "%d", mypid);
 	fclose(l);
+	stored_pidfile = strdup(buf);
 	if (madebuf)
 		free(buf);
+}
+
+/**
+   \brief delete the pidfile on close
+*/
+
+void delete_pidfile(void)
+{
+	if (stored_pidfile == NULL)
+		return;
+
+	unlink(stored_pidfile);
 }
 
 /**
