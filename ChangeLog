@@ -20,6 +20,7 @@ gather data from that.
 	Add a modify command to gnhastd, so you can edit the config file on the fly by
 sending it simple commands.  This allows you to add a handler or tweak names/watermarks
 on a running instance.
+	Port to Linux.
 
 0.2 - Initial Release 5/29/13
     Added Collectors:

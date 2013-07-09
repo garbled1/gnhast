@@ -12,6 +12,7 @@ EXTRA_DIST = \
 
 do_subst = sed -e 's,[@]NETCAT[@],$(NETCAT),g'
 
+.SECONDEXPANSION:
 ${handlerlibexecshell_SCRIPTS}: $$@.sh
 	$(do_subst) < $(srcdir)/$? > $@
 	chmod +x $@

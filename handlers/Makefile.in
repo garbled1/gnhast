@@ -477,6 +477,7 @@ uninstall-am: uninstall-handlerlibexecshellSCRIPTS
 	uninstall-handlerlibexecshellSCRIPTS
 
 
+.SECONDEXPANSION:
 ${handlerlibexecshell_SCRIPTS}: $$@.sh
 	$(do_subst) < $(srcdir)/$? > $@
 	chmod +x $@
