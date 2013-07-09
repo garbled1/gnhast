@@ -1,3 +1,25 @@
+0.2.3 - Release 7/9/13
+    Added Collectors:
+	wupwscoll
+	wmr918coll
+    Added Handlers:
+	nightlight
+	switchon
+	switchoff
+    New features:
+	Make gnhastd aware of the unit that data is stored in.  Now a collector tells
+gnhast what scale it is feeding data in (ex, Celcius). When requesting data, you can
+request it in a different scale, and the server will auto-caclulate.
+	Add a wupwscoll collector.  This collector will publish weather data to
+weather underground, and pwsweather.com.
+	Add wmr918coll collector.  Collects data from oregon scientific weather stations.
+Works on wx200's wmr918's, and can also connect to a running wx200d instance and
+gather data from that.
+	Insteon i2cs code now tested and working fully.
+	Added basic handlers for a nightlight routine, and switching devices on and off.
+	Add a modify command to gnhastd, so you can edit the config file on the fly by
+sending it simple commands.  This allows you to add a handler or tweak names/watermarks
+on a running instance.
 
 0.2 - Initial Release 5/29/13
     Added Collectors:
