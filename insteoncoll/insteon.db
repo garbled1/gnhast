@@ -19,10 +19,24 @@ model "2486DWH6" {
 	type = "dimmer"
 	subtype = "switch"
 }
+model "2334-232" {
+	name = "KeypadLinc Dimmer, 6-button, Dual-Band"
+	devcat = 0x01
+	subcat = 0x42
+	type = "dimmer"
+	subtype = "switch"
+}
 model "2634-222" {
 	name = "On/Off Outdoor Module"
 	devcat = 0x02
 	subcat = 0x38
+	type = "switch"
+	subtype = "switch"
+}
+model "2477S" {
+	name = "SwitchLinc Switch, On/Off, Dual-Band"
+	devcat = 0x02
+	subcat = 0x2a
 	type = "switch"
 	subtype = "switch"
 }

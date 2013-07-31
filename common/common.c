@@ -215,8 +215,8 @@ char *mk_rrdname(char *orig)
 		if (isalpha(*p) || *p == '_' || isdigit(*p)) {
 			newbuf[i] = *p;
 			i++;
-			p++;
 		}
+		p++;
 	}
 	newbuf[i] = '\0';
 	return(newbuf);

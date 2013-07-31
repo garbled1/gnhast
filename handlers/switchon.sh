@@ -2,7 +2,7 @@
 
 # Accept a file or list of devices
 # which is a list of devices we want to switch on in the form
-# UID=<device|switch>
+# UID=<dimmer|switch>
 # example:
 # 4A:5C:44=switch
 # Usage: switchon.sh [ -f <listfile> ] [device ...]
