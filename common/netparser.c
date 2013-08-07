@@ -80,6 +80,12 @@ argtable_t argtable[] = {
 	{"lowat", SC_LOWAT, PTDOUBLE},
 	{"handler", SC_HANDLER, PTCHAR},
 	{"hargs", SC_HARGS, PTCHAR},
+	{"flow", SC_FLOWRATE, PTDOUBLE},
+	{"distance", SC_DISTANCE, PTDOUBLE},
+	{"alarm", SC_ALARMSTATUS, PTINT},
+	{"number", SC_NUMBER, PTLL},
+	{"pct", SC_PERCENTAGE, PTDOUBLE},
+	{"volume", SC_VOLUME, PTDOUBLE},
 };
 
 /** \brief size of the args table */ 
@@ -156,6 +162,12 @@ int find_arg_bydev(device_t *dev)
 	case SUBTYPE_AMPS: return find_arg_byid(SC_AMPS); break;
 	case SUBTYPE_RAINRATE: return find_arg_byid(SC_RAINRATE); break;
 	case SUBTYPE_WEATHER: return find_arg_byid(SC_WEATHER); break;
+	case SUBTYPE_ALARMSTATUS: return find_arg_byid(SC_ALARMSTATUS); break;
+	case SUBTYPE_NUMBER: return find_arg_byid(SC_NUMBER); break;
+	case SUBTYPE_PERCENTAGE: return find_arg_byid(SC_PERCENTAGE); break;
+	case SUBTYPE_FLOWRATE: return find_arg_byid(SC_FLOWRATE); break;
+	case SUBTYPE_DISTANCE: return find_arg_byid(SC_DISTANCE); break;
+	case SUBTYPE_VOLUME: return find_arg_byid(SC_VOLUME); break;
 	}
 	return -1;
 }

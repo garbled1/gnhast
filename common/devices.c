@@ -305,6 +305,7 @@ void get_data_dev(device_t *dev, int where, void *data)
 			*((double *)data) = store->temp;
 			break;
 		case SUBTYPE_HUMID:
+		case SUBTYPE_PERCENTAGE:
 			*((double *)data) = store->humid;
 			break;
 		case SUBTYPE_COUNTER:
@@ -344,10 +345,21 @@ void get_data_dev(device_t *dev, int where, void *data)
 			*((double *)data) = store->rainrate;
 			break;
 		case SUBTYPE_SWITCH:
+		case SUBTYPE_WEATHER:
+		case SUBTYPE_ALARMSTATUS:
 			*((uint8_t *)data) = store->state;
 			break;
-		case SUBTYPE_WEATHER:
-			*((uint8_t *)data) = store->state;
+		case SUBTYPE_NUMBER:
+			*((int64_t *)data) = store->wattsec;
+			break;
+		case SUBTYPE_FLOWRATE:
+			*((double *)data) = store->flow;
+			break;
+		case SUBTYPE_DISTANCE:
+			*((double *)data) = store->distance;
+			break;
+		case SUBTYPE_VOLUME:
+			*((double *)data) = store->volume;
 			break;
 		}
 		break;
@@ -407,6 +419,7 @@ void store_data_dev(device_t *dev, int where, void *data)
 			store->temp = *((double *)data);
 			break;
 		case SUBTYPE_HUMID:
+		case SUBTYPE_PERCENTAGE:
 			store->humid = *((double *)data);
 			break;
 		case SUBTYPE_COUNTER:
@@ -447,7 +460,20 @@ void store_data_dev(device_t *dev, int where, void *data)
 			break;
 		case SUBTYPE_SWITCH:
 		case SUBTYPE_WEATHER:
+		case SUBTYPE_ALARMSTATUS:
 			store->state = *((uint8_t *)data);
+			break;
+		case SUBTYPE_NUMBER:
+			store->number = *((int64_t *)data);
+			break;
+		case SUBTYPE_VOLUME:
+			store->volume = *((double *)data);
+			break;
+		case SUBTYPE_DISTANCE:
+			store->distance = *((double *)data);
+			break;
+		case SUBTYPE_FLOWRATE:
+			store->flow = *((double *)data);
 			break;
 		}
 		break;
@@ -465,16 +491,19 @@ int datatype_dev(device_t *dev)
 {
 	if (dev->type == DEVICE_DIMMER)
 		return DATATYPE_DOUBLE;
-	if (dev->subtype == SUBTYPE_SWITCH)
+	switch (dev->subtype) {
+	case SUBTYPE_SWITCH:
+	case SUBTYPE_COUNTER:
+	case SUBTYPE_OUTLET:
+	case SUBTYPE_WEATHER:
+	case SUBTYPE_ALARMSTATUS:
 		return DATATYPE_UINT;
-	if (dev->subtype == SUBTYPE_COUNTER)
-		return DATATYPE_UINT;
-	if (dev->subtype == SUBTYPE_OUTLET)
-		return DATATYPE_UINT;
-	if (dev->subtype == SUBTYPE_WATTSEC)
+		break;
+	case SUBTYPE_WATTSEC:
+	case SUBTYPE_NUMBER:
 		return DATATYPE_LL;
-	if (dev->subtype == SUBTYPE_WEATHER)
-		return DATATYPE_UINT;
+		break;
+	}
 	return DATATYPE_DOUBLE;
 }
 

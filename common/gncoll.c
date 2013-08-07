@@ -278,9 +278,9 @@ void gn_register_device(device_t *dev, struct bufferevent *out)
 void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 {
 	struct evbuffer *send;
-	double d;
-	uint32_t u;
-	int64_t ll;
+	double d=0.0;
+	uint32_t u=0;
+	int64_t ll=0;
 	int scale, i;
 
 	/* Verify device sanity first */

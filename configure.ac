@@ -70,6 +70,7 @@ AC_CONFIG_FILES([Makefile \
 		 insteoncoll/Makefile \
 		 wmr918coll/Makefile \
 		 wupwscoll/Makefile \
+		 ad2usbcoll/Makefile \
 		 handlers/Makefile \
 		 libconfuse/Makefile])
 

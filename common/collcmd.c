@@ -228,6 +228,7 @@ int cmd_update(pargs_t *args, void *arg)
 		switch (args[i].cword) {
 		case SC_SWITCH:
 		case SC_WEATHER:
+		case SC_ALARMSTATUS:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.i);
 			break;
 		case SC_LUX:
@@ -242,12 +243,17 @@ int cmd_update(pargs_t *args, void *arg)
 		case SC_VOLTAGE:
 		case SC_WATT:
 		case SC_AMPS:
+		case SC_PERCENTAGE:
+		case SC_FLOWRATE:
+		case SC_VOLUME:
+		case SC_DISTANCE:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.d);
 			break;
 		case SC_COUNT:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.u);
 			break;
 		case SC_WATTSEC:
+		case SC_NUMBER:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.ll);
 			break;
 		}

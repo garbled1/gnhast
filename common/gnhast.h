@@ -72,8 +72,9 @@ enum PROTO_TYPES {
 	PROTO_SENSOR_BRULTECH_GEM,
 	PROTO_SENSOR_BRULTECH_ECM1240,
 	PROTO_SENSOR_WMR918,
+	PROTO_SENSOR_AD2USB,
 };
-#define PROTO_MAX PROTO_SENSOR_WMR918
+#define PROTO_MAX PROTO_SENSOR_AD2USB
 
 enum SUBTYPE_TYPES {
 	SUBTYPE_NONE,
@@ -94,7 +95,13 @@ enum SUBTYPE_TYPES {
 	SUBTYPE_WATT,
 	SUBTYPE_AMPS,
 	SUBTYPE_RAINRATE,
-	SUBTYPE_WEATHER,
+	SUBTYPE_WEATHER, /* stored in state */
+	SUBTYPE_ALARMSTATUS, /* stored in state */
+	SUBTYPE_NUMBER,
+	SUBTYPE_PERCENTAGE, /* stored in humid */
+	SUBTYPE_FLOWRATE,
+	SUBTYPE_DISTANCE, 
+	SUBTYPE_VOLUME,
 	SUBTYPE_BOOL,
 };
 #define SUBTYPE_MAX SUBTYPE_BOOL
@@ -138,6 +145,15 @@ enum WEATHER_TYPES {
 	WEATHER_PARTCLOUD,
 	WEATHER_CLOUDY,
 	WEATHER_RAINY,
+};
+
+enum ALARMSTATUS_TYPES {
+	ALARM_READY,
+	ALARM_STAY,
+	ALARM_NIGHTSTAY,
+	ALARM_INSTANTMAX,
+	ALARM_AWAY,
+	ALARM_FAULT,
 };
 
 struct _device_group_t;
@@ -212,6 +228,10 @@ typedef union _data_t {
 	double watts;	/**< \brief watts */
 	double amps;	/**< \brief amps */
 	double rainrate;/**< \brief rain rate */
+	double distance;/**< \brief distance */
+	double volume;	/**< \brief volume */
+	double flow;	/**< \brief flow */
+	int64_t number;	/**< \brief generic number */
 } data_t;
 
 /** The device structure */

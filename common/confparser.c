@@ -160,6 +160,8 @@ static int conf_parse_proto(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		*(int *)result = PROTO_SENSOR_BRULTECH_ECM1240;
 	else if (strcmp(value, "wmr918") == 0)
 		*(int *)result = PROTO_SENSOR_WMR918;
+	else if (strcmp(value, "ad2usb") == 0)
+		*(int *)result = PROTO_SENSOR_AD2USB;
 	else {
 		cfg_error(cfg, "invalid value for option '%s': %s",
 		    cfg_opt_name(opt), value);
@@ -201,6 +203,9 @@ static void conf_print_proto(cfg_opt_t *opt, unsigned int index, FILE *fp)
 		break;
 	case PROTO_SENSOR_WMR918:
 		fprintf(fp, "wmr918");
+		break;
+	case PROTO_SENSOR_AD2USB:
+		fprintf(fp, "ad2usb");
 		break;
 	default:
 		fprintf(fp, "NONE");
@@ -323,6 +328,18 @@ int conf_parse_subtype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		*(int *)result = SUBTYPE_RAINRATE;
 	else if (strcmp(value, "weather") == 0)
 		*(int *)result = SUBTYPE_WEATHER;
+	else if (strcmp(value, "alarmstatus") == 0)
+		*(int *)result = SUBTYPE_ALARMSTATUS;
+	else if (strcmp(value, "number") == 0)
+		*(int *)result = SUBTYPE_NUMBER;
+	else if (strcmp(value, "percentage") == 0)
+		*(int *)result = SUBTYPE_PERCENTAGE;
+	else if (strcmp(value, "flowrate") == 0)
+		*(int *)result = SUBTYPE_FLOWRATE;
+	else if (strcmp(value, "distance") == 0)
+		*(int *)result = SUBTYPE_DISTANCE;
+	else if (strcmp(value, "volume") == 0)
+		*(int *)result = SUBTYPE_VOLUME;
 	else {
 		cfg_error(cfg, "invalid value for option '%s': %s",
 		    cfg_opt_name(opt), value);
@@ -401,6 +418,24 @@ void conf_print_subtype(cfg_opt_t *opt, unsigned int index, FILE *fp)
 		break;
 	case SUBTYPE_WEATHER:
 		fprintf(fp, "weather");
+		break;
+	case SUBTYPE_ALARMSTATUS:
+		fprintf(fp, "alarmstatus");
+		break;
+	case SUBTYPE_NUMBER:
+		fprintf(fp, "number");
+		break;
+	case SUBTYPE_PERCENTAGE:
+		fprintf(fp, "percentage");
+		break;
+	case SUBTYPE_FLOWRATE:
+		fprintf(fp, "flowrate");
+		break;
+	case SUBTYPE_DISTANCE:
+		fprintf(fp, "distance");
+		break;
+	case SUBTYPE_VOLUME:
+		fprintf(fp, "volume");
 		break;
 	default:
 		fprintf(fp, "NONE");
