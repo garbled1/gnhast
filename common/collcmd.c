@@ -325,6 +325,9 @@ int cmd_change(pargs_t *args, void *arg)
 				return(-1);
 			}
 			break;
+		case SC_ALARMSTATUS:
+			state = args[i].arg.i;
+			break;
 		case SC_UID:
 			break;
 		default:
@@ -337,6 +340,8 @@ int cmd_change(pargs_t *args, void *arg)
 	if (dev->type == DEVICE_DIMMER)
 		coll_chg_dimmer_cb(dev, level, arg);
 	else if (dev->type == DEVICE_SWITCH)
+		coll_chg_switch_cb(dev, state, arg);
+	else if (dev->subtype = SUBTYPE_ALARMSTATUS)
 		coll_chg_switch_cb(dev, state, arg);
 	else {
 		LOG(LOG_ERROR, "Unhandled dev type in cmd_change()");

@@ -51,6 +51,7 @@
 #include "gnhast.h"
 #include "confuse.h"
 #include "confparser.h"
+#include "collcmd.h"
 #include "gncoll.h"
 #include "ad2usb.h"
 
@@ -72,6 +73,7 @@ int *zonefaults;
     for the server */
 extern argtable_t argtable[];
 extern TAILQ_HEAD(, _device_t) alldevs;
+extern const char *alarmtext[];
 
 /** The event base */
 struct event_base *base;
@@ -107,6 +109,8 @@ extern cfg_opt_t device_opts[];
 cfg_opt_t ad2usb_opts[] = {
 	CFG_STR("serialdev", 0, CFGF_NODEFAULT),
 	CFG_INT("zones", 8, CFGF_NONE),
+	CFG_INT_CB("logfaults", 0, CFGF_NONE, conf_parse_bool),
+	CFG_INT("seccode", 0, CFGF_NONE),
 	CFG_END(),
 };
 
@@ -124,6 +128,94 @@ cfg_opt_t options[] = {
 	CFG_STR("pidfile", AD2USBCOLL_PID_FILE, CFGF_NONE),
 	CFG_END(),
 };
+
+
+/**********************************************
+	gnhastd handlers
+**********************************************/
+
+/**
+   \brief Called when an upd command occurs
+   \param dev device that got updated
+   \param arg pointer to client_t
+*/
+
+void coll_upd_cb(device_t *dev, void *arg)
+{
+	return;
+}
+
+
+/**
+   \brief Handle a enldevs device command
+   \param args The list of arguments
+   \param arg void pointer to client_t of provider
+*/
+
+int cmd_endldevs(pargs_t *args, void *arg)
+{
+	return 0;
+}
+
+/**
+   \brief Called when a switch chg command occurs
+   \param dev device that got updated
+   \param state new state (on/off)
+   \param arg pointer to client_t
+*/
+
+void coll_chg_switch_cb(device_t *dev, int state, void *arg)
+{
+	client_t *cli = (client_t *)arg;
+	char buf[256];
+	int code, button=0;
+	struct evbuffer *send;
+
+
+	code = cfg_getint(ad2usb_c, "seccode");
+	if (code == 0) {
+		LOG(LOG_NOTICE, "No seccode in cfg file, cannot change "
+		    "alarm state");
+		return;
+	}
+
+	sprintf(buf, "%s-%s", uidprefix, "status");
+	if (strcmp(buf, dev->uid) != 0) {
+		LOG(LOG_ERROR, "Can only change alarm state, ignoring change");
+		return;
+	}
+	switch (state) {
+	case ALARM_READY: button = 1; break;
+	case ALARM_STAY: button = 3; break;
+	case ALARM_NIGHTSTAY: button = 33; break;
+	case ALARM_INSTANTMAX: button = 7; break;
+	case ALARM_AWAY: button = 2; break;
+	case ALARM_FAULT:
+	default:
+		LOG(LOG_ERROR, "Request to change alarmstate to invalid "
+		    "state: %d", state);
+		return;
+		break;
+	}
+	if (button < 1)
+		return;
+	send = evbuffer_new();
+	evbuffer_add_printf(send, "%0.4d%d", code, button);
+	bufferevent_write_buffer(ad2usb_conn->bev, send);
+	evbuffer_free(send);	
+}
+
+/**
+   \brief Called when a dimmer chg command occurs
+   \param dev device that got updated
+   \param level new dimmer level
+   \param arg pointer to client_t
+*/
+
+void coll_chg_dimmer_cb(device_t *dev, double level, void *arg)
+{
+	return;
+}
 
 /*****
       General stuff
@@ -163,6 +255,35 @@ device_t *new_int_dev(int subtype, int val, char *suffix)
 }
 
 /**
+   \brief Maybe we log a status change?
+   \param dev dev that fired
+   \param val new value
+*/
+
+void maybe_log_status(device_t *dev, int val)
+{
+	if (!cfg_getint(ad2usb_c, "logfaults"))
+		return;
+	if (strstr(dev->uid, "lowbat") != NULL) {
+		LOG(LOG_NOTICE, "uid:%s %s %s", dev->uid, dev->name,
+		    val ? "Failure" : "OK");
+		return;
+	}
+	if (strstr(dev->uid, "acpower") != NULL) {
+		LOG(LOG_NOTICE, "uid:%s %s %s", dev->uid, dev->name,
+		    val ? "On" : "Off");
+		return;
+	}
+	if (dev->subtype == SUBTYPE_SWITCH)
+		LOG(LOG_NOTICE, "uid:%s %s %s", dev->uid, dev->name,
+		    val ? "faulted" : "clear");
+	if (dev->subtype == SUBTYPE_ALARMSTATUS)
+		LOG(LOG_NOTICE, "%s status changed to %s", dev->name,
+		    alarmtext[val]);
+}
+
+
+/**
    \brief Update a integer device
    \param val current reading
    \param suffix a uid suffix
@@ -184,6 +305,7 @@ void update_int_dev(int val, char *suffix, int send)
 	if (dev->name && (prevval != val || first_update) && send) {
 		LOG(LOG_DEBUG, "updating %s with status %d", dev->uid, val);
 		gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
+		maybe_log_status(dev, val);
 	}
 }
 
@@ -204,7 +326,7 @@ void maybe_dump_conf(int zones)
 		sprintf(buf2, "%s-%s", uidprefix, buf);
 		dev = find_device_byuid(buf2);
 		if (dev == NULL)
-			dev = new_int_dev(SUBTYPE_SWITCH, 1, buf);
+			dev = new_int_dev(SUBTYPE_SWITCH, 0, buf);
 	}
 	sprintf(buf, "status");
 	sprintf(buf2, "%s-%s", uidprefix, buf);
@@ -228,7 +350,7 @@ void maybe_dump_conf(int zones)
 	sprintf(buf2, "%s-%s", uidprefix, buf);
 	dev = find_device_byuid(buf2);
 	if (dev == NULL)
-		dev = new_int_dev(SUBTYPE_SWITCH, 0, buf);
+		dev = new_int_dev(SUBTYPE_SWITCH, 1, buf);
 
 	if (dumpconf != NULL) {
 		LOG(LOG_NOTICE, "Dumping config file to %s and exiting",
@@ -279,17 +401,11 @@ void ad2usb_handle_exp(char *data, size_t len)
 	dev = find_device_byuid(buf2);
 	if (dev == NULL) {
 		LOG(LOG_NOTICE, "No device for uid:%s, building", buf2);
-		if (val == 0)
-			dev = new_int_dev(SUBTYPE_SWITCH, 1, buf);
-		else
-			dev = new_int_dev(SUBTYPE_SWITCH, 0, buf);
+		dev = new_int_dev(SUBTYPE_SWITCH, val, buf);
 		LOG(LOG_NOTICE, "Rewriting config file %s", conffile);
 		dump_conf(cfg, 0, conffile);
 	}
-	if (val == 1)
-		update_int_dev(0, buf, 1); /* faulted */
-	else
-		update_int_dev(1, buf, 1);
+	update_int_dev(val, buf, 1);
 }
 
 
@@ -337,9 +453,9 @@ void ad2usb_handle_rfx(char *data, size_t len)
 		case 4: bitmask = (1<<6); break;
 		}
 		if (msg & bitmask)
-			update_int_dev(0, buf, 1); /* faulted */
+			update_int_dev(1, buf, 1); /* faulted */
 		else
-			update_int_dev(1, buf, 1);
+			update_int_dev(0, buf, 1);
 	}
 	sprintf(buf, "%0.7d-lowbat", serial);
 	sprintf(buf2, "%s-%s", uidprefix, buf);
@@ -424,7 +540,7 @@ void ad2usb_handle_std(char *data, size_t len)
 		if (val == 8 && strstr(data, "FAULT ") != NULL) {
 			; /* 8's are a pain, look for the word FAULT */
 		} else {
-			update_int_dev(0, buf, 1);
+			update_int_dev(1, buf, 1);
 			zonefaults[val-1] = zf+3; /* 2 + zf + 1 for cur */
 		}
 	} else if (tmp == NULL) { /* clear all faults */
@@ -437,7 +553,7 @@ void ad2usb_handle_std(char *data, size_t len)
 			sprintf(buf2, "%s-%s", uidprefix, buf);
 			dev = find_device_byuid(buf2);
 			if (dev != NULL)
-				update_int_dev(1, buf, 1);
+				update_int_dev(0, buf, 1);
 		}
 	}
 
@@ -518,7 +634,7 @@ void ad2usb_buf_read_cb(struct bufferevent *in, void *arg)
 			LOG(LOG_DEBUG, "Clearing %s from faultcounter", buf);
 			dev = find_device_byuid(buf2);
 			if (dev != NULL)
-				update_int_dev(1, buf, 1);
+				update_int_dev(0, buf, 1);
 		}
 	}
 
@@ -601,7 +717,7 @@ void connect_server_cb(int nada, short what, void *arg)
 
 	conn->bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
 	if (conn->type == CONN_TYPE_GNHASTD)
-		bufferevent_setcb(conn->bev, buf_read_cb, NULL,
+		bufferevent_setcb(conn->bev, gnhastd_read_cb, NULL,
 				  connect_event_cb, conn);
 	bufferevent_enable(conn->bev, EV_READ|EV_WRITE);
 	bufferevent_socket_connect_hostname(conn->bev, dns_base, AF_UNSPEC,

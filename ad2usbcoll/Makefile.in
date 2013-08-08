@@ -80,7 +80,8 @@ am__ad2usbcoll_SOURCES_DIST = $(top_srcdir)/common/common.c \
 	$(top_srcdir)/common/devices.c \
 	$(top_srcdir)/common/netparser.c \
 	$(top_srcdir)/common/confparser.c \
-	$(top_srcdir)/common/gncoll.c $(top_srcdir)/common/common.h \
+	$(top_srcdir)/common/gncoll.c $(top_srcdir)/common/collcmd.c \
+	$(top_srcdir)/common/collcmd.h $(top_srcdir)/common/common.h \
 	$(top_srcdir)/common/gnhast.h $(top_srcdir)/common/confuse.h \
 	$(top_srcdir)/common/confparser.h \
 	$(top_srcdir)/common/gncoll.h ad2usb.h collector.c \
@@ -92,7 +93,8 @@ am__ad2usbcoll_SOURCES_DIST = $(top_srcdir)/common/common.c \
 @NEED_RBTREE_TRUE@	bswap64.$(OBJEXT) rb.$(OBJEXT)
 am_ad2usbcoll_OBJECTS = common.$(OBJEXT) serial_common.$(OBJEXT) \
 	devices.$(OBJEXT) netparser.$(OBJEXT) confparser.$(OBJEXT) \
-	gncoll.$(OBJEXT) collector.$(OBJEXT) $(am__objects_1)
+	gncoll.$(OBJEXT) collcmd.$(OBJEXT) collector.$(OBJEXT) \
+	$(am__objects_1)
 ad2usbcoll_OBJECTS = $(am_ad2usbcoll_OBJECTS)
 ad2usbcoll_DEPENDENCIES = $(top_builddir)/libconfuse/libconfuse.la
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -321,7 +323,8 @@ ad2usbcoll_SOURCES = $(top_srcdir)/common/common.c \
 	$(top_srcdir)/common/devices.c \
 	$(top_srcdir)/common/netparser.c \
 	$(top_srcdir)/common/confparser.c \
-	$(top_srcdir)/common/gncoll.c $(top_srcdir)/common/common.h \
+	$(top_srcdir)/common/gncoll.c $(top_srcdir)/common/collcmd.c \
+	$(top_srcdir)/common/collcmd.h $(top_srcdir)/common/common.h \
 	$(top_srcdir)/common/gnhast.h $(top_srcdir)/common/confuse.h \
 	$(top_srcdir)/common/confparser.h \
 	$(top_srcdir)/common/gncoll.h ad2usb.h collector.c \
@@ -458,6 +461,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bswap16.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bswap32.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bswap64.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/collcmd.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/collector.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/common.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/confparser.Po@am__quote@
@@ -571,6 +575,20 @@ gncoll.obj: $(top_srcdir)/common/gncoll.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/gncoll.c' object='gncoll.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o gncoll.obj `if test -f '$(top_srcdir)/common/gncoll.c'; then $(CYGPATH_W) '$(top_srcdir)/common/gncoll.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/gncoll.c'; fi`
+
+collcmd.o: $(top_srcdir)/common/collcmd.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT collcmd.o -MD -MP -MF $(DEPDIR)/collcmd.Tpo -c -o collcmd.o `test -f '$(top_srcdir)/common/collcmd.c' || echo '$(srcdir)/'`$(top_srcdir)/common/collcmd.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/collcmd.Tpo $(DEPDIR)/collcmd.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/collcmd.c' object='collcmd.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o collcmd.o `test -f '$(top_srcdir)/common/collcmd.c' || echo '$(srcdir)/'`$(top_srcdir)/common/collcmd.c
+
+collcmd.obj: $(top_srcdir)/common/collcmd.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT collcmd.obj -MD -MP -MF $(DEPDIR)/collcmd.Tpo -c -o collcmd.obj `if test -f '$(top_srcdir)/common/collcmd.c'; then $(CYGPATH_W) '$(top_srcdir)/common/collcmd.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/collcmd.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/collcmd.Tpo $(DEPDIR)/collcmd.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/collcmd.c' object='collcmd.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o collcmd.obj `if test -f '$(top_srcdir)/common/collcmd.c'; then $(CYGPATH_W) '$(top_srcdir)/common/collcmd.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/collcmd.c'; fi`
 
 bswap16.o: $(top_srcdir)/linux/bswap16.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT bswap16.o -MD -MP -MF $(DEPDIR)/bswap16.Tpo -c -o bswap16.o `test -f '$(top_srcdir)/linux/bswap16.c' || echo '$(srcdir)/'`$(top_srcdir)/linux/bswap16.c

@@ -59,6 +59,22 @@ const char *loglevels[LOG_FATAL+1] = {
 	"FATAL"
 };
 
+const char *weathertext[] = {
+	"Sunny",
+	"Partly Cloudy",
+	"Cloudy",
+	"Rainy",
+};
+
+const char *alarmtext[] = {
+	"Ready",
+	"Stay",
+	"Stay/Night",
+	"Instant/Max",
+	"Away",
+	"Fault",
+};
+
 /**
    \brief open the logfile for writing
 */
