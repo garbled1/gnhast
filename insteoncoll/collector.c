@@ -120,6 +120,43 @@ usage(void)
 	exit(1);
 }
 
+/**
+   \brief Store and log data from a switch
+   \param dev device to store data to
+   \param s data to store
+*/
+
+void storelog_switch(device_t *dev, uint8_t s)
+{
+	uint8_t orig_s;
+
+	LOG(LOG_DEBUG, "Storing data from %s %d", dev->loc, s);
+	store_data_dev(dev, DATALOC_DATA, &s);
+	get_data_dev(dev, DATALOC_LAST, &orig_s);
+	if (s != orig_s)
+		LOG(LOG_NOTICE, "Switch device %s changed "
+		    "state from %d to %d", dev->uid, orig_s,s);
+}
+
+/**
+   \brief Store and log data from a dimmer
+   \param dev device to store data to
+   \param s data to store
+*/
+
+void storelog_dimmer(device_t *dev, double d)
+{
+	double orig_d;
+
+	LOG(LOG_DEBUG, "Storing data from %s %f", dev->loc, d);
+	store_data_dev(dev, DATALOC_DATA, &d);
+	get_data_dev(dev, DATALOC_LAST, &orig_d);
+	if (d != orig_d)
+		LOG(LOG_NOTICE, "Dimmer device %s changed "
+		    "state from %f to %f", dev->uid, orig_d, d);
+}
+
+
 /**********************************************
 	gnhastd handlers
 **********************************************/
@@ -156,10 +193,13 @@ int cmd_endldevs(pargs_t *args, void *arg)
 
 void coll_chg_switch_cb(device_t *dev, int state, void *arg)
 {
-	if (state)
+	if (state) {
 		plm_switch_on(dev, 0xFF);
-	else
+		LOG(LOG_NOTICE, "Got request to turn on switch %s", dev->uid);
+	} else {
 		plm_switch_off(dev);
+		LOG(LOG_NOTICE, "Got request to turn off switch %s", dev->uid);
+	}
 }
 
 /**
@@ -181,7 +221,8 @@ void coll_chg_dimmer_cb(device_t *dev, double level, void *arg)
 
 	d = rint(255.0 * level);
 	u = (uint8_t)d;
-	LOG(LOG_DEBUG, "Got request dimmer level=%f, set to %d", level, u);
+	LOG(LOG_NOTICE, "Got dimmer request level=%f for device %s", level,
+		dev->uid);
 	plm_switch_on(dev, u);
 
 	return;
@@ -288,11 +329,9 @@ void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 		d = (double)com2 / 255.0;
 		if (dev->type == DEVICE_SWITCH) {
 			s = (com2 > 0) ? 1 : 0;
-			LOG(LOG_DEBUG, "Storing data from %s %d", fa, s);
-			store_data_dev(dev, DATALOC_DATA, &s);
+			storelog_switch(dev, s);
 		} else {
-			LOG(LOG_DEBUG, "Storing data from %s %f", fa, d);
-			store_data_dev(dev, DATALOC_DATA, &d);
+			storelog_dimmer(dev, d);
 		}
 		gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
 		return;
@@ -323,9 +362,9 @@ void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 		need_query++;
 		break;
 	case STDCMD_ON:
-		LOG(LOG_DEBUG, "Got ON from %s", fa);
+		LOG(LOG_NOTICE, "Got ON from %s", fa);
 	case STDCMD_FASTON:
-		LOG(LOG_DEBUG, "Got FAST ON from %s", fa);
+		LOG(LOG_NOTICE, "Got FAST ON from %s", fa);
 		if ((flags & PLMFLAG_GROUP) && com2 == 0) {
 			d = 100.0; /* for now, lets assume this */
 			s = 1;
@@ -334,17 +373,17 @@ void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 			s = com2;
 		}
 		if (dev->type == DEVICE_SWITCH)
-			store_data_dev(dev, DATALOC_DATA, &s);
+			storelog_switch(dev, s);
 		else
-			store_data_dev(dev, DATALOC_DATA, &d);
+			storelog_dimmer(dev, d);
 		gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
 		/* schedule a query for it too */
 		maybe_need_query++;
 		break;
 	case STDCMD_OFF:
-		LOG(LOG_DEBUG, "Got OFF from %s", fa);
+		LOG(LOG_NOTICE, "Got OFF from %s", fa);
 	case STDCMD_FASTOFF:
-		LOG(LOG_DEBUG, "Got FAST OFF from %s", fa);
+		LOG(LOG_NOTICE, "Got FAST OFF from %s", fa);
 		if ((flags & PLMFLAG_GROUP) && com2 == 0) {
 			d = 0.0; /* for now, lets assume this */
 			s = 0x0;
@@ -353,18 +392,18 @@ void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 			s = com2;
 		}
 		if (dev->type == DEVICE_SWITCH)
-			store_data_dev(dev, DATALOC_DATA, &s);
+			storelog_switch(dev, s);
 		else
-			store_data_dev(dev, DATALOC_DATA, &d);
+			storelog_dimmer(dev, d);
 		gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
 		/* schedule a query for it too */
 		maybe_need_query++;
 		break;
 	case STDCMD_MANUALDIM:
-		LOG(LOG_DEBUG, "Got Manual Dim Start from %s", fa);
+		LOG(LOG_NOTICE, "Got Manual Dim Start from %s", fa);
 		break;
 	case STDCMD_MANUALDIMSTOP:
-		LOG(LOG_DEBUG, "Got Manual Dim Stop from %s", fa);
+		LOG(LOG_NOTICE, "Got Manual Dim Stop from %s", fa);
 		maybe_need_query++;
 		break;
 	}
@@ -608,6 +647,12 @@ void parse_devices(cfg_t *cfg)
 	for (i=0; i < cfg_size(cfg, "device"); i++) {
 		devconf = cfg_getnsec(cfg, "device", i);
 		dev = new_dev_from_conf(cfg, (char *)cfg_title(devconf));
+		if (dev == NULL) {
+			LOG(LOG_ERROR, "Couldn't find device conf for %s",
+			    cfg_title(devconf));
+			/* WTF?? */
+			continue;
+		}
 		dd = smalloc(insteon_devdata_t);
 		sscanf(dev->loc, "%x.%x.%x", &a, &b, &c);
 		dd->daddr[0] = (uint8_t)a;

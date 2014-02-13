@@ -46,10 +46,15 @@
 #include <time.h>
 #include <signal.h>
 #include <termios.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <sys/socket.h>
 #include <event2/dns.h>
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
 #include <event2/event.h>
+#include <event2/util.h>
 
 #include "common.h"
 #include "gnhast.h"
@@ -75,6 +80,13 @@ char *dumpconf = NULL;
 int need_rereg = 0;
 int indian = 1;
 int tempscale = TSCALE_F;
+
+/* stuff for gem/wiznet reset */
+int gemconnattempts = 0;
+char gemipaddrstr[16];
+int gemipaddr[4];
+wiznet_t wizconf; /**< \brief Wiznet conf string */
+int wiznetfound = 0;
 
 bruldata_t bruldata[2];	/**< \brief Prev and current data, converted */
 brulconf_t brulconf;
@@ -883,9 +895,9 @@ void brul_netconnect_event_cb(struct bufferevent *ev, short what, void *arg)
 	int err;
 	connection_t *conn = (connection_t *)arg;
 
-	if (what & BEV_EVENT_CONNECTED)
+	if (what & BEV_EVENT_CONNECTED) {
 		LOG(LOG_DEBUG, "Connected to %s", conntype[conn->type]);
-	else if (what & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
+	} else if (what & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
 		if (what & BEV_EVENT_ERROR) {
 			err = bufferevent_socket_get_dns_error(ev);
 			if (err)
@@ -984,6 +996,8 @@ void connect_server_cb(int nada, short what, void *arg)
 					    conn->host, conn->port);
 	LOG(LOG_NOTICE, "Attempting to connect to %s @ %s:%d",
 	    conntype[conn->type], conn->host, conn->port);
+	if (conn->type == 1)
+		gemconnattempts++;
 	if (conn->type == CONN_TYPE_GNHASTD) {
 		if (need_rereg) {
 			TAILQ_FOREACH(dev, &alldevs, next_all)
@@ -1007,10 +1021,12 @@ void connect_event_cb(struct bufferevent *ev, short what, void *arg)
 	int err;
 	connection_t *conn = (connection_t *)arg;
 	struct event *tev; /* timer event */
-	struct timeval secs = { 30, 0 }; /* retry in 30 seconds */
+	struct timeval secs = { 60, 0 }; /* retry in 60 seconds */
 
 	if (what & BEV_EVENT_CONNECTED) {
 		LOG(LOG_NOTICE, "Connected to %s", conntype[conn->type]);
+		if (conn->type == 1) /* gem */
+			gemconnattempts = 0;
 	} else if (what & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
 		if (what & BEV_EVENT_ERROR) {
 			err = bufferevent_socket_get_dns_error(ev);
@@ -1036,6 +1052,7 @@ void connect_event_cb(struct bufferevent *ev, short what, void *arg)
 			event_base_loopexit(base, NULL);
 	}
 }
+
 
 /**
    \brief Parse the config file for devices and load them
@@ -1086,9 +1103,201 @@ void cb_sigterm(int fd, short what, void *arg)
 	LOG(LOG_NOTICE, "Recieved SIGTERM, shutting down");
 	gnhastd_conn->shutdown = 1;
 	gn_disconnect(gnhastd_conn->bev);
-	bufferevent_free(brulnet_conn->bev);
+	if (brulnet_conn->bev)
+		bufferevent_free(brulnet_conn->bev);
 	ev = evtimer_new(base, cb_shutdown, NULL);
 	evtimer_add(ev, &secs);
+}
+
+/* WIZNET code */
+
+/**
+   \brief Watch for wiznet messages
+   \param fd unused
+   \param what what happened?
+   \param arg unused
+*/
+
+void cb_wiznet_read(int fd, short what, void *arg)
+{
+	char buf[1024], buf2[8];
+	int len, size;
+	struct sockaddr_in cli_addr;
+	wiznet_t wizc;
+
+	size = sizeof(struct sockaddr);
+	bzero(buf, sizeof(buf));
+	len = recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr *)&cli_addr,
+		       &size);
+
+	LOG(LOG_DEBUG, "got %d bytes on udp:5001", len);
+
+	if (len == sizeof(wiznet_t) + 4) { /* we got a FIND resp */
+		strncpy(buf2, buf, 4);
+		buf2[5] = '\0';
+		if (strncmp("IMIN", buf, 4) != 0) {
+			LOG(LOG_WARNING, "Got odd response from wiznet "
+			    "device: %s", buf2);
+			return;
+		}
+		memcpy(&wizc, &buf[4], sizeof(wiznet_t));
+		LOG(LOG_NOTICE, "Got wiznet response from IP %d.%d.%d.%d",
+		    wizc.ipaddr[0], wizc.ipaddr[1], wizc.ipaddr[2],
+		    wizc.ipaddr[3]);
+		LOG(LOG_NOTICE, "Wiznet FW version %d.%d", wizc.fwver[0],
+		    wizc.fwver[1]);
+		/* is this the wiznet device matching our GEM? */
+		if (wizc.ipaddr[0] == gemipaddr[0] &&
+		    wizc.ipaddr[1] == gemipaddr[1] &&
+		    wizc.ipaddr[2] == gemipaddr[2] &&
+		    wizc.ipaddr[3] == gemipaddr[3]) {
+			memcpy(&wizconf, &wizc, sizeof(wiznet_t));
+			LOG(LOG_NOTICE, "Found matching wiznet device");
+			wiznetfound = 1;
+		}
+		return;
+	}
+	if (len == 4) { /* we got a SETC response */
+		strncpy(buf2, buf, 4);
+		buf2[5] = '\0';
+		if (strncmp("SETC", buf, 4) != 0) {
+			LOG(LOG_WARNING, "Got odd response from wiznet "
+			    "device: %s", buf2);
+			return;
+		}
+		LOG(LOG_NOTICE, "Wiznet device has been reset.");
+		return;
+	}
+}
+
+/**
+   \brief Send data to the wiznet device
+   \param fd the wiznet fd
+   \param what what happened?
+   \param arg char * of data to send
+*/
+
+void cb_wiznet_send(int fd, short what, void *arg)
+{
+	char *buf = (char *)arg;
+	int len;
+	struct sockaddr_in broadcast_addr;
+
+	if (buf == NULL)
+		return;
+
+	memset(&broadcast_addr, 0, sizeof(broadcast_addr));
+	broadcast_addr.sin_family = AF_INET;
+	broadcast_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+	broadcast_addr.sin_port = htons(WIZNET_PORT);
+
+	len = sendto(fd, buf, strlen(buf), 0,
+		     (struct sockaddr *)&broadcast_addr,
+		     sizeof(struct sockaddr_in));
+	LOG(LOG_DEBUG, "Send msg len %d to udp:1460");
+}
+
+/**
+   \brief bind udp 5001 to listen to wiznet events
+   \return fd
+*/
+int bind_wiznet_recv(void)
+{
+	int sock_fd, f, flag=1;
+	struct sockaddr_in sin;
+
+	if ((sock_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+		LOG(LOG_ERROR, "Failed to bind port 5001:udp in socket()");
+		return -1;
+	}
+
+	if (setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, &flag,
+		       sizeof(int)) < 0) {
+		LOG(LOG_ERROR, "Could not set SO_REUSEADDR on port 5001:udp");
+		return -1;
+	}
+	if (setsockopt(sock_fd, SOL_SOCKET, SO_BROADCAST, &flag,
+		       sizeof(int)) < 0) {
+		LOG(LOG_ERROR, "Could not set SO_BROADCAST on port 5001:udp");
+		return -1;
+	}
+	if (setsockopt(sock_fd, SOL_SOCKET, SO_REUSEPORT, &flag,
+		       sizeof(int)) < 0) {
+		LOG(LOG_ERROR, "Could not set SO_REUSEPORT on port 5001:udp");
+		return -1;
+	}
+
+	/* make it non-blocking */
+	f = fcntl(sock_fd, F_GETFL);
+	f |= O_NONBLOCK;
+	fcntl(sock_fd, F_SETFL, f);
+
+	/* Set IP, port */
+	memset(&sin, 0, sizeof(sin));
+	sin.sin_family = AF_INET;
+	sin.sin_addr.s_addr = INADDR_ANY;
+	sin.sin_port = htons(WIZNET_LISTEN);
+
+	if (bind(sock_fd, (struct sockaddr *)&sin,
+		 sizeof(struct sockaddr)) < 0) {
+		LOG(LOG_ERROR, "bind() to port 5001:udp failed");
+		return -1;
+	} else
+		LOG(LOG_NOTICE,
+		    "Listening on port 5001:udp for wiznet events");
+
+	return sock_fd;
+}
+
+/**
+   \brief Setup the wiznet device handler
+*/
+
+void wiznet_setup()
+{
+	const char *s = NULL;
+	int errcode, wiz_fd;
+	struct evutil_addrinfo hints, *answer = NULL;
+	struct event *wiz_ev;
+
+	memset(&hints, 0, sizeof(struct evutil_addrinfo));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
+	errcode = evutil_getaddrinfo(brulnet_conn->host, NULL,
+				&hints, &answer);
+
+	if (errcode) {
+		LOG(LOG_ERROR, "GEM DNS lookup failed. Modify config to "
+		    "hardcode IP instead of using a hostname.");
+		return;
+	}
+	if (answer == NULL)
+		return;
+
+	if (answer->ai_family != AF_INET)
+		return;
+
+
+	struct sockaddr_in *sin = (struct sockaddr_in *)answer->ai_addr;
+	s = evutil_inet_ntop(AF_INET, &sin->sin_addr, gemipaddrstr, 16);
+	if (s == NULL)
+		return;
+
+	LOG(LOG_NOTICE, "DNS lookup returned for GEM IP: %s", gemipaddrstr);
+	sscanf(gemipaddrstr, "%d.%d.%d.%d", &gemipaddr[0], &gemipaddr[1],
+	       &gemipaddr[2], &gemipaddr[3]);
+
+	/* build wiznet event */
+	wiz_fd = bind_wiznet_recv();
+	if (wiz_fd != -1) {
+		wiz_ev = event_new(base, wiz_fd, EV_READ | EV_PERSIST,
+				   cb_wiznet_read, NULL);
+		event_add(wiz_ev, NULL);
+		event_base_once(base, wiz_fd, EV_WRITE|EV_TIMEOUT,
+				cb_wiznet_send,	"FIND", NULL);
+	} else
+		LOG(LOG_ERROR, "Failed to setup wiznet event");
 }
 
 /**
@@ -1198,7 +1407,9 @@ int main(int argc, char **argv)
 		brulnet_conn->port = cfg_getint(brultech_c, "port");
 		brulnet_conn->type = CONN_TYPE_BRUL;
 		brulnet_conn->host = cfg_getstr(brultech_c, "hostname");
+#ifndef WIZNET_DEBUG
 		connect_server_cb(0, 0, brulnet_conn);
+#endif
 	} else if (cfg_getint(brultech_c, "connection") == BRUL_COMM_SERIAL) {
 		if (cfg_getstr(brultech_c, "serialdev") == NULL)
 			LOG(LOG_FATAL, "Serial device not set in conf file");
@@ -1214,13 +1425,19 @@ int main(int argc, char **argv)
 		LOG(LOG_FATAL, "No connection type specified, punting");
 	}
 
+	/* if it's a GEM, do a DNS lookup on the hostname */
+	if (cfg_getint(brultech_c, "model") == BRUL_MODEL_GEM &&
+	    cfg_getint(brultech_c, "connection") == BRUL_COMM_NET) {
+		wiznet_setup();
+	}
+#ifndef WIZNET_DEBUG
 	if (cfg_getint(brultech_c, "model") == BRUL_MODEL_GEM)
 		brul_setup_gem(brulnet_conn);
 	else if (cfg_getint(brultech_c, "model") == BRUL_MODEL_ECM1240)
 		brul_setup_ecm(brulnet_conn);
 	else
 		LOG(LOG_FATAL, "No model specified, punting");
-
+#endif
 	parse_devices(cfg);
 
 	/* setup signal handlers */

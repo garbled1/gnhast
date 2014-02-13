@@ -202,4 +202,66 @@ typedef struct _ecm1240_t {
 	uint8_t checksum;	/**< \brief checksum */
 } __packed ecm1240_t;
 
+/* WIZNet device struct */
+
+#define WIZ_MODE_CLIENT	0x0
+#define WIZ_MODE_SERVER	0x01
+#define WIZ_MODE_MIXED	0x02
+
+#define WIZ_BAUD_1200	0xa0
+#define WIZ_BAUD_2400	0xd0
+#define WIZ_BAUD_4800	0xe8
+#define WIZ_BAUD_9600	0xf4
+#define WIZ_BAUD_19200	0xfa
+#define WIZ_BAUD_38400	0xfd
+#define WIZ_BAUD_57600	0xfe
+#define WIZ_BAUD_115200	0xff
+#define WIZ_BAUD_230400	0xbb
+
+#define WIZ_DHCP_STATIC	0x0
+#define WIZ_DHCP_DHCP	0x1
+#define WIZ_DHCP_PPPOE	0x2
+
+#define WIZ_UDP_TCP	0x0
+#define WIZ_UDP_UDP	0x1
+
+#define WIZNET_PORT	1460
+#define WIZNET_LISTEN	5001
+
+typedef struct _wiznet_t {
+	uint8_t macaddr[6];	/**< \brief MAC address */
+	uint8_t opmode;		/**< \brief Operation mode (0,1,2) */
+	uint8_t ipaddr[4];	/**< \brief IP Addr */
+	uint8_t submask[4];	/**< \brief subnet mask */
+	uint8_t gateway[4];	/**< \brief gateway */
+	uint8_t port[2];	/**< \brief portnum */
+	uint8_t remipaddr[4];	/**< \brief remote host ip for client mode */
+	uint8_t rport[2];	/**< \brief remote port */
+	uint8_t baud;		/**< \brief Baud rate */
+	uint8_t dbits;		/**< \brief serial data bits 0x7|0x8 */
+	uint8_t parity;		/**< \brief serial parity none/odd/even */
+	uint8_t stop;		/**< \brief serial stop bits 0x01 */
+	uint8_t flow;		/**< \brief serial flow control */
+	uint8_t packingchar;	/**< \brief special packing char */
+	uint8_t packlen[2];	/**< \brief packing char len */
+	uint8_t packint[2];	/**< \brief packing char interval */
+	uint8_t inactive[2];	/**< \brief inactivity timeout */
+	uint8_t debug;		/**< \brief debug mode */
+	uint8_t fwver[2];	/**< \brief firmware ver */
+	uint8_t dhcp;		/**< \brief dhcp mode */
+	uint8_t udp;		/**< \brief tcp/udp mode */
+	uint8_t connstatus;	/**< \brief connected status */
+	uint8_t dflag;		/**< \brief remote IP=0x0 or hostname=0x1 */
+	uint8_t dnsaddr[4];	/**< \brief dns server addr */
+	char rhostname[32];	/**< \brief remote host domainname */
+	uint8_t scfg;		/**< \brief serial config mode trigger */
+	uint8_t scfgstr[3];	/**< \brief serial cfg trigger cmd */
+	uint8_t pppoeid[32];	/**< \brief PPPoE ID */
+	uint8_t pppoepass[32];	/**< \brief PPPoE passwd */
+	uint8_t enp;		/**< \brief enable passwd */
+	uint8_t connpass[8];	/**< \brief remote host connect pass */
+} __packed wiznet_t;
+
+
+
 #endif /*_BRULTECH_H_*/

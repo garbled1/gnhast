@@ -17,8 +17,10 @@ DELAY=$1
 ONOFF=`echo $2 | tr '[:lower:]' '[:upper:]'`
 if [ "$ONOFF" = "ON" ]; then
     CMD=@GNHANDLERDIR@/switchon
+    CMDX=@GNHANDLERDIR@/switchoff
 else
     CMD=@GNHANDLERDIR@/switchoff
+    CMDX=@GNHANDLERDIR@/switchon
 fi
 
 # look for an existing timer, delete and reschedule
@@ -36,7 +38,9 @@ shift
 
 at $DELAY <<EOF
 #GNTIMER $SAVEDARGS
-$CMD $*
+$CMDX $*
 exit 0
 EOF
+# flip the light
+$CMD $*
 exit 0

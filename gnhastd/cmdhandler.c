@@ -393,7 +393,7 @@ int cmd_modify(pargs_t *args, void *arg)
 	double d;
 	uint32_t u;
 	device_t *dev;
-	char *uid=NULL, *p, *hold;
+	char *uid=NULL, *p, *hold, *fhold;
 	client_t *client = (client_t *)arg;
 	struct evbuffer *send;
 
@@ -467,10 +467,10 @@ int cmd_modify(pargs_t *args, void *arg)
 			        "low watermark", args[i].arg.d);
 			break;
 		case SC_HARGS:
-			hold = strdup(args[i].arg.c);
+			fhold = hold = strdup(args[i].arg.c);
 			/* free the old hargs */
 			for (j = 0; j < dev->nrofhargs; j++)
-				free(dev->hargs[i]);
+				free(dev->hargs[j]);
 			if (dev->hargs)
 				free(dev->hargs);
 			/* count the arguments */
@@ -479,14 +479,14 @@ int cmd_modify(pargs_t *args, void *arg)
 			dev->nrofhargs = j;
 			dev->hargs = safer_malloc(sizeof(char *) *
 						  dev->nrofhargs);
-			free(hold);
-			hold = strdup(args[i].arg.c);
+			free(fhold);
+			fhold = hold = strdup(args[i].arg.c);
 			for ((p = strtok(hold, ",")), j=0;
 			     p && j < dev->nrofhargs;
 			     (p = strtok(NULL, ",")), j++) {
 				dev->hargs[j] = strdup(p);
 			}
-			free(hold);
+			free(fhold);
 			LOG(LOG_NOTICE, "Handler args uid:%s changed to %s,"
 			    " %d arguments", dev->uid, args[i].arg.c,
 			    dev->nrofhargs);
@@ -528,6 +528,7 @@ void feeddata_cb(int nada, short what, void *arg)
 					 GNC_UPD_SCALE(wrap->scale),
 					 client->ev);
 			wrap->last_fired = now;
+			client->sentdata++;
 		}
 	}
 }
@@ -578,6 +579,7 @@ int cmd_feed(pargs_t *args, void *arg)
 		secs.tv_sec = client->timer_gcd;
 		event_add(client->tev, &secs); /* update with new lcm */
 	}
+	client->feeds++;
 	return 0;
 }
 
@@ -694,6 +696,7 @@ int cmd_ask_device(pargs_t *args, void *arg)
 				continue;
 			gn_update_device(dev, what|GNC_UPD_SCALE(scale),
 					 client->ev);
+			client->sentdata++;
 		}
 	}
 	return 0;
@@ -725,6 +728,7 @@ int cmd_cactiask_device(pargs_t *args, void *arg)
 				continue;
 			gn_update_device(dev, GNC_UPD_CACTI|
 					 GNC_UPD_SCALE(scale), client->ev);
+			client->sentdata++;
 		}
 	}
 	return 0;

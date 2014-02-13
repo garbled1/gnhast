@@ -177,6 +177,8 @@ typedef struct _client_t {
 	char *name;		/**< \brief Name of client */
 	char *addr;		/**< \brief addr:port of client */
 	uint32_t updates;	/**< \brief updates recieved from this cli */
+	uint32_t feeds;		/**< \brief feeds for this cli */
+	uint32_t sentdata;	/**< \brief data sent to this cli */
 	TAILQ_ENTRY(_client_t) next; /**< \brief next client on list */
 } client_t;
 

@@ -54,6 +54,8 @@
 #include "confuse.h"
 #include "gncoll.h"
 
+#define COLLECTOR_NAME "fakecoll"
+
 /** our logfile */
 FILE *logfile;
 
@@ -62,6 +64,7 @@ extern argtable_t argtable[];
 
 /** The event base */
 struct event_base *base;
+struct evdns_base *dns_base;
 
 cfg_t *cfg;
 
@@ -118,10 +121,14 @@ void buf_error_cb(struct bufferevent *ev, short what, void *arg)
 {
 	client_t *client = (client_t *)arg;
 
-	bufferevent_free(client->ev);
-	close(client->fd);
-	free(client);
-	exit(2);
+	if (what & BEV_EVENT_CONNECTED) {
+		LOG(LOG_NOTICE, "Connected to server");
+	} else {
+		bufferevent_free(client->ev);
+		close(client->fd);
+		free(client);
+		exit(2);
+	}
 }
 
 /**
@@ -181,6 +188,8 @@ void generate_chaff(struct bufferevent *out)
 {
 	device_t *deva, *devb, *devc;
 	int i, j;
+	uint8_t s, ss;
+	double d, dd;
 	struct timeval secs = { 0, 0 };
 
 	/* Setup 3 fake devices */
@@ -216,16 +225,28 @@ void generate_chaff(struct bufferevent *out)
 		j = rndm(0, 2);
 		switch(j) {
 		case 0:
-			deva->data.state = rndm(0,1);
+			s = rndm(0, 1);
+			store_data_dev(deva, DATALOC_DATA, &s);
 			gn_update_device(deva, 0, out);
+			get_data_dev(deva, DATALOC_LAST, &ss);
+			LOG(LOG_NOTICE, "Storing on %s:%d last: %d",
+			    deva->name, s, ss);
 			break;
 		case 1:
-			devb->data.temp = frndm(60.0, 110.0);
+			d = frndm(60.0, 110.0);
+			store_data_dev(devb, DATALOC_DATA, &d);
+			get_data_dev(devb, DATALOC_LAST, &dd);
 			gn_update_device(devb, 0, out);
+			LOG(LOG_NOTICE, "Storing on %s:%f last: %f",
+			    devb->name, d, dd);
 			break;
 		case 2:
-			devc->data.level = frndm(0.0, 100.0);
+			d = frndm(0.0, 100.0);
+			store_data_dev(devc, DATALOC_DATA, &d);
+			get_data_dev(devc, DATALOC_LAST, &dd);
 			gn_update_device(devc, 0, out);
+			LOG(LOG_NOTICE, "Storing on %s:%f last: %f",
+			    devc->name, d, dd);
 			break;
 		}
 		/* sleep for 2-10 seconds */
@@ -250,6 +271,7 @@ int main(int argc, char **argv)
 
 	/* Initialize the event system */
 	base = event_base_new();
+	dns_base = evdns_base_new(base, 1);
 
 	/* Initialize the argtable */
 	init_argcomm();
@@ -279,25 +301,15 @@ int main(int argc, char **argv)
 	/* Setup our socket */
 	srv = smalloc(client_t);
 
-        srv->fd = socket(AF_INET, SOCK_STREAM, 0);
-	if (srv->fd < 0)
-		LOG(LOG_FATAL, "Failed to create socket: %s", strerror(errno));
-
-        server = gethostbyname(gnhastdserver); /* XXX */
-       	if (!server)
-		LOG(LOG_FATAL, "Failed lookup of servername");
- 
-        serv_addr.sin_family = AF_INET;
-        memcpy((char *) &(serv_addr.sin_addr.s_addr), (char *)(server->h_addr), server->h_length);
-        serv_addr.sin_port = htons(port);
- 
-        if (connect(srv->fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
-		LOG(LOG_FATAL, "Failed to connect to server:%s", strerror(errno));
-
-	/* Build the bufferevent, realistically, all we need here is the event callback */
-	srv->ev = bufferevent_socket_new(base, srv->fd, 0);
+	srv->ev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
 	bufferevent_setcb(srv->ev, buf_read_cb, NULL, buf_error_cb, srv);
 	bufferevent_enable(srv->ev, EV_READ|EV_WRITE);
+
+	bufferevent_socket_connect_hostname(srv->ev, dns_base, AF_UNSPEC,
+					    gnhastdserver, port);
+	srv->fd = bufferevent_getfd(srv->ev);
+
+	gn_client_name(srv->ev, COLLECTOR_NAME);
 
 	/* spam the server */
 	generate_chaff(srv->ev);
