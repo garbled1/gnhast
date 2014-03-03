@@ -10,6 +10,8 @@
 #define BRULCOLL_LOG_FILE	"brulcoll.log"
 #define BRULCOLL_PID_FILE	"brulcoll.pid"
 
+#define MAXGEMRETRY		10	/* retry attempts before reset GEM */
+
 #define BRUL_MODEL_GEM		1
 #define BRUL_MODEL_ECM1240	2
 

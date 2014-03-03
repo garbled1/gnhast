@@ -37,6 +37,8 @@
    GEM emulation, need code to actually setup the ecm and build devices.
 */
 
+/*#define WIZNET_DEBUG*/
+
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -70,6 +72,7 @@ static int conf_parse_brul_model(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 				 void *result);
 static int conf_parse_brul_conn(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 				void *result);
+void cb_wiznet_send_direct(int fd, short what, void *arg);
 
 char *conffile = SYSCONFDIR "/" BRULCOLL_CONFIG_FILE;
 FILE *logfile;   /** our logfile */
@@ -83,10 +86,12 @@ int tempscale = TSCALE_F;
 
 /* stuff for gem/wiznet reset */
 int gemconnattempts = 0;
+int wiz_fd = -1;
 char gemipaddrstr[16];
 int gemipaddr[4];
 wiznet_t wizconf; /**< \brief Wiznet conf string */
 int wiznetfound = 0;
+char *wizresetbuf;
 
 bruldata_t bruldata[2];	/**< \brief Prev and current data, converted */
 brulconf_t brulconf;
@@ -994,11 +999,25 @@ void connect_server_cb(int nada, short what, void *arg)
 	bufferevent_enable(conn->bev, EV_READ|EV_WRITE);
 	bufferevent_socket_connect_hostname(conn->bev, dns_base, AF_UNSPEC,
 					    conn->host, conn->port);
-	LOG(LOG_NOTICE, "Attempting to connect to %s @ %s:%d",
-	    conntype[conn->type], conn->host, conn->port);
-	if (conn->type == 1)
+	if (conn->type == 1) {
 		gemconnattempts++;
+		LOG(LOG_NOTICE, "Attempting to connect to %s @ %s:%d retry:%d",
+		    conntype[conn->type], conn->host, conn->port,
+		    gemconnattempts);
+		/* Can/should we reset the device? */
+		if (cfg_getint(brultech_c, "model") == BRUL_MODEL_GEM &&
+		    cfg_getint(brultech_c, "connection") == BRUL_COMM_NET &&
+		    gemconnattempts > MAXGEMRETRY && wiznetfound == 1 &&
+		    wiz_fd != -1) {
+			LOG(LOG_WARNING, "Attempting wiznet reset");
+			event_base_once(base, wiz_fd, EV_WRITE|EV_TIMEOUT,
+				cb_wiznet_send_direct, wizresetbuf, NULL);
+			gemconnattempts -= 5; /* give it a few more tries */
+		}
+	}
 	if (conn->type == CONN_TYPE_GNHASTD) {
+		LOG(LOG_NOTICE, "Attempting to connect to %s @ %s:%d",
+		    conntype[conn->type], conn->host, conn->port);
 		if (need_rereg) {
 			TAILQ_FOREACH(dev, &alldevs, next_all)
 				if (dumpconf == NULL && dev->name != NULL)
@@ -1154,13 +1173,19 @@ void cb_wiznet_read(int fd, short what, void *arg)
 			memcpy(&wizconf, &wizc, sizeof(wiznet_t));
 			LOG(LOG_NOTICE, "Found matching wiznet device");
 			wiznetfound = 1;
+			wizresetbuf = safer_malloc(sizeof(wiznet_t) + 4);
+			wizresetbuf[0] = 'S';
+			wizresetbuf[1] = 'E';
+			wizresetbuf[2] = 'T';
+			wizresetbuf[3] = 'T';
+			memcpy(&wizresetbuf[4], &wizconf, sizeof(wiznet_t));
 		}
 		return;
 	}
 	if (len == 4) { /* we got a SETC response */
 		strncpy(buf2, buf, 4);
 		buf2[5] = '\0';
-		if (strncmp("SETC", buf, 4) != 0) {
+		if (strncmp("SETC", buf2, 4) != 0) {
 			LOG(LOG_WARNING, "Got odd response from wiznet "
 			    "device: %s", buf2);
 			return;
@@ -1193,6 +1218,33 @@ void cb_wiznet_send(int fd, short what, void *arg)
 
 	len = sendto(fd, buf, strlen(buf), 0,
 		     (struct sockaddr *)&broadcast_addr,
+		     sizeof(struct sockaddr_in));
+	LOG(LOG_DEBUG, "Send msg len %d to udp:1460");
+}
+
+/**
+   \brief Send data to the wiznet device directly (no broadcast)
+   \param fd the wiznet fd
+   \param what what happened?
+   \param arg char * of data to send
+*/
+
+void cb_wiznet_send_direct(int fd, short what, void *arg)
+{
+	char *buf = (char *)arg;
+	int len;
+	struct sockaddr_in wiznet_addr;
+
+	if (buf == NULL)
+		return;
+
+	memset(&wiznet_addr, 0, sizeof(wiznet_addr));
+	wiznet_addr.sin_family = AF_INET;
+	wiznet_addr.sin_addr.s_addr = inet_addr(gemipaddrstr);
+	wiznet_addr.sin_port = htons(WIZNET_PORT);
+
+	len = sendto(fd, buf, strlen(buf), 0,
+		     (struct sockaddr *)&wiznet_addr,
 		     sizeof(struct sockaddr_in));
 	LOG(LOG_DEBUG, "Send msg len %d to udp:1460");
 }
@@ -1256,7 +1308,7 @@ int bind_wiznet_recv(void)
 void wiznet_setup()
 {
 	const char *s = NULL;
-	int errcode, wiz_fd;
+	int errcode;
 	struct evutil_addrinfo hints, *answer = NULL;
 	struct event *wiz_ev;
 
