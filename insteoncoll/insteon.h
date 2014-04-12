@@ -188,6 +188,7 @@ void plmcmdq_dequeue(void);
 void plmcmdq_check_recv(char *fromaddr, char *toaddr, uint8_t cmd1,
 			int whatkind);
 void plm_getinfo(void);
+void plm_getplm_aldb(int fl);
 void plm_req_aldb(device_t *dev);
 void plm_switch_on(device_t *dev, uint8_t level);
 void plm_switch_off(device_t *dev);

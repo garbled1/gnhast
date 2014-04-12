@@ -350,3 +350,24 @@ void cb_sighup(int fd, short what, void *arg)
 	openlog(stored_logname);
 	LOG(LOG_NOTICE, "Logfile re-opened");
 }
+
+/**
+   \brief A sigusr1 handler
+   \param fd unused
+   \param what what happened?
+   \param arg unused
+*/
+
+void cb_sigusr1(int fd, short what, void *arg)
+{
+	if (!(what & EV_SIGNAL))
+		return;
+
+	if (debugmode) {
+		LOG(LOG_NOTICE, "Got SIGUSR1, turning off debug mode");
+		debugmode = 0;
+	} else {
+		LOG(LOG_NOTICE, "Got SIGUSR1, turning on debug mode");
+		debugmode = 1;
+	}
+}

@@ -262,6 +262,22 @@ void plm_rescan(int fd, short what, void *arg)
 	need_query++;
 }
 
+/**
+   \brief Handle an aldb record recieved command
+   \param data data recieved
+*/
+
+void plm_handle_aldb_record_resp(uint8_t *data)
+{
+	char im[16];
+	uint8_t devaddr[3];
+
+	memcpy(devaddr, data+4, 3);
+	addr_to_string(im, devaddr);
+	LOG(LOG_DEBUG, "ALINK Record: dev: %s link1: %0.2X link2: %0.2X "
+	    "link3: %0.2X Group: %0.2X LinkFlags: %0.2X",
+	    im, data[7], data[8], data[9], data[3], data[2]);
+}
 
 /**
    \brief Handle an all-linking completed command
@@ -818,6 +834,8 @@ main(int argc, char *argv[])
 	ev = evsignal_new(base, SIGINT, cb_sigterm, NULL);
 	event_add(ev, NULL);
 	ev = evsignal_new(base, SIGQUIT, cb_sigterm, NULL);
+	event_add(ev, NULL);
+	ev = evsignal_new(base, SIGUSR1, cb_sigusr1, NULL);
 	event_add(ev, NULL);
 
 	parse_devices(cfg);

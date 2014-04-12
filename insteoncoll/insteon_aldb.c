@@ -53,6 +53,7 @@ extern int errno;
 extern int debugmode;
 extern TAILQ_HEAD(, _device_t) alldevs;
 extern int nrofdevs;
+extern int plmaldbmorerecords;
 extern char *conntype[];
 
 /* Configuration file details */
@@ -102,6 +103,12 @@ connection_t *plm_conn;
 uint8_t plm_addr[3];
 char *aldbfile = NULL;
 int writealdb = 0;
+int plmaldbdump = 0;
+aldb_t *plmaldb;
+int plmaldbsize = 0;
+int nrofplmaldb = 0;
+
+#define PLMALDBMALLOC		16
 
 /* our state of operation */
 int mode;
@@ -227,6 +234,7 @@ void parse_aldbfile(device_t *dev, char *filename)
 		LOG(LOG_FATAL, "ALDB record file %s too big", filename);
 	dd->aldblen = lines;
 
+	lbuf = NULL;
 	while ((buf = fgetln(fp, &len))) {
 		if (buf[len - 1] == '\n')
 			buf[len - 1] = '\0';
@@ -276,10 +284,48 @@ void plm_queue_empty_cb(void *arg)
 	return; /* for now */
 }
 
+/**
+   \brief Handle an aldb record recieved command
+   \param data data recieved
+*/
+
+void plm_handle_aldb_record_resp(uint8_t *data)
+{
+	char im[16];
+	uint8_t devaddr[3];
+
+	memcpy(devaddr, data+4, 3);
+	addr_to_string(im, devaddr);
+	LOG(LOG_NOTICE, "ALINK Record: dev: %s Group: %0.2X LinkFlags: %0.2X "
+	    "link1: %0.2X link2: %0.2X link3: %0.2X",
+	    im, data[3], data[2], data[7], data[8], data[9]);
+
+	/* allocate space */
+	if (plmaldbsize == 0) {
+		plmaldb = safer_malloc(sizeof(aldb_t) * PLMALDBMALLOC);
+		plmaldbsize = PLMALDBMALLOC;
+	} else if (plmaldbsize == (nrofplmaldb + 1)) {
+		plmaldb = realloc(plmaldb, sizeof(aldb_t) *
+				  (PLMALDBMALLOC + plmaldbsize));
+		plmaldbsize += PLMALDBMALLOC;
+	}
+	plmaldb[nrofplmaldb].lflags = data[2];
+	plmaldb[nrofplmaldb].group = data[3];
+	plmaldb[nrofplmaldb].devaddr[0] = data[4];
+	plmaldb[nrofplmaldb].devaddr[1] = data[5];
+	plmaldb[nrofplmaldb].devaddr[2] = data[6];
+	plmaldb[nrofplmaldb].ldata1 = data[7];
+	plmaldb[nrofplmaldb].ldata2 = data[8];
+	plmaldb[nrofplmaldb].ldata3 = data[9];
+	nrofplmaldb++;
+
+	if (plmaldbmorerecords == 0)
+		LOG(LOG_NOTICE, "Got last record");
+}
 
 /**
    \brief Handle an all-linking completed command
-   \param data recieved
+   \param data data recieved
 */
 
 void plm_handle_alink_complete(uint8_t *data)
@@ -462,10 +508,13 @@ main(int argc, char *argv[])
 	insteon_devdata_t *dd;
 
 	devaddr = NULL;
-	while ((c = getopt(argc, argv, "a:df:s:w")) != -1)
+	while ((c = getopt(argc, argv, "a:df:ps:w")) != -1)
 		switch (c) {
 		case 'a':
 			devaddr = strdup(optarg);
+			break;
+		case 'p':
+			plmaldbdump = 1;
 			break;
 		case 'd':
 			debugmode = 1;
@@ -483,7 +532,7 @@ main(int argc, char *argv[])
 			usage();
 		}
 
-	if (device == NULL || devaddr == NULL)
+	if (device == NULL || (devaddr == NULL && plmaldbdump == 0))
 		usage();
 
 	if (writealdb && aldbfile == NULL)
@@ -493,20 +542,22 @@ main(int argc, char *argv[])
 	init_devtable(cfg, 0);
 
 	/* convert the devaddr to a device */
-	dev = smalloc(device_t);
-	dd = smalloc(insteon_devdata_t);
-	x = strtol(devaddr, NULL, 16);
-	dd->daddr[0] = ((x&0xff0000)>>16);
-	dd->daddr[1] = ((x&0x00ff00)>>8);
-	dd->daddr[2] = (x&0x0000ff);
-	dd->hopflag = 255;
-	dev->localdata = dd;
-	dev->uid = safer_malloc(12);
-	dev->loc = safer_malloc(12);
-	addr_to_string(dev->uid, dd->daddr);
-	addr_to_string(dev->loc, dd->daddr);
-	insert_device(dev);
-	free(devaddr);
+	if (devaddr != NULL) {
+		dev = smalloc(device_t);
+		dd = smalloc(insteon_devdata_t);
+		x = strtol(devaddr, NULL, 16);
+		dd->daddr[0] = ((x&0xff0000)>>16);
+		dd->daddr[1] = ((x&0x00ff00)>>8);
+		dd->daddr[2] = (x&0x0000ff);
+		dd->hopflag = 255;
+		dev->localdata = dd;
+		dev->uid = safer_malloc(12);
+		dev->loc = safer_malloc(12);
+		addr_to_string(dev->uid, dd->daddr);
+		addr_to_string(dev->loc, dd->daddr);
+		insert_device(dev);
+		free(devaddr);
+	}
 
 	/* Initialize the command fifo */
 	SIMPLEQ_INIT(&cmdfifo);
@@ -537,7 +588,10 @@ main(int argc, char *argv[])
 		print_aldb(dev);
 		plm_write_aldb(dev);
 	}
-	plm_req_aldb(dev);
+	if (plmaldbdump)
+		plm_getplm_aldb(0);
+	else
+		plm_req_aldb(dev);
 
 	/* setup runq */
 	ev = event_new(base, -1, EV_PERSIST, plm_runq, plm_conn);

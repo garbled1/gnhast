@@ -40,3 +40,10 @@ model "2477S" {
 	type = "switch"
 	subtype = "switch"
 }
+model "2443-222" { 
+	name = "Micro On/Off Module"
+	devcat = 0x02
+	subcat = 0x2f
+	type = "switch"
+	subtype = "switch"
+}

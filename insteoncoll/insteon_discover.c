@@ -162,7 +162,7 @@ parse_devlist(void)
 		addr_to_string(dev->uid, dd->daddr);
 		addr_to_string(dev->loc, dd->daddr);
 		insert_device(dev);
-		LOG(LOG_NOTICE,"device from listfile #%d 0x%s %X.%X.%X\n", i,
+		LOG(LOG_NOTICE,"device from listfile #%d 0x%s %X.%X.%X", i,
 		    dev->uid, dd->daddr[0], dd->daddr[1], dd->daddr[2]);
 		i++;
 
@@ -238,9 +238,9 @@ void plm_queue_empty_cb(void *arg)
 		break;
 	case MODE_LINK_ALL_C:
 		TAILQ_FOREACH(dev, &alldevs, next_all) {
-			plm_all_link(0x00, 0x76);
+			plm_all_link(0x00, 0x01);
 			//plm_all_link(0xFF, 0x76);
-			plm_enq_std(dev, STDCMD_LINKMODE, 0x02,
+			plm_enq_std(dev, STDCMD_LINKMODE, 0x01,
 				    CMDQ_WAITACK|CMDQ_WAITDATA);
 		}
 		mode = MODE_LINK_ALL_R;
@@ -262,6 +262,22 @@ void plm_queue_empty_cb(void *arg)
 	}
 }
 
+/**
+   \brief Handle an aldb record recieved command
+   \param data data recieved
+*/
+
+void plm_handle_aldb_record_resp(uint8_t *data)
+{
+	char im[16];
+	uint8_t devaddr[3];
+
+	memcpy(devaddr, data+4, 3);
+	addr_to_string(im, devaddr);
+	LOG(LOG_DEBUG, "ALINK Record: dev: %s link1: %0.2X link2: %0.2X "
+	    "link3: %0.2X Group: %0.2X LinkFlags: %0.2X",
+	    im, data[7], data[8], data[9], data[3], data[2]);
+}
 
 /**
    \brief Handle an all-linking completed command

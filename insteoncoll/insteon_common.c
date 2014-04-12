@@ -63,6 +63,8 @@ extern struct event_base *base;
 extern connection_t *plm_conn;
 extern uint8_t plm_addr[3];
 
+int plmaldbmorerecords = 0;
+
 SIMPLEQ_HEAD(fifohead, _cmdq_t) cmdfifo;
 char *conntype[3] = {
 	"none",
@@ -580,6 +582,28 @@ void plm_getinfo(void)
 	SIMPLEQ_INSERT_TAIL(&cmdfifo, cmd, entries);
 }
 
+/**
+   \brief Ask the PLM for the ALDB records
+   \param fl 0==first 1==last
+*/
+void plm_getplm_aldb(int fl)
+{
+	cmdq_t *cmd;
+
+	LOG(LOG_DEBUG, "Asking for aldb record %d", fl);
+	cmd = smalloc(cmdq_t);
+	cmd->cmd[0] = PLM_START;
+	if (fl == 0){
+		cmd->cmd[1] = PLM_ALINK_GETFIRST;
+		plmaldbmorerecords = 1;
+	} else
+		cmd->cmd[1] = PLM_ALINK_GETNEXT;
+	cmd->msglen = 2;
+	cmd->sendcount = 0;
+	cmd->wait = CMDQ_WAITACK;
+	cmd->state = CMDQ_WAITACK|CMDQ_WAITSEND;
+	SIMPLEQ_INSERT_TAIL(&cmdfifo, cmd, entries);
+}
 
 /**
    \brief Put the PLM into all link mode
@@ -872,6 +896,22 @@ moredata:
 		plm_handle_extrecv(fromaddr, toaddr, data[8], data[9],
 				   data[10], extdata, conn);
 		break;
+	case PLM_RECV_X10:
+		data = evbuffer_pullup(evbuf, 4);
+		if (data == NULL)
+			return;
+		LOG(LOG_DEBUG, "Got X10 mesage: %0.2X %0.2X", data[2],
+		    data[3]);
+		evbuffer_remove(evbuf, data, 4);
+		break;
+	case PLM_SEND_X10: /* not supported yet, but, umm, maybe? */
+		data = evbuffer_pullup(evbuf, 5);
+		if (data == NULL)
+			return;
+		LOG(LOG_DEBUG, "Sent X10 mesage: %0.2X %0.2X", data[2],
+		    data[3]);
+		evbuffer_remove(evbuf, data, 5);
+		break;
 	case PLM_GETINFO:
 		data = evbuffer_pullup(evbuf, 9);
 		if (data == NULL)
@@ -886,6 +926,21 @@ moredata:
 		evbuffer_remove(evbuf, data, 10);
 		plm_handle_alink_complete(data);
 		break;
+	case PLM_ALINK_CFAILREP:
+		data = evbuffer_pullup(evbuf, 7);
+		if (data == NULL)
+			return;
+		LOG(LOG_WARNING, "Got all-link failure for device %X.%X.%X"
+		    " group %X", data[4], data[5], data[6], data[3]);
+		evbuffer_remove(evbuf, data, 7);
+		break;
+	case PLM_ALINK_CSTATUSREP:
+		data = evbuffer_pullup(evbuf, 3);
+		if (data == NULL)
+			return;
+		LOG(LOG_NOTICE, "All link cleanup status: %X", data[2]);
+		evbuffer_remove(evbuf, data, 3);
+		break;
 	case PLM_ALINK_START:
 		data = evbuffer_pullup(evbuf, 5);
 		if (data == NULL)
@@ -893,6 +948,142 @@ moredata:
 		plmcmdq_check_ack(data);
 		evbuffer_remove(evbuf, data, 5);
 		break;
+	case PLM_ALINK_CANCEL:
+		data = evbuffer_pullup(evbuf, 3);
+		if (data == NULL)
+			return;
+		LOG(LOG_NOTICE, "All link cancelled");
+		evbuffer_remove(evbuf, data, 3);
+		break;
+	case PLM_ALINK_SEND:
+		data = evbuffer_pullup(evbuf, 6);
+		if (data == NULL)
+			return;
+		LOG(LOG_NOTICE, "Sent all-link command %X/%X to group %X"
+		    " Status: %X", data[3], data[4], data[2], data[5]);
+		evbuffer_remove(evbuf, data, 6);
+		break;
+	case PLM_ALINK_GETLASTRECORD:
+		data = evbuffer_pullup(evbuf, 3);
+		if (data == NULL)
+			return;
+		LOG(LOG_DEBUG, "Sent get last record");
+		evbuffer_remove(evbuf, data, 3);
+		break;
+	case PLM_ALINK_GETFIRST:
+	case PLM_ALINK_GETNEXT:
+		data = evbuffer_pullup(evbuf, 3);
+		if (data == NULL)
+			return;
+		if (data[1] == cmd->cmd[1])
+			plmcmdq_dequeue(); /* dequeue */
+		if (data[2] == PLMCMD_ACK) /* more records in db */
+			plm_getplm_aldb(1); /* get next record */
+		else if (data[2] == PLMCMD_NAK) { /* last one */
+			plmaldbmorerecords = 0;
+			LOG(LOG_NOTICE, "Last PLM ALDB record");
+		}
+		evbuffer_remove(evbuf, data, 3);
+		break;
+	case PLM_ALINK_RECORD:
+		data = evbuffer_pullup(evbuf, 10);
+		if (data == NULL)
+			return;
+		evbuffer_remove(evbuf, data, 10);
+		plm_handle_aldb_record_resp(data);
+		break;
+	case PLM_BUTTONEVENT:
+		data = evbuffer_pullup(evbuf, 3);
+		if (data == NULL)
+			return;
+		LOG(LOG_DEBUG, "Got button press event 0x%X", data[2]);
+		evbuffer_remove(evbuf, data, 3);
+		break;
+	case PLM_RESET: /* seriously??! */
+		data = evbuffer_pullup(evbuf, 2);
+		if (data == NULL)
+			return;
+		LOG(LOG_ERROR, "PLM Has been manually reset!!");
+		evbuffer_remove(evbuf, data, 2);
+		break;
+	case PLM_SETHOST: /* ?? */
+		data = evbuffer_pullup(evbuf, 6);
+		if (data == NULL)
+			return;
+		LOG(LOG_ERROR, "PLM Sent Set Host Device Category?");
+		evbuffer_remove(evbuf, data, 6);
+		break;
+	case PLM_FULL_RESET:
+		data = evbuffer_pullup(evbuf, 3);
+		if (data == NULL)
+			return;
+		LOG(LOG_ERROR, "PLM Has been full reset!!");
+		evbuffer_remove(evbuf, data, 3);
+		break;
+	case PLM_SET_ACK1:
+		data = evbuffer_pullup(evbuf, 4);
+		if (data == NULL)
+			return;
+		LOG(LOG_NOTICE, "Set Ack1 bit?");
+		evbuffer_remove(evbuf, data, 4);
+		break;
+	case PLM_SET_NAK1:
+		data = evbuffer_pullup(evbuf, 4);
+		if (data == NULL)
+			return;
+		LOG(LOG_NOTICE, "Set NAK1 bit?");
+		evbuffer_remove(evbuf, data, 4);
+		break;
+	case PLM_SET_ACK2:
+		data = evbuffer_pullup(evbuf, 5);
+		if (data == NULL)
+			return;
+		LOG(LOG_NOTICE, "Set Ack2 bit?");
+		evbuffer_remove(evbuf, data, 5);
+		break;
+	case PLM_SETCONF:
+		data = evbuffer_pullup(evbuf, 4);
+		if (data == NULL)
+			return;
+		LOG(LOG_NOTICE, "Set PLM Config bits to %X", data[2]);
+		evbuffer_remove(evbuf, data, 4);
+		break;
+	case PLM_LEDON:
+		data = evbuffer_pullup(evbuf, 3);
+		if (data == NULL)
+			return;
+		LOG(LOG_ERROR, "Set PLM LED On");
+		evbuffer_remove(evbuf, data, 3);
+		break;
+	case PLM_LEDOFF:
+		data = evbuffer_pullup(evbuf, 3);
+		if (data == NULL)
+			return;
+		LOG(LOG_ERROR, "Set PLM LED Off");
+		evbuffer_remove(evbuf, data, 3);
+		break;
+	case PLM_ALINK_MODIFY: /* unhandled */
+		data = evbuffer_pullup(evbuf, 12);
+		if (data == NULL)
+			return;
+		LOG(LOG_ERROR, "Sent modify all-link record");
+		evbuffer_remove(evbuf, data, 12);
+		break;
+	case PLM_SLEEP:
+		data = evbuffer_pullup(evbuf, 5);
+		if (data == NULL)
+			return;
+		LOG(LOG_WARNING, "PLM set to SLEEP mode");
+		evbuffer_remove(evbuf, data, 5);
+		break;
+	default:
+		data = evbuffer_pullup(evbuf, 2);
+		if (data == NULL)
+			return;
+		LOG(LOG_ERROR, "PLM Sending unknown response: %X %X",
+		    data[0], data[1]);
+		LOG(LOG_ERROR, "Draining buffer and ignoring");
+		evbuffer_remove(evbuf, data, 2);
+		break;
 	}
-
 }
