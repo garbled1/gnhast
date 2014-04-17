@@ -93,6 +93,7 @@ enum SC_COMMANDS {
 	SC_FLOWRATE,	/**< \brief flow rate */
 	SC_DISTANCE,	/**< \brief distance */
 	SC_VOLUME,	/**< \brief volume */
+	SC_TIMER,	/**< \brief countdown timer */
 };
 
 /* commands */

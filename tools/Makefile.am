@@ -1,3 +1,16 @@
+AM_CPPFLAGS = -DLOCALSTATEDIR=\"$(localstatedir)\" \
+	      -DSYSCONFDIR=\"$(sysconfdir)\" \
+              -I$(top_srcdir)/common
+
+bin_PROGRAMS = ssdp_scan
+
+ssdp_scan_SOURCES = \
+	$(top_srcdir)/common/common.c \
+	$(top_srcdir)/common/ssdp.c \
+	$(top_srcdir)/common/common.h \
+	$(top_srcdir)/common/ssdp.h \
+	ssdp_scan.c
+
 dist_bin_SCRIPTS = addhandler modhargs
 CLEANFILES = $(dist_bin_SCRIPTS)
 EXTRA_DIST = \

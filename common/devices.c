@@ -299,6 +299,7 @@ void get_data_dev(device_t *dev, int where, void *data)
 		*((double *)data) = store->level;
 		break;
 	case DEVICE_SENSOR:
+	case DEVICE_TIMER:
 	{
 		switch (dev->subtype) {
 		case SUBTYPE_TEMP:
@@ -308,6 +309,7 @@ void get_data_dev(device_t *dev, int where, void *data)
 		case SUBTYPE_PERCENTAGE:
 			*((double *)data) = store->humid;
 			break;
+		case SUBTYPE_TIMER:
 		case SUBTYPE_COUNTER:
 			*((uint32_t *)data) = store->count;
 			break;
@@ -350,7 +352,7 @@ void get_data_dev(device_t *dev, int where, void *data)
 			*((uint8_t *)data) = store->state;
 			break;
 		case SUBTYPE_NUMBER:
-			*((int64_t *)data) = store->wattsec;
+			*((int64_t *)data) = store->number;
 			break;
 		case SUBTYPE_FLOWRATE:
 			*((double *)data) = store->flow;
@@ -413,6 +415,7 @@ void store_data_dev(device_t *dev, int where, void *data)
 		store->level = *((double *)data);
 		break;
 	case DEVICE_SENSOR:
+	case DEVICE_TIMER:
 	{
 		switch (dev->subtype) {
 		case SUBTYPE_TEMP:
@@ -422,6 +425,7 @@ void store_data_dev(device_t *dev, int where, void *data)
 		case SUBTYPE_PERCENTAGE:
 			store->humid = *((double *)data);
 			break;
+		case SUBTYPE_TIMER:
 		case SUBTYPE_COUNTER:
 			store->count = *((uint32_t *)data);
 			break;
@@ -493,6 +497,7 @@ int datatype_dev(device_t *dev)
 		return DATATYPE_DOUBLE;
 	switch (dev->subtype) {
 	case SUBTYPE_SWITCH:
+	case SUBTYPE_TIMER:
 	case SUBTYPE_COUNTER:
 	case SUBTYPE_OUTLET:
 	case SUBTYPE_WEATHER:
@@ -580,4 +585,31 @@ int device_watermark(device_t *dev)
 		}
 	}
 	return 0;
+}
+
+/**
+   \brief timer device update handler
+   \param fd unused
+   \param what what happened?
+   \param arg unused
+*/
+
+void cb_timerdev_update(int fd, short what, void *arg)
+{
+//	int j=0;
+	uint32_t count;
+	device_t *dev;
+
+	TAILQ_FOREACH(dev, &alldevs, next_all) {
+		if (dev->type == DEVICE_TIMER &&
+		    dev->subtype == SUBTYPE_TIMER) {
+			get_data_dev(dev, DATALOC_DATA, &count);
+			//j++;
+			if (count) {
+				count -= 1;
+				store_data_dev(dev, DATALOC_DATA, &count);
+			}
+		}
+	}
+	//LOG(LOG_DEBUG, "Updated %d timers", j);
 }

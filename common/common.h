@@ -94,6 +94,7 @@ void get_data_dev(device_t *dev, int where, void *data);
 void store_data_dev(device_t *dev, int where, void *data);
 int datatype_dev(device_t *dev);
 int device_watermark(device_t *dev);
+void cb_timerdev_update(int fd, short what, void *arg);
 
 /* from confparser.c */
 cfg_t *parse_conf(const char *filename);

@@ -162,6 +162,8 @@ static int conf_parse_proto(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		*(int *)result = PROTO_SENSOR_WMR918;
 	else if (strcmp(value, "ad2usb") == 0)
 		*(int *)result = PROTO_SENSOR_AD2USB;
+	else if (strcmp(value, "icaddy") == 0)
+		*(int *)result = PROTO_SENSOR_ICADDY;
 	else {
 		cfg_error(cfg, "invalid value for option '%s': %s",
 		    cfg_opt_name(opt), value);
@@ -207,6 +209,9 @@ static void conf_print_proto(cfg_opt_t *opt, unsigned int index, FILE *fp)
 	case PROTO_SENSOR_AD2USB:
 		fprintf(fp, "ad2usb");
 		break;
+	case PROTO_SENSOR_ICADDY:
+		fprintf(fp, "icaddy");
+		break;
 	default:
 		fprintf(fp, "NONE");
 		break;
@@ -225,6 +230,8 @@ int conf_parse_type(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		*(int *)result = DEVICE_DIMMER;
 	else if (strcmp(value,"sensor") == 0)
 		*(int *)result = DEVICE_SENSOR;
+	else if (strcmp(value,"timer") == 0)
+		*(int *)result = DEVICE_TIMER;
 	else {
 		cfg_error(cfg, "invalid value for option '%s': %s",
 		    cfg_opt_name(opt), value);
@@ -276,6 +283,9 @@ static void conf_print_type(cfg_opt_t *opt, unsigned int index, FILE *fp)
 		break;
 	case DEVICE_SENSOR:
 		fprintf(fp, "sensor");
+		break;
+	case DEVICE_TIMER:
+		fprintf(fp, "timer");
 		break;
 	default:
 		fprintf(fp, "NONE");
@@ -340,6 +350,8 @@ int conf_parse_subtype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		*(int *)result = SUBTYPE_DISTANCE;
 	else if (strcmp(value, "volume") == 0)
 		*(int *)result = SUBTYPE_VOLUME;
+	else if (strcmp(value, "timer") == 0)
+		*(int *)result = SUBTYPE_TIMER;
 	else {
 		cfg_error(cfg, "invalid value for option '%s': %s",
 		    cfg_opt_name(opt), value);
@@ -436,6 +448,9 @@ void conf_print_subtype(cfg_opt_t *opt, unsigned int index, FILE *fp)
 		break;
 	case SUBTYPE_VOLUME:
 		fprintf(fp, "volume");
+		break;
+	case SUBTYPE_TIMER:
+		fprintf(fp, "timer");
 		break;
 	default:
 		fprintf(fp, "NONE");

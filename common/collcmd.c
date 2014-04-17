@@ -249,6 +249,7 @@ int cmd_update(pargs_t *args, void *arg)
 		case SC_DISTANCE:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.d);
 			break;
+		case SC_TIMER:
 		case SC_COUNT:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.u);
 			break;
@@ -328,6 +329,8 @@ int cmd_change(pargs_t *args, void *arg)
 		case SC_ALARMSTATUS:
 			state = args[i].arg.i;
 			break;
+		case SC_TIMER:
+			state = args[i].arg.u;
 		case SC_UID:
 			break;
 		default:
@@ -341,7 +344,8 @@ int cmd_change(pargs_t *args, void *arg)
 		coll_chg_dimmer_cb(dev, level, arg);
 	else if (dev->type == DEVICE_SWITCH)
 		coll_chg_switch_cb(dev, state, arg);
-	else if (dev->subtype = SUBTYPE_ALARMSTATUS)
+	else if (dev->subtype == SUBTYPE_ALARMSTATUS ||
+		 dev->subtype == SUBTYPE_TIMER)
 		coll_chg_switch_cb(dev, state, arg);
 	else {
 		LOG(LOG_ERROR, "Unhandled dev type in cmd_change()");

@@ -244,6 +244,11 @@ int main(int argc, char **argv)
 		event_add(ev, &secs);
 	}
 
+	/* update timer devices */
+	secs.tv_sec = 1;
+	ev = event_new(base, -1, EV_PERSIST, cb_timerdev_update, NULL);
+	event_add(ev, &secs);
+
 	/* setup signal handlers */
 	ev = evsignal_new(base, SIGHUP, cb_sighup, conffile);
 	event_add(ev, NULL);

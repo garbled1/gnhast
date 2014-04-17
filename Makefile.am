@@ -8,5 +8,6 @@ SUBDIRS = libconfuse \
 	wmr918coll \
 	wupwscoll \
 	ad2usbcoll \
+	icaddycoll \
 	tools \
 	handlers
