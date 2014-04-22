@@ -48,6 +48,7 @@
 #include "common.h"
 #include "confparser.h"
 
+int notimerupdate = 0;
 int nrofdevs;
 static rb_tree_t devices;
 static rb_tree_t devgroups;
@@ -596,20 +597,20 @@ int device_watermark(device_t *dev)
 
 void cb_timerdev_update(int fd, short what, void *arg)
 {
-//	int j=0;
 	uint32_t count;
 	device_t *dev;
+
+	if (notimerupdate == 1)
+		return;
 
 	TAILQ_FOREACH(dev, &alldevs, next_all) {
 		if (dev->type == DEVICE_TIMER &&
 		    dev->subtype == SUBTYPE_TIMER) {
 			get_data_dev(dev, DATALOC_DATA, &count);
-			//j++;
 			if (count) {
 				count -= 1;
 				store_data_dev(dev, DATALOC_DATA, &count);
 			}
 		}
 	}
-	//LOG(LOG_DEBUG, "Updated %d timers", j);
 }

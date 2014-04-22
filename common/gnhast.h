@@ -260,7 +260,7 @@ typedef struct _device_t {
 	int nrofhargs;		/**< \brief number of handler arguments */
 	void *localdata;	/**< \brief pointer to program-specific data */
 	time_t last_upd;	/**< \brief time of last update */
-	struct rb_node rbn;	/**< \brief red black node */
+	struct rb_node rbn;	/**< \brief red black node for dev->uid */
 	uint32_t onq;		/**< \brief I am on a queue */
 	uint32_t flags;		/**< \brief DEVFLAG_* */
 	TAILQ_ENTRY(_device_t) next_client;	/**< \brief Next device in client */

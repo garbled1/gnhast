@@ -163,6 +163,30 @@ int cmd_endldevs(pargs_t *args, void *arg)
 }
 
 /**
+   \brief Called when a number chg command occurs
+   \param dev device that got updated
+   \param num new number
+   \param arg pointer to client_t
+*/
+
+void coll_chg_number_cb(device_t *dev, int64_t num, void *arg)
+{
+	return;
+}
+
+/**
+   \brief Called when a timer chg command occurs
+   \param dev device that got updated
+   \param tstate new timer value
+   \param arg pointer to client_t
+*/
+
+void coll_chg_timer_cb(device_t *dev, uint32_t tstate, void *arg)
+{
+	return;
+}
+
+/**
    \brief Called when an upd command occurs
    \param dev device that got updated
    \param arg pointer to client_t

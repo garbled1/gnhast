@@ -72,6 +72,7 @@ int discovery_fd = -1;
 int discovery_port = 0;
 int discovery_count = 0;
 int discovery_done = 0;
+int waiting = 0;
 char *icaddy_url = NULL;
 char *ichn;
 int hasrain = 0;
@@ -87,6 +88,7 @@ extern argtable_t argtable[];
 extern TAILQ_HEAD(, _device_t) alldevs;
 extern commands_t commands[];
 extern int debugmode;
+extern int notimerupdate;
 
 /** The event base */
 struct event_base *base;
@@ -133,6 +135,8 @@ cfg_opt_t options[] = {
 
 void connect_event_cb(struct bufferevent *ev, short what, void *arg);
 void cb_shutdown(int fd, short what, void *arg);
+void icaddy_connect(int fd, short what, void *arg);
+void icaddy_POST(char *url_suffix, char *payload);
 
 /*****
       Stubs
@@ -147,6 +151,103 @@ void cb_shutdown(int fd, short what, void *arg);
 
 void coll_chg_switch_cb(device_t *dev, int state, void *arg)
 {
+	if (dev->subtype == SUBTYPE_SWITCH) {
+		/* we got a master enable request */
+		LOG(LOG_NOTICE, "Got master %s request",
+		    state ? "enable" : "disable");
+		if (state == 0)
+			icaddy_POST(ICJ_RUNOFF_URL, ICJ_RUNOFF_POST);
+		else
+			icaddy_POST(ICJ_RUNON_URL, ICJ_RUNON_POST);
+		return;
+	}
+	return;
+}
+
+/**
+   \brief Called when a number chg command occurs
+   \param dev device that got updated
+   \param num new number
+   \param arg pointer to client_t
+*/
+
+void coll_chg_number_cb(device_t *dev, int64_t num, void *arg)
+{
+	char buf[256], loc[32], buf2[32];
+	int i, found;
+	uint32_t timer;
+	device_t *zdev;
+
+	LOG(LOG_DEBUG, "Change req: %s %s %ll", dev->name, dev->loc, num);
+	if (strcasecmp(dev->loc, "pr") == 0) { /* prog running */
+		if (num == 0) { /* stop program */
+			/* requires a full stop/start action */
+			icaddy_POST(ICJ_RUNOFF_URL, ICJ_RUNOFF_POST);
+			icaddy_POST(ICJ_RUNON_URL, ICJ_RUNON_POST);
+			return;
+		}
+		if (num > 4) {
+			LOG(LOG_WARNING, "Got request to run prog %d, ignored",
+			    num);
+			return;
+		}
+		if (num >= 1 && num <= 3) {
+			sprintf(buf, "pgmNum=%d&doProgram=1&runNow=true",
+				(int)num);
+			LOG(LOG_DEBUG, "Sending: %s", buf);
+			icaddy_POST(NULL, buf);
+			return;
+		}
+		/* the below search is obnoxious, but necc. due to ordering */
+		if (num == 4) { /* special handling */
+			sprintf(buf, "pgmNum=4&doProgram=1&runNow=true");
+			for (i = 1; i <= 10; i++) {
+				found = 0;
+				TAILQ_FOREACH(zdev, &alldevs, next_all) {
+					sprintf(loc, "z%0.2d", i);
+					if (strcmp(zdev->loc, loc) == 0) {
+						found = 1;
+						break;
+					}
+				}
+				if (!found) {
+					LOG(LOG_WARNING, "Cannot find dev %s",
+					    loc);
+					return;
+				}
+				get_data_dev(zdev, DATALOC_DATA, &timer);
+				if (timer > 0) {
+					sprintf(buf2, "&z%ddurMin=%d", i,
+						(timer/60) ? (timer/60) : 1);
+					strcat(buf, buf2);
+				}
+			}
+			waiting = 0;
+			notimerupdate = 0;
+			icaddy_POST(NULL, buf);
+			return;
+		}
+	}
+	if (strcasecmp(dev->loc, "zr") == 0) { /* zone running */
+		if (num == 0) { /* stop the zone */
+			icaddy_POST(ICJ_RUNOFF_URL, ICJ_STOPPROG_POST);
+			return;
+		}
+	}
+}
+
+/**
+   \brief Called when a timer chg command occurs
+   \param dev device that got updated
+   \param tstate new timer value
+   \param arg pointer to client_t
+*/
+
+void coll_chg_timer_cb(device_t *dev, uint32_t tstate, void *arg)
+{
+
+	notimerupdate = 1;
+	store_data_dev(dev, DATALOC_DATA, &tstate);
 	return;
 }
 
@@ -338,23 +439,41 @@ void request_cb(struct evhttp_request *req, void *arg)
 
 	ichn = cfg_getstr(icaddy_c, "hostname");
 
+	if (req == NULL) {
+		LOG(LOG_ERROR, "Got NULL req in request_cb() ??");
+		return;
+	}
+
 	switch (req->response_code) {
 	case HTTP_OK: break;
 	default:
 		LOG(LOG_ERROR, "Http request failure: %d", req->response_code);
+		return;
 		break;
 	}
+	jsmn_init(&jp);
+
 	data = evhttp_request_get_input_buffer(req);
 	len = evbuffer_get_length(data);
 	LOG(LOG_DEBUG, "input buf len= %d", len);
-	buf = evbuffer_pullup(data, len);
-	if (buf)
-		LOG(LOG_DEBUG, "input buf: %s", buf);
-	else { /* wtf? */
+	if (len == 0)
+		return;
+
+	buf = safer_malloc(len+1);
+	if (evbuffer_copyout(data, buf, len) != len) {
+		LOG(LOG_ERROR, "Failed to copyout %d bytes", len);
 		goto request_cb_out;
 	}
-
-	jsmn_init(&jp);
+	buf[len] = '\0'; /* just in case of stupid */
+	LOG(LOG_DEBUG, "input buf: %s", buf);
+	jret = jsmn_parse(&jp, buf, len, token, 255);
+	if (jret < 0) {
+		LOG(LOG_ERROR, "Failed to parse jsom string: %d", jret);
+		/* Leave the data on the queue and punt for more */
+		/* XXX NEED switch for token error */
+		goto request_cb_out;
+	} else
+		evbuffer_drain(data, len); /* toss it */
 
 	/* look for a status response */
 	if (strcasecmp(req->uri, ICJ_STATUS) == 0) {
@@ -362,12 +481,6 @@ void request_cb(struct evhttp_request *req, void *arg)
 		uint32_t sec;
 
 		LOG(LOG_DEBUG, "Got status message");
-		jret = jsmn_parse(&jp, buf, strlen(buf), token, 255);
-		if (jret < 0) {
-			LOG(LOG_ERROR, "Failed to parse jsom string: %d",
-			    jret);
-			goto request_cb_out;
-		}
 
 		/* which zone is running? */
 		i = jtok_find_token(token, buf, "zoneNumber", jret);
@@ -458,12 +571,6 @@ void request_cb(struct evhttp_request *req, void *arg)
 	/* Look for a settings response */
 	} else if (strcasecmp(req->uri, ICJ_SETTINGS) == 0) {
 		LOG(LOG_DEBUG, "Got settings message");
-		jret = jsmn_parse(&jp, buf, strlen(buf), token, 255);
-		if (jret < 0) {
-			LOG(LOG_ERROR, "Failed to parse jsom string: %d",
-			    jret);
-			goto request_cb_out;
-		}
 		i = jtok_find_token(token, buf, "icVersion", jret);
 		if (i != -1) {
 			str = jtok_string(&token[i+1], buf);
@@ -496,10 +603,15 @@ void request_cb(struct evhttp_request *req, void *arg)
 					sprintf(dbuf, "zone%0.2d", j+1);
 					dev->rrdname = strdup(dbuf);
 				}
+				sprintf(dbuf, "z%0.2d", j+1);
+				dev->loc = strdup(dbuf);
 				dev->proto = PROTO_SENSOR_ICADDY;
 				dev->type = DEVICE_TIMER;
 				dev->subtype = SUBTYPE_TIMER;
 				(void) new_conf_from_dev(cfg, dev);
+			} else {
+				sprintf(dbuf, "z%0.2d", j+1);
+				dev->loc = strdup(dbuf);
 			}
 			insert_device(dev);
 			if (dumpconf == NULL && dev->name != NULL)
@@ -520,10 +632,15 @@ void request_cb(struct evhttp_request *req, void *arg)
 					sprintf(dbuf, "prog%0.2d", j+1);
 					dev->rrdname = strdup(dbuf);
 				}
+				sprintf(dbuf, "p%0.2d", j+1);
+				dev->loc = strdup(dbuf);
 				dev->proto = PROTO_SENSOR_ICADDY;
 				dev->type = DEVICE_TIMER;
 				dev->subtype = SUBTYPE_TIMER;
 				(void) new_conf_from_dev(cfg, dev);
+			} else {
+				sprintf(dbuf, "p%0.2d", j+1);
+				dev->loc = strdup(dbuf);
 			}
 			insert_device(dev);
 			if (dumpconf == NULL && dev->name != NULL)
@@ -596,7 +713,14 @@ void request_cb(struct evhttp_request *req, void *arg)
 			dev->proto = PROTO_SENSOR_ICADDY;
 			dev->type = DEVICE_SENSOR;
 			dev->subtype = SUBTYPE_NUMBER;
+			if (dev->loc == NULL) {
+				sprintf(dbuf, "pr");
+				dev->loc = strdup(dbuf);
+			}
 			(void) new_conf_from_dev(cfg, dev);
+		} else {
+			sprintf(dbuf, "pr");
+			dev->loc = strdup(dbuf);
 		}
 		insert_device(dev);
 		if (dumpconf == NULL && dev->name != NULL)
@@ -616,10 +740,15 @@ void request_cb(struct evhttp_request *req, void *arg)
 				sprintf(dbuf, "zonerunning");
 				dev->rrdname = strdup(dbuf);
 			}
+			sprintf(dbuf, "zr");
+			dev->loc = strdup(dbuf);
 			dev->proto = PROTO_SENSOR_ICADDY;
 			dev->type = DEVICE_SENSOR;
 			dev->subtype = SUBTYPE_NUMBER;
 			(void) new_conf_from_dev(cfg, dev);
+		} else {
+			sprintf(dbuf, "zr");
+			dev->loc = strdup(dbuf);
 		}
 		insert_device(dev);
 		if (dumpconf == NULL && dev->name != NULL)
@@ -636,15 +765,15 @@ void request_cb(struct evhttp_request *req, void *arg)
 	}
 
 request_cb_out:
-	evbuffer_drain(data, len); /* toss it */
-		return;
+	free(buf);
+	return;
 }
 
 /**
    \brief Callback to connect to the irrigation caddy and collect data
    \param fd unused
    \param what what happened?
-   \param arg unused
+   \param arg url suffix
 */
 
 void icaddy_connect(int fd, short what, void *arg)
@@ -652,12 +781,16 @@ void icaddy_connect(int fd, short what, void *arg)
 	char *url_suffix = (char *)arg;
 	struct evhttp_uri *uri;
 	struct evhttp_request *req;
-	int i;
-	char *uid, buf[256];
-	struct tm *utc;
-	time_t rawtime;
 	device_t *dev;
-	double data;
+
+	if (strcmp(url_suffix, ICJ_STATUS) == 0 && notimerupdate) {
+		waiting++;
+		if (waiting > 3) { /* took too long, punt */
+			waiting = 0;
+			notimerupdate = 0;
+		} else
+			return;
+	}
 
 	if (icaddy_url == NULL) {
 		LOG(LOG_ERROR, "icaddy_url is NULL, punt");
@@ -676,7 +809,7 @@ void icaddy_connect(int fd, short what, void *arg)
 		return;
 	}
 
-	evhttp_uri_set_port(uri, 80);
+	evhttp_uri_set_port(uri, ICADDY_HTTP_PORT);
 	LOG(LOG_DEBUG, "host: %s port: %d", evhttp_uri_get_host(uri),
 	    evhttp_uri_get_port(uri));
 
@@ -689,6 +822,64 @@ void icaddy_connect(int fd, short what, void *arg)
 	evhttp_make_request(http_cn, req, EVHTTP_REQ_GET, url_suffix);
 	evhttp_add_header(req->output_headers, "Host",
 			  evhttp_uri_get_host(uri));
+	evhttp_uri_free(uri);
+}
+
+/**
+   \brief POST data to the icaddy
+   \param url_suffix URL to POST to
+   \param payload data to send
+*/
+
+void icaddy_POST(char *url_suffix, char *payload)
+{
+	struct evhttp_uri *uri;
+	struct evhttp_request *req;
+	struct evbuffer *data;
+	int i;
+	char buf[256];
+
+	if (icaddy_url == NULL) {
+		LOG(LOG_ERROR, "icaddy_url is NULL, punt");
+		cb_shutdown(0, 0, NULL);
+		return;
+	}
+
+	uri = evhttp_uri_parse(icaddy_url);
+	if (uri == NULL) {
+		LOG(LOG_ERROR, "Failed to parse URL");
+		return;
+	}
+
+	evhttp_uri_set_port(uri, ICADDY_HTTP_PORT);
+	LOG(LOG_DEBUG, "host: %s port: %d", evhttp_uri_get_host(uri),
+	    evhttp_uri_get_port(uri));
+
+	if (http_cn == NULL)
+		http_cn = evhttp_connection_base_new(base, dns_base,
+						     evhttp_uri_get_host(uri),
+						     evhttp_uri_get_port(uri));
+	
+	req = evhttp_request_new(request_cb, NULL);
+	if (url_suffix != NULL)
+		evhttp_make_request(http_cn, req, EVHTTP_REQ_POST, url_suffix);
+	else
+		evhttp_make_request(http_cn, req, EVHTTP_REQ_POST, "/");
+
+	evhttp_add_header(req->output_headers, "Host",
+			  evhttp_uri_get_host(uri));
+	evhttp_add_header(req->output_headers, "Content-Type",
+			  "application/x-www-form-urlencoded");
+
+	LOG(LOG_DEBUG, "POSTing to %s%s", icaddy_url,
+	    url_suffix ? url_suffix : "");
+	if (payload != NULL) {
+		sprintf(buf, "%d", strlen(payload));
+		evhttp_add_header(req->output_headers, "Content-Length", buf);
+		data = evhttp_request_get_output_buffer(req);
+		evbuffer_add_printf(data, payload);
+		LOG(LOG_DEBUG, "POST payload: %s", payload);
+	}
 	evhttp_uri_free(uri);
 }
 

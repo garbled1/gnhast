@@ -174,6 +174,7 @@ int cmd_update(pargs_t *args, void *arg)
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.d);
 			break;
 		case SC_COUNT:
+		case SC_TIMER:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.u);
 			break;
 		case SC_WATTSEC:
@@ -262,6 +263,7 @@ int cmd_change(pargs_t *args, void *arg)
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.d);
 			break;
 		case SC_COUNT:
+		case SC_TIMER:
 			evbuffer_add_printf(send, " %s:%d",
 					    ARGNM(args[i].cword),
 					    args[i].arg.u);

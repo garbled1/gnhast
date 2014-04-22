@@ -58,6 +58,8 @@ extern int cmd_endldevs(pargs_t *args, void *arg);
 extern void coll_upd_cb(device_t *dev, void *arg);
 extern void coll_chg_switch_cb(device_t *dev, int state, void *arg);
 extern void coll_chg_dimmer_cb(device_t *dev, double level, void *arg);
+extern void coll_chg_timer_cb(device_t *dev, uint32_t tstate, void *arg);
+extern void coll_chg_number_cb(device_t *dev, int64_t num, void *arg);
 
 /* Bring these in scope so mod can dump a conf file */
 extern char *conffile;
@@ -274,6 +276,8 @@ int cmd_update(pargs_t *args, void *arg)
 int cmd_change(pargs_t *args, void *arg)
 {
 	int i, state;
+	uint32_t tstate;
+	int64_t num;
 	device_t *dev;
 	char *uid=NULL;
 	client_t *client = (client_t *)arg;
@@ -330,7 +334,11 @@ int cmd_change(pargs_t *args, void *arg)
 			state = args[i].arg.i;
 			break;
 		case SC_TIMER:
-			state = args[i].arg.u;
+			tstate = args[i].arg.u;
+			break;
+		case SC_NUMBER:
+			num = args[i].arg.ll;
+			break;
 		case SC_UID:
 			break;
 		default:
@@ -342,11 +350,13 @@ int cmd_change(pargs_t *args, void *arg)
 	}
 	if (dev->type == DEVICE_DIMMER)
 		coll_chg_dimmer_cb(dev, level, arg);
-	else if (dev->type == DEVICE_SWITCH)
+	else if (dev->type == DEVICE_SWITCH ||
+		 dev->subtype == SUBTYPE_ALARMSTATUS)
 		coll_chg_switch_cb(dev, state, arg);
-	else if (dev->subtype == SUBTYPE_ALARMSTATUS ||
-		 dev->subtype == SUBTYPE_TIMER)
-		coll_chg_switch_cb(dev, state, arg);
+	else if (dev->subtype == SUBTYPE_TIMER)
+		coll_chg_timer_cb(dev, tstate, arg);
+	else if	(dev->subtype == SUBTYPE_NUMBER)
+		coll_chg_number_cb(dev, num, arg);
 	else {
 		LOG(LOG_ERROR, "Unhandled dev type in cmd_change()");
 		return(-1);

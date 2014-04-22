@@ -9,12 +9,20 @@
 #define ICADDY_DPORT		30303
 #define ICADDY_DSTRING		"Discovery: Who is out there?"
 
+#define ICADDY_HTTP_PORT	80
+
 /* really?  you have more than 8?  recompile. sheesh */
 #define MAX_ICADDY_DEVS		8
 #define IC_SCAN_TIMEOUT		5 /* seconds */
 
 #define ICJ_SETTINGS	"/settingsVars.json"
 #define ICJ_STATUS	"/status.json"
+
+#define ICJ_RUNON_URL	"/runSprinklers.htm"
+#define ICJ_RUNON_POST	"run=run"
+#define ICJ_RUNOFF_URL	"/stopSprinklers.htm"
+#define ICJ_RUNOFF_POST	"stop=off"
+#define ICJ_STOPPROG_POST	"stop=active"
 
 typedef struct _connection_t {
         int port;
