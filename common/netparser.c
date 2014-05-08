@@ -87,6 +87,9 @@ argtable_t argtable[] = {
 	{"pct", SC_PERCENTAGE, PTDOUBLE},
 	{"volume", SC_VOLUME, PTDOUBLE},
 	{"timer", SC_TIMER, PTUINT},
+	{"thmode", SC_THMODE, PTINT},
+	{"thstate", SC_THSTATE, PTINT},
+	{"smnum", SC_SMNUMBER, PTINT},
 };
 
 /** \brief size of the args table */ 
@@ -170,6 +173,9 @@ int find_arg_bydev(device_t *dev)
 	case SUBTYPE_DISTANCE: return find_arg_byid(SC_DISTANCE); break;
 	case SUBTYPE_VOLUME: return find_arg_byid(SC_VOLUME); break;
 	case SUBTYPE_TIMER: return find_arg_byid(SC_TIMER); break;
+	case SUBTYPE_THMODE: return find_arg_byid(SC_THMODE); break;
+	case SUBTYPE_THSTATE: return find_arg_byid(SC_THSTATE); break;
+	case SUBTYPE_SMNUMBER: return find_arg_byid(SC_SMNUMBER); break;
 	}
 	return -1;
 }

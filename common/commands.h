@@ -94,6 +94,9 @@ enum SC_COMMANDS {
 	SC_DISTANCE,	/**< \brief distance */
 	SC_VOLUME,	/**< \brief volume */
 	SC_TIMER,	/**< \brief countdown timer */
+	SC_THMODE,	/**< \brief Thermostat mode */
+	SC_THSTATE,	/**< \brief Thermostat state */
+	SC_SMNUMBER,	/**< \brief Small number */
 };
 
 /* commands */

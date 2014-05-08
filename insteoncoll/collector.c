@@ -109,6 +109,7 @@ connection_t *plm_conn;
 connection_t *gnhastd_conn;
 uint8_t plm_addr[3];
 int need_rereg = 0;
+char *dumpconf = NULL;
 
 extern SIMPLEQ_HEAD(fifohead, _cmdq_t) cmdfifo;
 
@@ -172,7 +173,6 @@ void coll_upd_cb(device_t *dev, void *arg)
 	return;
 }
 
-
 /**
    \brief Handle a enldevs device command
    \param args The list of arguments
@@ -229,26 +229,23 @@ void coll_chg_dimmer_cb(device_t *dev, double level, void *arg)
 }
 
 /**
-   \brief Called when a number chg command occurs
+   \brief Called when a chg command occurs
    \param dev device that got updated
-   \param num new number
    \param arg pointer to client_t
 */
 
-void coll_chg_number_cb(device_t *dev, int64_t num, void *arg)
+void coll_chg_cb(device_t *dev, void *arg)
 {
-	return;
-}
+	double d;
+	uint8_t s;
 
-/**
-   \brief Called when a timer chg command occurs
-   \param dev device that got updated
-   \param tstate new timer value
-   \param arg pointer to client_t
-*/
-
-void coll_chg_timer_cb(device_t *dev, uint32_t tstate, void *arg)
-{
+	if (dev->subtype == SUBTYPE_SWITCH && dev->type == DEVICE_SWITCH) {
+		get_data_dev(dev, DATALOC_CHANGE, &s);
+		coll_chg_switch_cb(dev, s, arg);
+	} else if (dev->type == DEVICE_DIMMER) {
+		get_data_dev(dev, DATALOC_CHANGE, &d);
+		coll_chg_dimmer_cb(dev, d, arg);
+	}
 	return;
 }
 

@@ -164,6 +164,8 @@ static int conf_parse_proto(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		*(int *)result = PROTO_SENSOR_AD2USB;
 	else if (strcmp(value, "icaddy") == 0)
 		*(int *)result = PROTO_SENSOR_ICADDY;
+	else if (strcmp(value, "venstar") == 0)
+		*(int *)result = PROTO_SENSOR_VENSTAR;
 	else {
 		cfg_error(cfg, "invalid value for option '%s': %s",
 		    cfg_opt_name(opt), value);
@@ -211,6 +213,9 @@ static void conf_print_proto(cfg_opt_t *opt, unsigned int index, FILE *fp)
 		break;
 	case PROTO_SENSOR_ICADDY:
 		fprintf(fp, "icaddy");
+		break;
+	case PROTO_SENSOR_VENSTAR:
+		fprintf(fp, "venstar");
 		break;
 	default:
 		fprintf(fp, "NONE");
@@ -352,6 +357,12 @@ int conf_parse_subtype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		*(int *)result = SUBTYPE_VOLUME;
 	else if (strcmp(value, "timer") == 0)
 		*(int *)result = SUBTYPE_TIMER;
+	else if (strcmp(value, "thmode") == 0)
+		*(int *)result = SUBTYPE_THMODE;
+	else if (strcmp(value, "thstate") == 0)
+		*(int *)result = SUBTYPE_THSTATE;
+	else if (strcmp(value, "smnumber") == 0)
+		*(int *)result = SUBTYPE_SMNUMBER;
 	else {
 		cfg_error(cfg, "invalid value for option '%s': %s",
 		    cfg_opt_name(opt), value);
@@ -451,6 +462,15 @@ void conf_print_subtype(cfg_opt_t *opt, unsigned int index, FILE *fp)
 		break;
 	case SUBTYPE_TIMER:
 		fprintf(fp, "timer");
+		break;
+	case SUBTYPE_THMODE:
+		fprintf(fp, "thmode");
+		break;
+	case SUBTYPE_THSTATE:
+		fprintf(fp, "thstate");
+		break;
+	case SUBTYPE_SMNUMBER:
+		fprintf(fp, "smnumber");
 		break;
 	default:
 		fprintf(fp, "NONE");
@@ -956,4 +976,3 @@ cfg_t *parse_conf(const char *filename)
 
 	return cfg;
 }
-

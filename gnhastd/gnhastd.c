@@ -47,6 +47,7 @@
 FILE *logfile = NULL;
 extern int debugmode;
 cfg_t *cfg;
+char *dumpconf = NULL;
 struct event_base *base;	/**< The primary event base */
 extern TAILQ_HEAD(, _device_t) alldevs;
 extern TAILQ_HEAD(, _client_t) clients;

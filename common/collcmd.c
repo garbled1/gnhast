@@ -231,6 +231,9 @@ int cmd_update(pargs_t *args, void *arg)
 		case SC_SWITCH:
 		case SC_WEATHER:
 		case SC_ALARMSTATUS:
+		case SC_THMODE:
+		case SC_THSTATE:
+		case SC_SMNUMBER:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.i);
 			break;
 		case SC_LUX:
@@ -316,6 +319,7 @@ int cmd_change(pargs_t *args, void *arg)
 				    "data on non-switch device %s", dev->uid);
 				return(-1);
 			}
+			store_data_dev(dev, DATALOC_CHANGE, &state);
 			break;
 		case SC_DIMMER:
 			level = args[i].arg.d;
@@ -329,15 +333,42 @@ int cmd_change(pargs_t *args, void *arg)
 				    dev->uid, dev->type);
 				return(-1);
 			}
+			store_data_dev(dev, DATALOC_CHANGE, &level);
 			break;
+		case SC_WEATHER:
+		case SC_THMODE:
+		case SC_THSTATE:
+		case SC_SMNUMBER:
 		case SC_ALARMSTATUS:
-			state = args[i].arg.i;
+			store_data_dev(dev, DATALOC_CHANGE, &args[i].arg.i);
+			state = args[i].arg.i; /* XXX */
 			break;
+		case SC_LUX:
+                case SC_HUMID:
+                case SC_TEMP:
+                case SC_PRESSURE:
+                case SC_SPEED:
+                case SC_DIR:
+                case SC_MOISTURE:
+                case SC_WETNESS:
+                case SC_VOLTAGE:
+                case SC_WATT:
+                case SC_AMPS:
+                case SC_PERCENTAGE:
+                case SC_FLOWRATE:
+                case SC_DISTANCE:
+                case SC_VOLUME:
+			store_data_dev(dev, DATALOC_CHANGE, &args[i].arg.d);
+			break;
+		case SC_COUNT:
 		case SC_TIMER:
-			tstate = args[i].arg.u;
+			store_data_dev(dev, DATALOC_CHANGE, &args[i].arg.u);
+			tstate = args[i].arg.u; /* XXX */
 			break;
+		case SC_WATTSEC:
 		case SC_NUMBER:
-			num = args[i].arg.ll;
+			store_data_dev(dev, DATALOC_CHANGE, &args[i].arg.ll);
+			num = args[i].arg.ll; /* XXX */
 			break;
 		case SC_UID:
 			break;
@@ -348,19 +379,7 @@ int cmd_change(pargs_t *args, void *arg)
 			break;
 		}
 	}
-	if (dev->type == DEVICE_DIMMER)
-		coll_chg_dimmer_cb(dev, level, arg);
-	else if (dev->type == DEVICE_SWITCH ||
-		 dev->subtype == SUBTYPE_ALARMSTATUS)
-		coll_chg_switch_cb(dev, state, arg);
-	else if (dev->subtype == SUBTYPE_TIMER)
-		coll_chg_timer_cb(dev, tstate, arg);
-	else if	(dev->subtype == SUBTYPE_NUMBER)
-		coll_chg_number_cb(dev, num, arg);
-	else {
-		LOG(LOG_ERROR, "Unhandled dev type in cmd_change()");
-		return(-1);
-	}
+	coll_chg_cb(dev, arg); /* new generic cb routine */
 	return(0);
 }
 

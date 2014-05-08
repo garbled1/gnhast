@@ -15,5 +15,8 @@
 #define SSDP_WAIT_STR	"5"
 
 void cb_ssdp_msearch_send(int fd, short what, void *arg);
+int bind_ssdp_recv(void);
+int bind_notify_recv(void);
+char *find_ssdp_field(char *buf, char *field);
 
 #endif /* _SSDP_H_ */

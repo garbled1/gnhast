@@ -145,7 +145,6 @@ void coll_upd_cb(device_t *dev, void *arg)
 	return;
 }
 
-
 /**
    \brief Handle a enldevs device command
    \param args The list of arguments
@@ -164,13 +163,15 @@ int cmd_endldevs(pargs_t *args, void *arg)
    \param arg pointer to client_t
 */
 
-void coll_chg_switch_cb(device_t *dev, int state, void *arg)
+void coll_chg_cb(device_t *dev, void *arg)
 {
 	client_t *cli = (client_t *)arg;
 	char buf[256];
 	int code, button=0;
+	uint8_t state;
 	struct evbuffer *send;
 
+	get_data_dev(dev, DATALOC_CHANGE, &state);
 
 	code = cfg_getint(ad2usb_c, "seccode");
 	if (code == 0) {
@@ -204,43 +205,6 @@ void coll_chg_switch_cb(device_t *dev, int state, void *arg)
 	bufferevent_write_buffer(ad2usb_conn->bev, send);
 	evbuffer_free(send);	
 }
-
-/**
-   \brief Called when a dimmer chg command occurs
-   \param dev device that got updated
-   \param level new dimmer level
-   \param arg pointer to client_t
-*/
-
-void coll_chg_dimmer_cb(device_t *dev, double level, void *arg)
-{
-	return;
-}
-
-/**
-   \brief Called when a number chg command occurs
-   \param dev device that got updated
-   \param num new number
-   \param arg pointer to client_t
-*/
-
-void coll_chg_number_cb(device_t *dev, int64_t num, void *arg)
-{
-	return;
-}
-
-/**
-   \brief Called when a timer chg command occurs
-   \param dev device that got updated
-   \param tstate new timer value
-   \param arg pointer to client_t
-*/
-
-void coll_chg_timer_cb(device_t *dev, uint32_t tstate, void *arg)
-{
-	return;
-}
-
 
 /*****
       General stuff

@@ -1,10 +1,11 @@
 AM_CPPFLAGS = -DLOCALSTATEDIR=\"$(localstatedir)\" \
 	-DSYSCONFDIR=\"$(sysconfdir)\" \
+	-DJSMN_PARENT_LINKS=1 -DJSMN_TOKEN_LINKS=1 \
 	-I$(top_srcdir)/common -I$(top_srcdir)/jsmn
 
-bin_PROGRAMS = icaddycoll
+bin_PROGRAMS = venstarcoll
 
-icaddycoll_SOURCES = \
+venstarcoll_SOURCES = \
 	$(top_srcdir)/common/common.c \
 	$(top_srcdir)/common/devices.c \
 	$(top_srcdir)/common/netparser.c \
@@ -17,17 +18,19 @@ icaddycoll_SOURCES = \
 	$(top_srcdir)/common/confparser.h \
 	$(top_srcdir)/common/gncoll.h \
 	$(top_srcdir)/common/collcmd.h \
+	$(top_srcdir)/jsmn/jsmn.c \
+	$(top_srcdir)/jsmn/jsmn.h \
 	$(top_srcdir)/common/http_func.c \
 	$(top_srcdir)/common/http_func.h \
 	$(top_srcdir)/common/jsmn_func.c \
 	$(top_srcdir)/common/jsmn_func.h \
-	$(top_srcdir)/jsmn/jsmn.c \
-	$(top_srcdir)/jsmn/jsmn.h \
-	icaddy.h \
+	$(top_srcdir)/common/ssdp.c \
+	$(top_srcdir)/common/ssdp.h \
+	venstar.h \
 	collector.c
 
 if NEED_RBTREE
-icaddycoll_SOURCES += \
+venstarcoll_SOURCES += \
 	$(top_srcdir)/linux/bswap16.c \
 	$(top_srcdir)/linux/bswap32.c \
 	$(top_srcdir)/linux/bswap64.c \
@@ -40,6 +43,6 @@ endif
 
 confexampledir = $(datarootdir)/gnhast/examples
 dist_confexample_DATA = \
-	icaddy.conf
+	venstar.conf
 
-icaddycoll_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+venstarcoll_LDADD = $(top_builddir)/libconfuse/libconfuse.la

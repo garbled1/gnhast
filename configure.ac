@@ -72,6 +72,7 @@ AC_CONFIG_FILES([Makefile \
 		 wupwscoll/Makefile \
 		 ad2usbcoll/Makefile \
 		 icaddycoll/Makefile \
+		 venstarcoll/Makefile \
 		 handlers/Makefile \
 		 tools/Makefile \
 		 libconfuse/Makefile])

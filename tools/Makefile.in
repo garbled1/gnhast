@@ -79,7 +79,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-bin_PROGRAMS = ssdp_scan$(EXEEXT)
+bin_PROGRAMS = ssdp_scan$(EXEEXT) notify_listen$(EXEEXT)
 subdir = tools
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(dist_bin_SCRIPTS) $(top_srcdir)/depcomp
@@ -93,14 +93,18 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_ssdp_scan_OBJECTS = common.$(OBJEXT) ssdp.$(OBJEXT) \
-	ssdp_scan.$(OBJEXT)
-ssdp_scan_OBJECTS = $(am_ssdp_scan_OBJECTS)
-ssdp_scan_LDADD = $(LDADD)
+am_notify_listen_OBJECTS = common.$(OBJEXT) ssdp.$(OBJEXT) \
+	notify_listen.$(OBJEXT)
+notify_listen_OBJECTS = $(am_notify_listen_OBJECTS)
+notify_listen_LDADD = $(LDADD)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
+am_ssdp_scan_OBJECTS = common.$(OBJEXT) ssdp.$(OBJEXT) \
+	ssdp_scan.$(OBJEXT)
+ssdp_scan_OBJECTS = $(am_ssdp_scan_OBJECTS)
+ssdp_scan_LDADD = $(LDADD)
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -163,8 +167,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(ssdp_scan_SOURCES)
-DIST_SOURCES = $(ssdp_scan_SOURCES)
+SOURCES = $(notify_listen_SOURCES) $(ssdp_scan_SOURCES)
+DIST_SOURCES = $(notify_listen_SOURCES) $(ssdp_scan_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -324,6 +328,13 @@ ssdp_scan_SOURCES = \
 	$(top_srcdir)/common/ssdp.h \
 	ssdp_scan.c
 
+notify_listen_SOURCES = \
+	$(top_srcdir)/common/common.c \
+	$(top_srcdir)/common/ssdp.c \
+	$(top_srcdir)/common/common.h \
+	$(top_srcdir)/common/ssdp.h \
+	notify_listen.c
+
 dist_bin_SCRIPTS = addhandler modhargs
 CLEANFILES = $(dist_bin_SCRIPTS)
 EXTRA_DIST = \
@@ -418,6 +429,10 @@ clean-binPROGRAMS:
 	echo " rm -f" $$list; \
 	rm -f $$list
 
+notify_listen$(EXEEXT): $(notify_listen_OBJECTS) $(notify_listen_DEPENDENCIES) $(EXTRA_notify_listen_DEPENDENCIES) 
+	@rm -f notify_listen$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(notify_listen_OBJECTS) $(notify_listen_LDADD) $(LIBS)
+
 ssdp_scan$(EXEEXT): $(ssdp_scan_OBJECTS) $(ssdp_scan_DEPENDENCIES) $(EXTRA_ssdp_scan_DEPENDENCIES) 
 	@rm -f ssdp_scan$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(ssdp_scan_OBJECTS) $(ssdp_scan_LDADD) $(LIBS)
@@ -464,6 +479,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/common.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/notify_listen.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ssdp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ssdp_scan.Po@am__quote@
 

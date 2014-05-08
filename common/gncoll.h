@@ -25,5 +25,8 @@ void gn_register_device(device_t *dev, struct bufferevent *out);
 void gn_update_device(device_t *dev, int what, struct bufferevent *out);
 void gn_disconnect(struct bufferevent *bev);
 void gn_client_name(struct bufferevent *bev, char *name);
+void generic_build_device(cfg_t *cfg, char *uid, char *name, char *rrdname,
+			  int proto, int type, int subtype, char *loc,
+			  int tscale, struct bufferevent *bev);
 
 #endif /*_GNCOLL_H_*/

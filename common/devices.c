@@ -290,6 +290,8 @@ void get_data_dev(device_t *dev, int where, void *data)
 	case DATALOC_HIWAT:
 		store = &dev->hiwat;
 		break;
+	case DATALOC_CHANGE:
+		store = &dev->change;
 	}
 
 	switch (dev->type) {
@@ -350,6 +352,9 @@ void get_data_dev(device_t *dev, int where, void *data)
 		case SUBTYPE_SWITCH:
 		case SUBTYPE_WEATHER:
 		case SUBTYPE_ALARMSTATUS:
+		case SUBTYPE_THMODE:
+		case SUBTYPE_THSTATE:
+		case SUBTYPE_SMNUMBER:
 			*((uint8_t *)data) = store->state;
 			break;
 		case SUBTYPE_NUMBER:
@@ -406,6 +411,8 @@ void store_data_dev(device_t *dev, int where, void *data)
 	case DATALOC_HIWAT:
 		store = &dev->hiwat;
 		break;
+	case DATALOC_CHANGE:
+		store = &dev->change;
 	}
 
 	switch (dev->type) {
@@ -466,6 +473,9 @@ void store_data_dev(device_t *dev, int where, void *data)
 		case SUBTYPE_SWITCH:
 		case SUBTYPE_WEATHER:
 		case SUBTYPE_ALARMSTATUS:
+		case SUBTYPE_THMODE:
+		case SUBTYPE_THSTATE:
+		case SUBTYPE_SMNUMBER:
 			store->state = *((uint8_t *)data);
 			break;
 		case SUBTYPE_NUMBER:
@@ -503,6 +513,9 @@ int datatype_dev(device_t *dev)
 	case SUBTYPE_OUTLET:
 	case SUBTYPE_WEATHER:
 	case SUBTYPE_ALARMSTATUS:
+	case SUBTYPE_THMODE:
+	case SUBTYPE_THSTATE:
+	case SUBTYPE_SMNUMBER:
 		return DATATYPE_UINT;
 		break;
 	case SUBTYPE_WATTSEC:

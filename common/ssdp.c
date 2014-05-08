@@ -58,11 +58,11 @@ int ssdp_portnum;
 
 char *ssdp_fmt_str =	"M-SEARCH * HTTP/1.1\r\n" \
 			"Host: " SSDP_MULTICAST ":" SSDP_PORT_STR "\r\n" \
-			"Man: \"ssdp:discover\"\r\n" \
-			"ST: %s\r\n" \
-			"MX: " SSDP_WAIT_STR "\r\n" \
+			"Man: ssdp:discover\r\n" \
+			"ST: %s\r\n"					\
+			"MX: " SSDP_WAIT_STR "\r\n"			\
 			"USER-AGENT: " PACKAGE_NAME "/" PACKAGE_VERSION "" \
-			"\r\n\r\n";
+			"\r\n";
 
 
 /**
@@ -149,4 +149,110 @@ int bind_ssdp_recv(void)
 	}
 
 	return sock_fd;
+}
+
+
+/**
+   \brief bind udp to listen to NOTIFY events
+   \return fd
+*/
+int bind_notify_recv(void)
+{
+	int sock_fd, f, flag=1;
+	struct sockaddr_in sin;
+	struct ip_mreq mreq;
+	socklen_t slen;
+
+	if ((sock_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+		LOG(LOG_ERROR, "Failed to bind SSDP in socket()");
+		return -1;
+	}
+
+	if (setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, &flag,
+		       sizeof(int)) < 0) {
+		LOG(LOG_ERROR, "Could not set SO_REUSEADDR for SSDP");
+		return -1;
+	}
+	if (setsockopt(sock_fd, SOL_SOCKET, SO_BROADCAST, &flag,
+		       sizeof(int)) < 0) {
+		LOG(LOG_ERROR, "Could not set SO_BROADCAST for SSDP");
+		return -1;
+	}
+	if (setsockopt(sock_fd, SOL_SOCKET, SO_REUSEPORT, &flag,
+		       sizeof(int)) < 0) {
+		LOG(LOG_ERROR, "Could not set SO_REUSEPORT for SSDP");
+		return -1;
+	}
+
+	/* make it non-blocking */
+	f = fcntl(sock_fd, F_GETFL);
+	f |= O_NONBLOCK;
+	fcntl(sock_fd, F_SETFL, f);
+
+	/* Set IP, port */
+	memset(&sin, 0, sizeof(sin));
+	sin.sin_family = AF_INET;
+	sin.sin_addr.s_addr = INADDR_ANY;
+	sin.sin_port = htons(SSDP_PORT);
+
+	if (bind(sock_fd, (struct sockaddr *)&sin,
+		 sizeof(struct sockaddr)) < 0) {
+		LOG(LOG_ERROR, "bind() for SSDP port failed");
+		return -1;
+	} else {
+		mreq.imr_multiaddr.s_addr = inet_addr(SSDP_MULTICAST);
+		mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+		if (setsockopt(sock_fd, IPPROTO_IP, IP_ADD_MEMBERSHIP,
+			       &mreq, sizeof(mreq)) < 0) {
+			LOG(LOG_ERROR, "Could not set membership on socket");
+			return -1;
+		}
+		slen = sizeof(sin);
+		getsockname(sock_fd, (struct sockaddr *)&sin, &slen);
+		ssdp_portnum = ntohs(sin.sin_port);
+		LOG(LOG_NOTICE, "Listening on port %d:udp for NOTIFY events",
+		    ssdp_portnum);
+	}
+
+	return sock_fd;
+}
+
+/**
+   \brief Parse a SSDP/NOTIFY buffer, looking for a specific field
+   \param buf Buffer to parse
+   \param field field to look for in buffer
+   \return malloc'd copy of field data
+   Returns NULL if not found
+   Caller is responsible for freeing returned buffer
+*/
+
+char *find_ssdp_field(char *buf, char *field)
+{
+	char *p, *begin, *end, *ret;
+	size_t len;
+
+	p = strcasestr(buf, field);
+	if (p == NULL)
+		return NULL;
+
+	end = strchr(p, '\r');
+	if (end == NULL)
+		end = strchr(p, '\n');
+	if (end == NULL)
+		end = strchr(p, '\0');
+	if (end == NULL)
+		return NULL;
+
+	begin = strchr(p, ':'); /* find first : */
+	if (begin == NULL)
+		return NULL;
+	begin += 2; /* skip the space and the : */
+
+	len = end - begin;
+
+	ret = safer_malloc(len+1);
+	strncpy(ret, begin, len);
+	ret[len] = '\0'; /* just in case */
+
+	return ret;
 }

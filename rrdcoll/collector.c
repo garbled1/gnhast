@@ -240,49 +240,12 @@ void coll_upd_cb(device_t *dev, void *arg)
 }
 
 /**
-   \brief Called when a switch chg command occurs
+   \brief Called when a chg command occurs
    \param dev device that got updated
-   \param state new state (on/off)
    \param arg pointer to client_t
 */
 
-void coll_chg_switch_cb(device_t *dev, int state, void *arg)
-{
-	return;
-}
-
-/**
-   \brief Called when a dimmer chg command occurs
-   \param dev device that got updated
-   \param level new dimmer level
-   \param arg pointer to client_t
-*/
-
-void coll_chg_dimmer_cb(device_t *dev, double level, void *arg)
-{
-	return;
-}
-
-/**
-   \brief Called when a number chg command occurs
-   \param dev device that got updated
-   \param num new number
-   \param arg pointer to client_t
-*/
-
-void coll_chg_number_cb(device_t *dev, int64_t num, void *arg)
-{
-	return;
-}
-
-/**
-   \brief Called when a timer chg command occurs
-   \param dev device that got updated
-   \param tstate new timer value
-   \param arg pointer to client_t
-*/
-
-void coll_chg_timer_cb(device_t *dev, uint32_t tstate, void *arg)
+void coll_chg_cb(device_t *dev, void *arg)
 {
 	return;
 }

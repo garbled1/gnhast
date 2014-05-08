@@ -153,6 +153,9 @@ int cmd_update(pargs_t *args, void *arg)
 		case SC_SWITCH:
 		case SC_WEATHER:
 		case SC_ALARMSTATUS:
+		case SC_THMODE:
+		case SC_THSTATE:
+		case SC_SMNUMBER:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.i);
 			break;
 		case SC_LUX:
@@ -237,6 +240,9 @@ int cmd_change(pargs_t *args, void *arg)
 		case SC_WEATHER:
 		case SC_SWITCH:
 		case SC_ALARMSTATUS:
+		case SC_THMODE:
+		case SC_THSTATE:
+		case SC_SMNUMBER:
 			evbuffer_add_printf(send, " %s:%d",
 					    ARGNM(args[i].cword),
 					    args[i].arg.i);

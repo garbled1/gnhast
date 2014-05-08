@@ -62,6 +62,8 @@
 #include "collcmd.h"
 #include "icaddy.h"
 #include "jsmn.h"
+#include "jsmn_func.h"
+#include "http_func.h"
 
 char *conffile = SYSCONFDIR "/" ICADDYCOLL_CONFIG_FILE;
 FILE *logfile;   /** our logfile */
@@ -78,6 +80,9 @@ char *ichn;
 int hasrain = 0;
 icaddy_discovery_resp_t icaddy_list[MAX_ICADDY_DEVS];
 struct event *disc_ev; /* the discovery event */
+
+http_get_t *status_get;
+http_get_t *settings_get;
  
 /* debugging */
 //_malloc_options = "AJ";
@@ -135,8 +140,7 @@ cfg_opt_t options[] = {
 
 void connect_event_cb(struct bufferevent *ev, short what, void *arg);
 void cb_shutdown(int fd, short what, void *arg);
-void icaddy_connect(int fd, short what, void *arg);
-void icaddy_POST(char *url_suffix, char *payload);
+void request_cb(struct evhttp_request *req, void *arg);
 
 /*****
       Stubs
@@ -151,16 +155,15 @@ void icaddy_POST(char *url_suffix, char *payload);
 
 void coll_chg_switch_cb(device_t *dev, int state, void *arg)
 {
-	if (dev->subtype == SUBTYPE_SWITCH) {
-		/* we got a master enable request */
-		LOG(LOG_NOTICE, "Got master %s request",
-		    state ? "enable" : "disable");
-		if (state == 0)
-			icaddy_POST(ICJ_RUNOFF_URL, ICJ_RUNOFF_POST);
-		else
-			icaddy_POST(ICJ_RUNON_URL, ICJ_RUNON_POST);
-		return;
-	}
+	/* we got a master enable request */
+	LOG(LOG_NOTICE, "Got master %s request",
+	    state ? "enable" : "disable");
+	if (state == 0)
+		http_POST(icaddy_url, ICJ_RUNOFF_URL, ICADDY_HTTP_PORT,
+			  ICJ_RUNOFF_POST, request_cb);
+	else
+		http_POST(icaddy_url, ICJ_RUNON_URL, ICADDY_HTTP_PORT,
+			  ICJ_RUNON_POST, request_cb);
 	return;
 }
 
@@ -182,8 +185,10 @@ void coll_chg_number_cb(device_t *dev, int64_t num, void *arg)
 	if (strcasecmp(dev->loc, "pr") == 0) { /* prog running */
 		if (num == 0) { /* stop program */
 			/* requires a full stop/start action */
-			icaddy_POST(ICJ_RUNOFF_URL, ICJ_RUNOFF_POST);
-			icaddy_POST(ICJ_RUNON_URL, ICJ_RUNON_POST);
+			http_POST(icaddy_url, ICJ_RUNOFF_URL, ICADDY_HTTP_PORT,
+				  ICJ_RUNOFF_POST, request_cb);
+			http_POST(icaddy_url, ICJ_RUNON_URL, ICADDY_HTTP_PORT,
+				  ICJ_RUNON_POST, request_cb);
 			return;
 		}
 		if (num > 4) {
@@ -195,7 +200,8 @@ void coll_chg_number_cb(device_t *dev, int64_t num, void *arg)
 			sprintf(buf, "pgmNum=%d&doProgram=1&runNow=true",
 				(int)num);
 			LOG(LOG_DEBUG, "Sending: %s", buf);
-			icaddy_POST(NULL, buf);
+			http_POST(icaddy_url, "/", ICADDY_HTTP_PORT, buf,
+				  request_cb);
 			return;
 		}
 		/* the below search is obnoxious, but necc. due to ordering */
@@ -224,13 +230,15 @@ void coll_chg_number_cb(device_t *dev, int64_t num, void *arg)
 			}
 			waiting = 0;
 			notimerupdate = 0;
-			icaddy_POST(NULL, buf);
+			http_POST(icaddy_url, "/", ICADDY_HTTP_PORT, buf,
+				  request_cb);
 			return;
 		}
 	}
 	if (strcasecmp(dev->loc, "zr") == 0) { /* zone running */
 		if (num == 0) { /* stop the zone */
-			icaddy_POST(ICJ_RUNOFF_URL, ICJ_STOPPROG_POST);
+			http_POST(icaddy_url, ICJ_RUNOFF_URL, ICADDY_HTTP_PORT,
+				  ICJ_STOPPROG_POST, request_cb);
 			return;
 		}
 	}
@@ -252,14 +260,34 @@ void coll_chg_timer_cb(device_t *dev, uint32_t tstate, void *arg)
 }
 
 /**
-   \brief Called when a dimmer chg command occurs
+   \brief Called when a chg command occurs
    \param dev device that got updated
-   \param level new dimmer level
    \param arg pointer to client_t
 */
 
-void coll_chg_dimmer_cb(device_t *dev, double level, void *arg)
+void coll_chg_cb(device_t *dev, void *arg)
 {
+	uint8_t state;
+	int64_t ll;
+	uint32_t tstate;
+
+	switch (dev->subtype) {
+	case SUBTYPE_SWITCH:
+		get_data_dev(dev, DATALOC_CHANGE, &state);
+		coll_chg_switch_cb(dev, state, arg);
+		break;
+	case SUBTYPE_NUMBER:
+		get_data_dev(dev, DATALOC_CHANGE, &ll);
+		coll_chg_number_cb(dev, ll, arg);
+		break;
+	case SUBTYPE_TIMER:
+		get_data_dev(dev, DATALOC_CHANGE, &tstate);
+		coll_chg_timer_cb(dev, tstate, arg);
+		break;
+	default:
+		LOG(LOG_ERROR, "Got unhandled chg for subtype %d",
+		    dev->subtype);
+	}
 	return;
 }
 
@@ -309,111 +337,6 @@ void parse_devices(cfg_t *cfg)
 /*****
   Icaddy Parsing Code
 *****/
-
-/**
-   \brief Allocate a string for a token and return just that
-   \param token token to parse
-   \param buf buffer containing the parsed string
-   \return nul terminated string containing data
-   Must be a string.
-   Must free return value
-*/
-
-char *jtok_string(jsmntok_t *token, char *buf)
-{
-	char *data;
-	size_t len;
-
-	if (token->type != JSMN_STRING)
-		return NULL;
-	len = token->end - token->start;
-	if (len < 1)
-		return NULL;
-	data = safer_malloc(len+1);
-
-	strncpy(data, buf+token->start, len);
-	data[len] = '\0';
-	return data;
-}
-
-/**
-   \brief Return int value of token
-   \param token token to parse
-   \param buf buffer containing the parsed string
-   \return zero if error, or value
-   Cannot be array type
-*/
-
-int jtok_int(jsmntok_t *token, char *buf)
-{
-	char data[256];
-	size_t len;
-
-	if (token->type == JSMN_ARRAY)
-		return 0;
-	len = token->end - token->start;
-	if (len < 1 || len > 255)
-		return 0;
-
-	strncpy(data, buf+token->start, len);
-	data[len] = '\0';
-	return atoi(data);
-}
-
-/**
-   \brief Return bool value of token
-   \param token token to parse
-   \param buf buffer containing the parsed string
-   \return zero if error, or value
-   Cannot be array type
-   if anything other than "true" returns false
-*/
-
-int jtok_bool(jsmntok_t *token, char *buf)
-{
-	char data[256];
-	size_t len;
-
-	if (token->type == JSMN_ARRAY)
-		return 0;
-	len = token->end - token->start;
-	if (len < 1 || len > 255)
-		return 0;
-
-	strncpy(data, buf+token->start, len);
-	data[len] = '\0';
-	if (strcasecmp(data, "true") == 0)
-		return 1;
-	return 0;
-}
-
-/**
-   \brief Find a specific token by string name
-   \param tokens array of tokens
-   \param buf parsed buffer
-   \param match string to match
-   \param maxtoken last token
-*/
-
-int jtok_find_token(jsmntok_t *tokens, char *buf, char *match, int maxtoken)
-{
-	int i;
-	size_t len, mlen;
-
-	if (match == NULL || buf == NULL)
-		return -1;
-	mlen = strlen(match);
-	for (i=0; i<maxtoken; i++) {
-		if (tokens[i].type != JSMN_STRING)
-			continue;
-		len = tokens[i].end - tokens[i].start;
-		if (len != mlen)
-			continue;
-		if (strncmp(buf+tokens[i].start, match, len) == 0)
-			return i;
-	}
-	return -1;
-}
 
 #define JSMN_TEST_OR_FAIL(ret, str) \
 	if (ret == -1) { \
@@ -770,136 +693,56 @@ request_cb_out:
 }
 
 /**
-   \brief Callback to connect to the irrigation caddy and collect data
-   \param fd unused
-   \param what what happened?
-   \param arg url suffix
-*/
+   \brief http_get precheck for status updates
+   \param getinfo http_get_t structure of get
+   \return -1 if precheck fails
+ */
 
-void icaddy_connect(int fd, short what, void *arg)
+int precheck_status(http_get_t *getinfo)
 {
-	char *url_suffix = (char *)arg;
-	struct evhttp_uri *uri;
-	struct evhttp_request *req;
-	device_t *dev;
-
-	if (strcmp(url_suffix, ICJ_STATUS) == 0 && notimerupdate) {
+	if (strcmp(getinfo->url_suffix, ICJ_STATUS) == 0 && notimerupdate) {
 		waiting++;
 		if (waiting > 3) { /* took too long, punt */
 			waiting = 0;
 			notimerupdate = 0;
 		} else
-			return;
+			return -1;
 	}
-
-	if (icaddy_url == NULL) {
-		LOG(LOG_ERROR, "icaddy_url is NULL, punt");
-		cb_shutdown(0, 0, NULL);
-		return;
-	}
-
-	if (url_suffix == NULL) {
-		LOG(LOG_ERROR, "No URL suffix, what am I supposed to do?");
-		return;
-	}
-
-	uri = evhttp_uri_parse(icaddy_url);
-	if (uri == NULL) {
-		LOG(LOG_ERROR, "Failed to parse URL");
-		return;
-	}
-
-	evhttp_uri_set_port(uri, ICADDY_HTTP_PORT);
-	LOG(LOG_DEBUG, "host: %s port: %d", evhttp_uri_get_host(uri),
-	    evhttp_uri_get_port(uri));
-
-	if (http_cn == NULL)
-		http_cn = evhttp_connection_base_new(base, dns_base,
-						     evhttp_uri_get_host(uri),
-						     evhttp_uri_get_port(uri));
-	
-	req = evhttp_request_new(request_cb, NULL);
-	evhttp_make_request(http_cn, req, EVHTTP_REQ_GET, url_suffix);
-	evhttp_add_header(req->output_headers, "Host",
-			  evhttp_uri_get_host(uri));
-	evhttp_uri_free(uri);
-}
-
-/**
-   \brief POST data to the icaddy
-   \param url_suffix URL to POST to
-   \param payload data to send
-*/
-
-void icaddy_POST(char *url_suffix, char *payload)
-{
-	struct evhttp_uri *uri;
-	struct evhttp_request *req;
-	struct evbuffer *data;
-	int i;
-	char buf[256];
-
-	if (icaddy_url == NULL) {
-		LOG(LOG_ERROR, "icaddy_url is NULL, punt");
-		cb_shutdown(0, 0, NULL);
-		return;
-	}
-
-	uri = evhttp_uri_parse(icaddy_url);
-	if (uri == NULL) {
-		LOG(LOG_ERROR, "Failed to parse URL");
-		return;
-	}
-
-	evhttp_uri_set_port(uri, ICADDY_HTTP_PORT);
-	LOG(LOG_DEBUG, "host: %s port: %d", evhttp_uri_get_host(uri),
-	    evhttp_uri_get_port(uri));
-
-	if (http_cn == NULL)
-		http_cn = evhttp_connection_base_new(base, dns_base,
-						     evhttp_uri_get_host(uri),
-						     evhttp_uri_get_port(uri));
-	
-	req = evhttp_request_new(request_cb, NULL);
-	if (url_suffix != NULL)
-		evhttp_make_request(http_cn, req, EVHTTP_REQ_POST, url_suffix);
-	else
-		evhttp_make_request(http_cn, req, EVHTTP_REQ_POST, "/");
-
-	evhttp_add_header(req->output_headers, "Host",
-			  evhttp_uri_get_host(uri));
-	evhttp_add_header(req->output_headers, "Content-Type",
-			  "application/x-www-form-urlencoded");
-
-	LOG(LOG_DEBUG, "POSTing to %s%s", icaddy_url,
-	    url_suffix ? url_suffix : "");
-	if (payload != NULL) {
-		sprintf(buf, "%d", strlen(payload));
-		evhttp_add_header(req->output_headers, "Content-Length", buf);
-		data = evhttp_request_get_output_buffer(req);
-		evbuffer_add_printf(data, payload);
-		LOG(LOG_DEBUG, "POST payload: %s", payload);
-	}
-	evhttp_uri_free(uri);
+	return 0;
 }
 
 /**
    \brief Start the feed
 */
 
-void icaddy_startfeed(void)
+void icaddy_startfeed(char *url_prefix)
 {
 	struct event *ev;
 	struct timeval secs = { 0, 0 };
 
+	status_get = smalloc(http_get_t);
+	status_get->url_prefix = url_prefix;
+	status_get->url_suffix = ICJ_STATUS;
+	status_get->cb = request_cb;
+	status_get->http_port = ICADDY_HTTP_PORT;
+	status_get->precheck = precheck_status;
+
+	settings_get = smalloc(http_get_t);
+	settings_get->url_prefix = url_prefix;
+	settings_get->url_suffix = ICJ_SETTINGS;
+	settings_get->cb = request_cb;
+	settings_get->http_port = ICADDY_HTTP_PORT;
+	settings_get->precheck = NULL;
+
 	secs.tv_sec = cfg_getint(icaddy_c, "update");
-	ev = event_new(base, -1, EV_PERSIST, icaddy_connect, ICJ_STATUS);
+	ev = event_new(base, -1, EV_PERSIST, cb_http_GET, status_get);
 	event_add(ev, &secs);
 	LOG(LOG_NOTICE, "Starting feed timer updates every %d seconds",
 	    secs.tv_sec);
+
 	/* do one right now */
-	icaddy_connect(0, 0, ICJ_SETTINGS);
-	icaddy_connect(0, 0, ICJ_STATUS);
+	cb_http_GET(0, 0, settings_get);
+	cb_http_GET(0, 0, status_get);
 }
 
 
@@ -1113,7 +956,7 @@ void cb_end_discovery(int fd, short what, void *arg)
 		return; /*NOTREACHED*/
 	}
 	LOG(LOG_NOTICE, "Set connect URL to %s", icaddy_url);
-	icaddy_startfeed();
+	icaddy_startfeed(icaddy_url);
 }
 
 /**

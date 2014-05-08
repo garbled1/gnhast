@@ -17,6 +17,10 @@ static jsmntok_t *jsmn_alloc_token(jsmn_parser *parser,
 #ifdef JSMN_PARENT_LINKS
 	tok->parent = -1;
 #endif
+#ifdef JSMN_TOKEN_LINKS
+	tok->valueof = ((parser->nextisval) ? parser->toknext - 2 : -1);
+	parser->nextisval = 0; /* false */
+#endif
 	return tok;
 }
 
@@ -76,6 +80,7 @@ found:
 #ifdef JSMN_PARENT_LINKS
 	token->parent = parser->toksuper;
 #endif
+
 	parser->pos--;
 	return 0;
 }
@@ -234,7 +239,14 @@ jsmnerr_t jsmn_parse(jsmn_parser *parser, const char *js, size_t len,
 				if (parser->toksuper != -1 && tokens != NULL)
 					tokens[parser->toksuper].size++;
 				break;
+#ifdef JSMN_TOKEN_LINKS
+			case ':' :
+				parser->nextisval = 1; /* true */
+				break;
+			case '\t' : case '\r' : case '\n' : case ',': case ' ':
+#else	
 			case '\t' : case '\r' : case '\n' : case ':' : case ',': case ' ': 
+#endif
 				break;
 #ifdef JSMN_STRICT
 			/* In strict mode primitives are: numbers and booleans */

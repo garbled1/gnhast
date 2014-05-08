@@ -57,6 +57,8 @@
 /** our logfile */
 FILE *logfile;
 
+char *dumpconf = NULL;
+
 /** Need the argtable in scope, so we can generate proper commands for the server */
 extern argtable_t argtable[];
 

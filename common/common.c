@@ -75,6 +75,21 @@ const char *alarmtext[] = {
 	"Fault",
 };
 
+const char *thermmodetext[] = {
+	"Off",
+	"Heat",
+	"Cool",
+	"Auto",
+};
+
+const char *thermstatetext[] = {
+	"Idle",
+	"Heating",
+	"Cooling",
+	"Lockout",
+	"Error",
+};
+
 /**
    \brief open the logfile for writing
 */

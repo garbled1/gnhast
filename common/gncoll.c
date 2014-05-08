@@ -55,7 +55,7 @@
 /* Need the argtable in scope, so we can generate proper commands
    for the server */
 extern argtable_t argtable[];
-
+extern char *dumpconf;
 
 /**
    \brief convert a temperature
@@ -417,4 +417,51 @@ void gn_client_name(struct bufferevent *bev, char *name)
 	evbuffer_add_printf(send, "client client:%s\n", name);
 	bufferevent_write_buffer(bev, send);
 	evbuffer_free(send);
+}
+
+
+/**
+   \brief Generic routine to build a simple device
+   \param cfg base config structure
+   \param uid UID of device
+   \param name name of device
+   \param rrdname rrdname of device
+   \param proto protocol
+   \param type device type
+   \param subtype device subtype
+   \param loc device locator string
+   \param tscale tempscale, if used
+   Checks for device in config, loads if found, otherwise creates.
+   Fills in loc if missing.
+*/
+
+void generic_build_device(cfg_t *cfg, char *uid, char *name, char *rrdname,
+			  int proto, int type, int subtype, char *loc,
+			  int tscale, struct bufferevent *bev)
+{
+	device_t *dev;
+
+	dev = new_dev_from_conf(cfg, uid);
+	if (dev == NULL) {
+		dev = smalloc(device_t);
+		dev->uid = strdup(uid);
+		if (dumpconf != NULL) {
+			dev->name = strdup(name);
+			dev->rrdname = strdup(rrdname);
+		}
+		dev->proto = proto;
+		dev->type = type;
+		dev->subtype = subtype;
+		if (subtype == SUBTYPE_TEMP)
+			dev->scale = tscale;
+		if (dev->loc == NULL) {
+			dev->loc = strdup(loc);
+		}
+		(void) new_conf_from_dev(cfg, dev);
+	} else {
+		dev->loc = strdup(loc);
+	}
+	insert_device(dev);
+	if (dumpconf == NULL && dev->name != NULL)
+		gn_register_device(dev, bev);
 }

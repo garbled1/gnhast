@@ -73,6 +73,7 @@ enum PROTO_TYPES {
 	PROTO_SENSOR_WMR918,
 	PROTO_SENSOR_AD2USB,
 	PROTO_SENSOR_ICADDY,
+	PROTO_SENSOR_VENSTAR,
 };
 #define PROTO_MAX PROTO_SENSOR_ICADDY
 
@@ -103,6 +104,9 @@ enum SUBTYPE_TYPES {
 	SUBTYPE_DISTANCE, 
 	SUBTYPE_VOLUME,
 	SUBTYPE_TIMER, /* stored in count, used as countdown to zero */
+	SUBTYPE_THMODE, /* stored in state */
+	SUBTYPE_THSTATE, /* stored in state */
+	SUBTYPE_SMNUMBER, /* 8bit number stored in state */
 	SUBTYPE_BOOL,
 };
 #define SUBTYPE_MAX SUBTYPE_BOOL
@@ -157,6 +161,21 @@ enum ALARMSTATUS_TYPES {
 	ALARM_FAULT,
 };
 
+enum THERMOSTAT_MODES {
+	THERMMODE_OFF,
+	THERMMODE_HEAT,
+	THERMMODE_COOL,
+	THERMMODE_AUTO,
+};
+
+enum THERMOSTAT_STATE_TYPES {
+	THERMSTATE_IDLE,
+	THERMSTATE_HEATING,
+	THERMSTATE_COOLING,
+	THERMSTATE_LOCKOUT,
+	THERMSTATE_ERROR,
+};
+
 struct _device_group_t;
 struct _client_t;
 struct _device_t;
@@ -192,6 +211,7 @@ enum DATALOC_TYPES {
 	DATALOC_AVG,
 	DATALOC_LOWAT,
 	DATALOC_HIWAT,
+	DATALOC_CHANGE,
 };
 
 /* matches data_t */
@@ -254,6 +274,7 @@ typedef struct _device_t {
 	data_t avg;		/**< \brief 24h avg */
 	data_t lowat;		/**< \brief low water mark */
 	data_t hiwat;		/**< \brief high water mark */
+	data_t change;		/**< \brief data requested to be changed */
 	client_t *collector;	/**< \brief The collector that serves this data up */
 	char *handler;		/**< \brief our external handler */
 	char **hargs;		/**< \brief handler arguments */

@@ -14091,7 +14091,7 @@ fi
 fi
 
 
-ac_config_files="$ac_config_files Makefile gnhastd/Makefile fakecoll/Makefile owsrvcoll/Makefile rrdcoll/Makefile brulcoll/Makefile insteoncoll/Makefile wmr918coll/Makefile wupwscoll/Makefile ad2usbcoll/Makefile icaddycoll/Makefile handlers/Makefile tools/Makefile libconfuse/Makefile"
+ac_config_files="$ac_config_files Makefile gnhastd/Makefile fakecoll/Makefile owsrvcoll/Makefile rrdcoll/Makefile brulcoll/Makefile insteoncoll/Makefile wmr918coll/Makefile wupwscoll/Makefile ad2usbcoll/Makefile icaddycoll/Makefile venstarcoll/Makefile handlers/Makefile tools/Makefile libconfuse/Makefile"
 
 
 cat >confcache <<\_ACEOF
@@ -15122,6 +15122,7 @@ do
     "wupwscoll/Makefile") CONFIG_FILES="$CONFIG_FILES wupwscoll/Makefile" ;;
     "ad2usbcoll/Makefile") CONFIG_FILES="$CONFIG_FILES ad2usbcoll/Makefile" ;;
     "icaddycoll/Makefile") CONFIG_FILES="$CONFIG_FILES icaddycoll/Makefile" ;;
+    "venstarcoll/Makefile") CONFIG_FILES="$CONFIG_FILES venstarcoll/Makefile" ;;
     "handlers/Makefile") CONFIG_FILES="$CONFIG_FILES handlers/Makefile" ;;
     "tools/Makefile") CONFIG_FILES="$CONFIG_FILES tools/Makefile" ;;
     "libconfuse/Makefile") CONFIG_FILES="$CONFIG_FILES libconfuse/Makefile" ;;

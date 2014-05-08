@@ -173,7 +173,7 @@ int main(int argc, char **argv)
 			break;
 		default:
 		case '?':	/* you blew it */
-			(void)fprintf(stderr, "usage:\n%s [-s ST_string]",
+			(void)fprintf(stderr, "usage:\n%s [-s ST_string]\n",
 				      getprogname());
 			return(EXIT_FAILURE);
 			/*NOTREACHED*/
