@@ -5,12 +5,13 @@ RRDTOOL="@RRDTOOL@"
 NOTIFY_LISTEN="@BINDIR@/notify_listen"
 
 usage() {
-    echo "Usage: $0 [-b] -r rrd_file -v venstar_name"
+    echo "Usage: $0 [-b] [-u url] -r rrd_file -v venstar_name"
     echo " -b : build new rrd db for this device"
+    echo " -u : base url, Ex: http://192.168.1.1/"
     exit 2
 }
 
-args=`getopt br:v: $*`
+args=`getopt br:u:v: $*`
 if [ $? -ne 0 ]; then
     usage
 fi
@@ -25,6 +26,9 @@ while [ $# -gt 0 ]; do
 	    ;;
 	-v)
 	    VENSTARNM=$2; shift
+	    ;;
+	-u)
+	    URL=$2; shift
 	    ;;
 	--)
 	    shift;
@@ -41,15 +45,16 @@ if [ -z "$VENSTARNM" ]; then
     usage
 fi
 
-# takes 90 seconds, sorry
-URL=$($NOTIFY_LISTEN -t 90 2> /dev/null | grep -B 1 name:${VENSTARNM}: | grep ^Location | sort -u | awk '{print $2}')
-#URL="http://192.168.10.197/"
-sleep 2
+if [ -z "$URL" ]; then
+    # takes 65 seconds, sorry
+    URL=$(${NOTIFY_LISTEN} -t 65 2> /dev/null | grep -B 1 name:${VENSTARNM}: | grep ^Location | sort -u | awk '{print $2}' | tr -d '\r')
+    sleep 2
+fi
 
 
 # Build new rrd if requested
 if [ -n "${RRDNEW}" ]; then
-    STARTTIME=$($CURL -s ${URL}query/runtimes | awk -F { '{print $3}' | cut -d : -f 2 | cut -d , -f 1)
+    STARTTIME=$(${CURL} -s ${URL}query/runtimes | awk -F { '{print $3}' | cut -d : -f 2 | cut -d , -f 1)
     sleep 2
     $RRDTOOL create $RRDFILE --start ${STARTTIME} --step 86400 \
 	DS:heat1:GAUGE:172800:0:1440: \
@@ -71,7 +76,7 @@ if [ -n "${RRDNEW}" ]; then
 	RRA:LAST:0.5:1:1:
 
 	TMPFILE=$(mktemp /tmp/${0##*/}.XXXXXX) || exit 1
-	$CURL -s ${URL}query/runtimes | awk 'BEGIN{RS="{"}{print $1}' | grep '"ts"' >> $TMPFILE
+	${CURL} -s ${URL}query/runtimes | awk 'BEGIN{RS="{"}{print $1}' | grep '"ts"' >> $TMPFILE
 	sleep 2
 	Y=$(cat $TMPFILE | wc -l | awk '{print $1}')
 	let X=${Y}-1
@@ -86,6 +91,6 @@ if [ -n "${RRDNEW}" ]; then
 fi
 
 # otherwise, we just want the data
-DATALINE=$($CURL -s ${URL}query/runtimes | awk -F { '{print $(NF-1)}' | sed -e 's/"//g' -e 's/,//g' -e 's/ts://' -e 's/}//g' -e 's/]//g' -e 's/heat[12]//g' -e 's/cool[12]//g' -e 's/aux[12]//g' -e 's/fc//')
+DATALINE=$(${CURL} -s ${URL}query/runtimes | awk -F { '{print $(NF-1)}' | sed -e 's/"//g' -e 's/,//g' -e 's/ts://' -e 's/}//g' -e 's/]//g' -e 's/heat[12]//g' -e 's/cool[12]//g' -e 's/aux[12]//g' -e 's/fc//')
 
 $RRDTOOL update $RRDFILE $DATALINE

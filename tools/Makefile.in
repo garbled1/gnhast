@@ -347,7 +347,7 @@ EXTRA_DIST = \
 do_subst = sed -e 's,[@]NETCAT[@],$(NETCAT),g' \
 	-e 's,[@]GNHANDLERDIR[@],$(pkglibexecdir),g' \
 	-e 's,[@]SYSCONFDIR[@],$(sysconfdir),g' \
-	-e 's,[@]BINDIR[@],$(DESTDIR)$(bindir)",g' \
+	-e 's,[@]BINDIR[@],$(DESTDIR)$(bindir),g' \
 	-e 's,[@]CURL[@],$(CURL),g' \
 	-e 's,[@]RRDTOOL[@],$(RRDTOOL),g'
 
