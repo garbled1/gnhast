@@ -42,6 +42,10 @@ AC_CHECK_LIB(m, lrint,,AC_MSG_ERROR(["Unable to find math library"]))
 # Checks for programs
 AC_PATH_PROG([NETCAT], [nc], [/usr/pkg/sbin/nc],
 	[$PATH$PATH_SEPARATOR/usr/sbin$PATH_SEPARATOR/usr/pkg/sbin$PATH_SEPARATOR/usr/local/sbin])
+AC_PATH_PROG([CURL], [curl], [/usr/pkg/bin/nc],
+	[$PATH$PATH_SEPARATOR/usr/bin$PATH_SEPARATOR/usr/pkg/bin$PATH_SEPARATOR/usr/local/bin])
+AC_PATH_PROG([RRDTOOL], [rrdtool], [/usr/pkg/bin/rrdtool],
+	[$PATH$PATH_SEPARATOR/usr/bin$PATH_SEPARATOR/usr/pkg/bin$PATH_SEPARATOR/usr/local/bin])
 
 PKG_CHECK_MODULES([RRD], [librrd])
 

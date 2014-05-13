@@ -18,15 +18,19 @@ notify_listen_SOURCES = \
 	$(top_srcdir)/common/ssdp.h \
 	notify_listen.c
 
-dist_bin_SCRIPTS = addhandler modhargs
+dist_bin_SCRIPTS = addhandler modhargs venstar_stats
 CLEANFILES = $(dist_bin_SCRIPTS)
 EXTRA_DIST = \
 	addhandler.sh \
-	modhargs.sh
+	modhargs.sh \
+	venstar_stats.sh
 
 do_subst = sed -e 's,[@]NETCAT[@],$(NETCAT),g' \
 	-e 's,[@]GNHANDLERDIR[@],$(pkglibexecdir),g' \
-	-e 's,[@]SYSCONFDIR[@],$(sysconfdir),g'
+	-e 's,[@]SYSCONFDIR[@],$(sysconfdir),g' \
+	-e 's,[@]BINDIR[@],$(DESTDIR)$(bindir)",g' \
+	-e 's,[@]CURL[@],$(CURL),g' \
+	-e 's,[@]RRDTOOL[@],$(RRDTOOL),g'
 
 .SECONDEXPANSION:
 ${dist_bin_SCRIPTS}: $$@.sh

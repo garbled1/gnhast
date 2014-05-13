@@ -207,6 +207,7 @@ CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
+CURL = @CURL@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
@@ -258,6 +259,7 @@ PKG_CONFIG = @PKG_CONFIG@
 PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
 PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 RANLIB = @RANLIB@
+RRDTOOL = @RRDTOOL@
 RRD_CFLAGS = @RRD_CFLAGS@
 RRD_LIBS = @RRD_LIBS@
 SED = @SED@
@@ -335,15 +337,19 @@ notify_listen_SOURCES = \
 	$(top_srcdir)/common/ssdp.h \
 	notify_listen.c
 
-dist_bin_SCRIPTS = addhandler modhargs
+dist_bin_SCRIPTS = addhandler modhargs venstar_stats
 CLEANFILES = $(dist_bin_SCRIPTS)
 EXTRA_DIST = \
 	addhandler.sh \
-	modhargs.sh
+	modhargs.sh \
+	venstar_stats.sh
 
 do_subst = sed -e 's,[@]NETCAT[@],$(NETCAT),g' \
 	-e 's,[@]GNHANDLERDIR[@],$(pkglibexecdir),g' \
-	-e 's,[@]SYSCONFDIR[@],$(sysconfdir),g'
+	-e 's,[@]SYSCONFDIR[@],$(sysconfdir),g' \
+	-e 's,[@]BINDIR[@],$(DESTDIR)$(bindir)",g' \
+	-e 's,[@]CURL[@],$(CURL),g' \
+	-e 's,[@]RRDTOOL[@],$(RRDTOOL),g'
 
 all: all-am
 
