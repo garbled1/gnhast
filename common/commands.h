@@ -61,8 +61,8 @@ enum SC_COMMANDS {
 	SC_NAME,	/**< \brief name */
 	SC_RATE,	/**< \brief feeder rate */
 	SC_RRDNAME,	/**< \brief rrd_name */
-	SC_DEVTYPE,	/**< \br	ief device type */
-	SC_PROTO,	/**< \brief device proto	col */
+	SC_DEVTYPE,	/**< \brief device type */
+	SC_PROTO,	/**< \brief device protocol */
 	SC_SUBTYPE,	/**< \brief device subtype */
 	SC_SWITCH,	/**< \brief switch data */
 	SC_DIMMER,	/**< \brief dimmer data */
@@ -97,6 +97,8 @@ enum SC_COMMANDS {
 	SC_THMODE,	/**< \brief Thermostat mode */
 	SC_THSTATE,	/**< \brief Thermostat state */
 	SC_SMNUMBER,	/**< \brief Small number */
+	SC_GROUPLIST,	/**< \brief group list */
+	SC_DEVLIST,	/**< \brief device list */
 };
 
 /* commands */
@@ -105,6 +107,7 @@ enum SC_COMMANDS {
 #define C_UPDATE		2	/**< \brief Update device status */
 #define C_CHANGE		3	/**< \brief Change device status */
 #define C_NEED			4	/**< \brief Need device status upds */
+#define C_REGGROUP		5	/**< \breif Register Group */
 
 void init_argcomm(void);
 pargs_t *parse_command(char **words, int count); 

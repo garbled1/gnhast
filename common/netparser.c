@@ -90,6 +90,8 @@ argtable_t argtable[] = {
 	{"thmode", SC_THMODE, PTINT},
 	{"thstate", SC_THSTATE, PTINT},
 	{"smnum", SC_SMNUMBER, PTINT},
+	{"glist", SC_GROUPLIST, PTCHAR},
+	{"dlist", SC_DEVLIST, PTCHAR},
 };
 
 /** \brief size of the args table */ 

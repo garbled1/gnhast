@@ -214,9 +214,14 @@ void add_dev_group(device_t *dev, device_group_t *devgrp)
 */
 void add_group_group(device_group_t *group1, device_group_t *group2)
 {
-	TAILQ_INSERT_TAIL(&group2->children, group1, next);
-	group2->onq |= GROUPONQ_NEXT;
-	group1->parent = group2;
+	wrap_group_t *wrapg = smalloc(wrap_group_t);
+
+	wrapg->group = group1;
+
+	TAILQ_INSERT_TAIL(&group2->children, wrapg, nextg);
+	wrapg->onq |= GROUPONQ_NEXT;
+	wrapg->parent = group2;
+	group1->subgroup = 1;
 }
 
 /**
@@ -232,6 +237,23 @@ int dev_in_group(device_t *dev, device_group_t *devgrp)
 
 	TAILQ_FOREACH(tmp, &devgrp->members, next)
 		if (tmp->dev == dev)
+			return 1;
+	return 0;
+}
+
+/**
+   \brief Is a group a member of a given group?
+   \param grp grp to lookup
+   \param devgrp device group to look in
+   \return bool
+*/
+
+int group_in_group(device_group_t *grp, device_group_t *devgrp)
+{
+	wrap_group_t *tmp;
+
+	TAILQ_FOREACH(tmp, &devgrp->children, nextg)
+		if (tmp->group == grp)
 			return 1;
 	return 0;
 }

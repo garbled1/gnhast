@@ -180,6 +180,7 @@ struct _device_group_t;
 struct _client_t;
 struct _device_t;
 struct _wrap_device_t;
+struct _wrap_group_t;
 
 /** The client type, used to store data for events */
 typedef struct _client_t {
@@ -300,17 +301,23 @@ typedef struct _wrap_device_t {
 	TAILQ_ENTRY(_wrap_device_t) next; /**< \brief next device */
 } wrap_device_t;
 
+/** A wrapper device group structure */
+typedef struct _wrap_group_t {
+	struct _device_group_t *group;	/**< \brief wrapped device group */
+	struct _device_group_t *parent;	/**< \brief parent group */
+	uint32_t onq;		/**< \brief I am on a queue */
+	TAILQ_ENTRY(_wrap_group_t) nextg; /**< \brief next group */
+} wrap_group_t;
+
 /** A device group */
 typedef struct _device_group_t {
 	char *uid;		/**< \brief Unique group id */
 	char *name;		/**< \brief group name */
-	struct _device_group_t *parent;	/**< \brief parent devgroup */
-	uint32_t onq;		/**< \brief I am on a queue */
 	struct rb_node rbn;	/**< \brief red black node */
-	TAILQ_HEAD(, _wrap_device_t) members; /**< \brief group members,
-					    ties to next in wrap_device_t */
-	TAILQ_HEAD(, _device_group_t) children; /**< \brief child groups */
-	TAILQ_ENTRY(_device_group_t) next;	/**< \brief my siblings */
+	int subgroup;		/**< \brief is a child of another group */
+	uint32_t onq;		/**< \brief I am on a queue */
+	TAILQ_HEAD(, _wrap_device_t) members; /**< \brief group members */
+	TAILQ_HEAD(, _wrap_group_t) children; /**< \brief child groups */
 	TAILQ_ENTRY(_device_group_t) next_all;  /**< \brief next in global */
 } device_group_t;
 

@@ -866,7 +866,7 @@ cfg_t *new_conf_from_devgrp(cfg_t *cfg, device_group_t *devgrp)
 	cfg_t *devconf;
 	int i;
 	wrap_device_t *wdev;
-	device_group_t *cgrp;
+	wrap_group_t *wgrp;
 
 	devconf = find_devgrpconf_byuid(cfg, devgrp->uid);
 	if (devconf == NULL) {
@@ -886,8 +886,8 @@ cfg_t *new_conf_from_devgrp(cfg_t *cfg, device_group_t *devgrp)
 	}
 
 	i=0;
-	TAILQ_FOREACH(cgrp, &devgrp->children, next) {
-		cfg_setnstr(devconf, "devgroups", cgrp->uid, i);
+	TAILQ_FOREACH(wgrp, &devgrp->children, nextg) {
+		cfg_setnstr(devconf, "devgroups", wgrp->group->uid, i);
 		i++;
 	}
 	return devconf;
@@ -1120,6 +1120,7 @@ static void print_group(device_group_t *devgrp, int devs, int indent)
 {
 	wrap_device_t *wdev;
 	device_group_t *cgrp;
+	wrap_group_t *wgrp;
 
 	LOG(LOG_DEBUG, "%*sGroup uid:%s name:%s",
 	    indent, "", devgrp->uid, devgrp->name);
@@ -1129,8 +1130,8 @@ static void print_group(device_group_t *devgrp, int devs, int indent)
 			    indent, "", wdev->dev->uid);
 		}
 	}
-	TAILQ_FOREACH(cgrp, &devgrp->children, next)
-		print_group(cgrp, devs, indent+1);
+	TAILQ_FOREACH(wgrp, &devgrp->children, nextg)
+		print_group(wgrp->group, devs, indent+1);
 }
 
 /**
@@ -1145,7 +1146,7 @@ void print_group_table(int devs)
 	LOG(LOG_DEBUG, "Dumping group table");
 	TAILQ_FOREACH(devgrp, &allgroups, next_all) {
 		/* Look for head nodes */
-		if (devgrp->parent == NULL) {
+		if (!devgrp->subgroup) {
 			LOG(LOG_DEBUG, "Top group uid:%s name:%s",
 			    devgrp->uid, devgrp->name);
 			print_group(devgrp, devs, 1);

@@ -41,6 +41,7 @@
 #include "gnhastd.h"
 
 extern TAILQ_HEAD(, _device_t) alldevs;
+extern TAILQ_HEAD(, _device_group_t) allgroups;
 
 /**
    \file cmdhandler.c
@@ -55,10 +56,12 @@ extern argtable_t argtable[];
 commands_t commands[] = {
 	{"chg", cmd_change, 0},
 	{"reg", cmd_register, 0},
+	{"regg", cmd_register_group, 0},
 	{"upd", cmd_update, 0},
 	{"mod", cmd_modify, 0},
 	{"feed", cmd_feed, 0},
 	{"ldevs", cmd_list_devices, 0},
+	{"lgrps", cmd_list_groups, 0},
 	{"ask", cmd_ask_device, 0},
 	{"cactiask", cmd_cactiask_device, 0},
 	{"disconnect", cmd_disconnect, 0},
@@ -385,6 +388,99 @@ int cmd_register(pargs_t *args, void *arg)
 }
 
 /**
+	\brief Handle a register device group command
+	\param args The list of arguments
+	\param arg void pointer to client_t of provider
+*/
+
+int cmd_register_group(pargs_t *args, void *arg)
+{
+	int i;
+	char *uid=NULL, *name=NULL, *grouplist=NULL, *devlist=NULL;
+	char *tmpbuf, *p;
+	device_group_t *devgrp, *cgrp;
+	device_t *dev;
+	client_t *client = (client_t *)arg;
+
+	for (i=0; args[i].cword != -1; i++) {
+		switch (args[i].cword) {
+		case SC_UID:
+			uid = strdup(args[i].arg.c);
+			break;
+		case SC_NAME:
+			name = strdup(args[i].arg.c);
+			break;
+		case SC_GROUPLIST:
+			grouplist = strdup(args[i].arg.c);
+			break;
+		case SC_DEVLIST:
+			devlist = strdup(args[i].arg.c);
+			break;
+		}
+	}
+
+	if (uid == NULL) {
+		LOG(LOG_ERROR, "Got register group command without UID");
+		return(-1); /* MUST have UID */
+	}
+
+	LOG(LOG_DEBUG, "Register group: uid=%s name=%s grouplist=%s "
+	    "devlist=%s", uid, (name) ? name : "NULL",
+	    (grouplist) ? grouplist : "NULL", (devlist) ? devlist : "NULL");
+
+	devgrp = find_devgroup_byuid(uid);
+	if (devgrp == NULL) {
+		LOG(LOG_DEBUG, "Creating new device group for uid %s", uid);
+		if (name == NULL) {
+			LOG(LOG_ERROR, "Attempt to register new device without"
+			    " name");
+			return(-1);
+		}
+		devgrp = new_devgroup(uid);
+		devgrp->uid = uid;
+	} else
+		LOG(LOG_DEBUG, "Updating existing device group uid:%s", uid);
+
+	devgrp->name = name;
+
+	if (grouplist != NULL) {
+		tmpbuf = grouplist;
+		for (p = strtok(tmpbuf, ","); p; p = strtok(NULL, ",")) {
+			cgrp = find_devgroup_byuid(p);
+			if (cgrp == NULL)
+				LOG(LOG_ERROR, "Cannot find child group %s "
+				    "while attempting to register group %s",
+				    p, uid);
+			else if (!group_in_group(cgrp, devgrp)){
+				add_group_group(cgrp, devgrp);
+				LOG(LOG_DEBUG, "Adding child group %s to "
+				    "group %s", cgrp->uid, uid);
+			}
+		}
+		free(grouplist);
+	}
+
+	if (devlist != NULL) {
+		tmpbuf = devlist;
+		for (p = strtok(tmpbuf, ","); p; p = strtok(NULL, ",")) {
+			dev = find_device_byuid(p);
+			if (dev == NULL)
+				LOG(LOG_ERROR, "Cannot find child device %s "
+				    "while attempting to register group %s",
+				    p, uid);
+			else if (!dev_in_group(dev, devgrp)) {
+				add_dev_group(dev, devgrp);
+				LOG(LOG_DEBUG, "Adding child device %s to "
+				    "group %s", dev->uid, uid);
+			}
+		}
+		free(devlist);
+	}
+
+	return(0);
+}
+
+/**
    \brief Handle a modify device command
    \param args The list of arguments
    \param arg void pointer to client_t of provider
@@ -620,9 +716,9 @@ int cmd_client(pargs_t *args, void *arg)
 }
 
 /**
-	\brief Handle a list devices command
-	\param args The list of arguments
-	\param arg void pointer to client_t of connection
+   \brief Handle a list devices command
+   \param args The list of arguments
+   \param arg void pointer to client_t of connection
 */
 
 int cmd_list_devices(pargs_t *args, void *arg)
@@ -672,9 +768,51 @@ int cmd_list_devices(pargs_t *args, void *arg)
 }
 
 /**
-	\brief Handle a ask device command
-	\param args The list of arguments
-	\param arg void pointer to client_t of connection
+   \brief Handle a list groups command
+   \param args The list of arguments
+   \param arg void pointer to client_t of connection
+*/
+
+int cmd_list_groups(pargs_t *args, void *arg)
+{
+	int i;
+	device_group_t *devgrp;
+	char *uid = NULL;
+	char *name = NULL;
+	client_t *client = (client_t *)arg;
+	struct evbuffer *send;
+
+
+	/* the arguments to this command are used as qualifiers for the
+	   device list search */
+	for (i=0; args[i].cword != -1; i++) {
+		switch (args[i].cword) {
+		case SC_UID:
+			uid = args[i].arg.c;
+			break;
+		case SC_NAME:
+			name = args[i].arg.c;
+			break;
+		}
+	}
+	TAILQ_FOREACH(devgrp, &allgroups, next_all) {
+		if (uid && strcmp(uid, devgrp->uid) != 0)
+			continue;
+		if (name && strcmp(uid, devgrp->name) != 0)
+			continue;
+		gn_register_devgroup(devgrp, client->ev);
+	}
+	send = evbuffer_new();
+	evbuffer_add_printf(send, "endlgrps\n");
+	bufferevent_write_buffer(client->ev, send);
+	evbuffer_free(send);
+	return 0;
+}
+
+/**
+   \brief Handle a ask device command
+   \param args The list of arguments
+   \param arg void pointer to client_t of connection
 */
 
 int cmd_ask_device(pargs_t *args, void *arg)

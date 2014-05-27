@@ -270,6 +270,66 @@ void gn_register_device(device_t *dev, struct bufferevent *out)
 }
 
 /**
+   \brief Register a device group with the server
+   \param devgrp The device group to inform server about
+   \param out the bufferevent we are scheduling on
+*/
+
+void gn_register_devgroup(device_group_t *devgrp, struct bufferevent *out)
+{
+	struct evbuffer *send;
+	wrap_device_t *wdev;
+	wrap_group_t *wgrp;
+	int first;
+
+	/* Verify sanity, is our device registerable? */
+	if (devgrp->name == NULL || devgrp->uid == NULL) {
+		LOG(LOG_ERROR, "Attempt to register unnamed device group");
+		return;
+	}
+
+	send = evbuffer_new();
+	/* Command to register groups is "regg", start with that */
+	evbuffer_add_printf(send, "regg ");
+
+	/* We use the ARGNM macro to generate the argument words so if they
+	   change, we don't have to re-write all our code.
+	*/
+	evbuffer_add_printf(send, "%s:%s %s:\"%s\" ", ARGNM(SC_UID),
+			    devgrp->uid, ARGNM(SC_NAME), devgrp->name);
+
+	first = 1;
+	TAILQ_FOREACH(wgrp, &devgrp->children, nextg) {
+		if (first) {
+			evbuffer_add_printf(send, "%s:", ARGNM(SC_GROUPLIST));
+			evbuffer_add_printf(send, "%s", wgrp->group->uid);
+			first = 0;
+		} else {
+			evbuffer_add_printf(send, ",%s", wgrp->group->uid);
+		}
+	}
+	evbuffer_add_printf(send, " ");
+
+	first = 1;
+	TAILQ_FOREACH(wdev, &devgrp->members, next) {
+		if (first) {
+			evbuffer_add_printf(send, "%s:", ARGNM(SC_DEVLIST));
+			evbuffer_add_printf(send, "%s", wdev->dev->uid);
+			first = 0;
+		} else {
+			evbuffer_add_printf(send, ",%s", wdev->dev->uid);
+		}
+	}
+	evbuffer_add_printf(send, "\n");
+
+	/* schedule the bufferevent write */
+	
+	bufferevent_write_buffer(out, send);
+	bufferevent_enable(out, EV_READ|EV_WRITE);
+	evbuffer_free(send);
+}
+
+/**
    \brief Tell the server a device's current value
    \param dev The device to inform server about
    \param out the bufferevent we are scheduling on

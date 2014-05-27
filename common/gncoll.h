@@ -22,6 +22,7 @@ double gn_scale_length(double length, int cur, int new);
 double gn_scale_light(double light, int cur, int new);
 double gn_maybe_scale(device_t *dev, int scale, double val);
 void gn_register_device(device_t *dev, struct bufferevent *out);
+void gn_register_devgroup(device_group_t *devgrp, struct bufferevent *out);
 void gn_update_device(device_t *dev, int what, struct bufferevent *out);
 void gn_disconnect(struct bufferevent *bev);
 void gn_client_name(struct bufferevent *bev, char *name);
