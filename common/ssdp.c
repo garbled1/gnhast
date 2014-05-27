@@ -58,7 +58,7 @@ int ssdp_portnum;
 
 char *ssdp_fmt_str =	"M-SEARCH * HTTP/1.1\r\n" \
 			"Host: " SSDP_MULTICAST ":" SSDP_PORT_STR "\r\n" \
-			"Man: ssdp:discover\r\n" \
+			"Man: \"ssdp:discover\"\r\n" \
 			"ST: %s\r\n"					\
 			"MX: " SSDP_WAIT_STR "\r\n"			\
 			"USER-AGENT: " PACKAGE_NAME "/" PACKAGE_VERSION "" \

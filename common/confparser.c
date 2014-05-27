@@ -48,9 +48,11 @@
 
 /* Externs */
 extern cfg_opt_t options[];
+extern TAILQ_HEAD(, _device_group_t) allgroups;
 
 static int conf_parse_proto(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 			      void *result);
+static void print_group(device_group_t *devgrp, int devs, int indent);
 
 cfg_opt_t device_opts[] = {
 	CFG_STR("name", 0, CFGF_NODEFAULT),
@@ -70,6 +72,13 @@ cfg_opt_t device_opts[] = {
 	CFG_INT_CB("spamhandler", 0, CFGF_NONE, conf_parse_bool),
 	CFG_FLOAT("hiwat", 0.0, CFGF_NONE),
 	CFG_FLOAT("lowat", 0.0, CFGF_NONE),
+	CFG_END(),
+};
+
+cfg_opt_t device_group_opts[] = {
+	CFG_STR("name", 0, CFGF_NODEFAULT),
+	CFG_STR_LIST("devices", 0, CFGF_NODEFAULT),
+	CFG_STR_LIST("devgroups", 0, CFGF_NODEFAULT),
 	CFG_END(),
 };
 
@@ -744,6 +753,26 @@ cfg_t *find_devconf_byuid(cfg_t *cfg, char *uid)
 }
 
 /**
+	\brief Find the cfg entry for a device group by it's UID
+	\param cfg config base
+	\param uid uid char *
+	\return the section we found it in
+*/
+
+cfg_t *find_devgrpconf_byuid(cfg_t *cfg, char *uid)
+{
+	int i;
+	cfg_t *section;
+
+	for (i=0; i < cfg_size(cfg, "devgroup"); i++) {
+		section = cfg_getnsec(cfg, "devgroup", i);
+		if (strcmp(uid, cfg_title(section)) == 0)
+			return section;
+	}
+	return NULL;
+}
+
+/**
    \brief Allocate a new device by looking it up in the conf file
    \param cfg config structure to use
    \param uid UID to lookup
@@ -825,6 +854,47 @@ device_t *new_dev_from_conf(cfg_t *cfg, char *uid)
 }
 
 /**
+   \brief generate a new config entry from a device group
+   \param cfg cfg_t base
+   \param devgrp device group
+   \return new cfg_t section
+*/
+
+cfg_t *new_conf_from_devgrp(cfg_t *cfg, device_group_t *devgrp)
+{
+	cfg_opt_t *option;
+	cfg_t *devconf;
+	int i;
+	wrap_device_t *wdev;
+	device_group_t *cgrp;
+
+	devconf = find_devgrpconf_byuid(cfg, devgrp->uid);
+	if (devconf == NULL) {
+		option = cfg_getopt(cfg, "devgroup");
+		cfg_setopt(cfg, option, devgrp->uid);
+		devconf = find_devgrpconf_byuid(cfg, devgrp->uid);
+	}
+	if (devconf == NULL)
+		return NULL;
+	if (devgrp->name != NULL)
+		cfg_setstr(devconf, "name", devgrp->name);
+
+	i=0;
+	TAILQ_FOREACH(wdev, &devgrp->members, next) {
+		cfg_setnstr(devconf, "devices", wdev->dev->uid, i);
+		i++;
+	}
+
+	i=0;
+	TAILQ_FOREACH(cgrp, &devgrp->children, next) {
+		cfg_setnstr(devconf, "devgroups", cgrp->uid, i);
+		i++;
+	}
+	return devconf;
+}
+
+
+/**
    \brief generate a new config entry from a device
    \param cfg cfg_t base
    \param dev device
@@ -900,10 +970,10 @@ cfg_t *new_conf_from_dev(cfg_t *cfg, device_t *dev)
 }
 
 /**
-	\brief Dump the current config file out
-	\param cfg the config pointer
-	\param flags print flags CONF_DUMP_XXX
-	\param filename filename to dump to
+   \brief Dump the current config file out
+   \param cfg the config pointer
+   \param flags print flags CONF_DUMP_XXX
+   \param filename filename to dump to
 */
 
 cfg_t *dump_conf(cfg_t *cfg, int flags, const char *filename)
@@ -946,16 +1016,24 @@ cfg_t *dump_conf(cfg_t *cfg, int flags, const char *filename)
 			fprintf(fp, "}\n");
 		}
 	}
-	if (!(flags & CONF_DUMP_DEVONLY))
+	for (i=0; i < cfg_size(cfg, "devgroup"); i++) {
+		section = cfg_getnsec(cfg, "devgroup", i);
+		if (flags & CONF_DUMP_GROUPONLY) {
+			fprintf(fp, "devgroup \"%s\" {\n", cfg_title(section));
+			cfg_print_indent(section, fp, 2);
+			fprintf(fp, "}\n");
+		}
+	}
+	if (!(flags & CONF_DUMP_DEVONLY) && !(flags & CONF_DUMP_GROUPONLY))
 		cfg_print(cfg, fp);
 	fclose(fp);
 }
 
 /**
-	\brief Parse a config file
-	\param filename filename to parse
-	\return pointer to generated config structure
-	\note expects "options" to be set with the base of the cfg_opt_t structure
+   \brief Parse a config file
+   \param filename filename to parse
+   \return pointer to generated config structure
+   \note expects "options" to be set with the base of the cfg_opt_t structure
 */
 
 cfg_t *parse_conf(const char *filename)
@@ -975,4 +1053,103 @@ cfg_t *parse_conf(const char *filename)
 	}
 
 	return cfg;
+}
+
+/**
+   \brief Parse the devgroups
+*/
+
+void parse_devgroups(cfg_t *cfg)
+{
+	device_t *dev;
+	device_group_t *grp, *addgrp;
+	cfg_t *devgrp;
+	int i, j, ngrps, ndevs;
+	char *dname, *gname;
+
+	/* pass 1, find the groups and add devices */
+	for (i=0; i < cfg_size(cfg, "devgroup"); i++) {
+		devgrp = cfg_getnsec(cfg, "devgroup", i);
+		grp = new_devgroup((char *)cfg_title(devgrp));
+		grp->name = strdup(cfg_getstr(devgrp, "name"));
+		ndevs = cfg_size(devgrp, "devices");
+		for (j=0; j < ndevs; j++) {
+			dname = cfg_getnstr(devgrp, "devices", j);
+			dev = find_device_byuid(dname);
+			if (dev == NULL)
+				LOG(LOG_ERROR, "Device %s listed in group %s "
+				    "does not exist!", dname,
+				    cfg_title(devgrp));
+			else
+				add_dev_group(dev, grp);
+		}
+		LOG(LOG_DEBUG, "Loaded group %s from config file", grp->uid);
+	}
+
+	/* pass 2, now that groups exist, chain the groups */
+	for (i=0; i < cfg_size(cfg, "devgroup"); i++) {
+		devgrp = cfg_getnsec(cfg, "devgroup", i);
+		grp = find_devgroup_byuid((char *)cfg_title(devgrp));
+		if (grp == NULL) {
+			LOG(LOG_ERROR, "Group %s not found in pass 2",
+			    cfg_title(devgrp));
+			continue;
+		}
+		ngrps = cfg_size(devgrp, "devgroups");
+		for (j=0; j < ngrps; j++) {
+			gname = cfg_getnstr(devgrp, "devgroups", j);
+			addgrp = find_devgroup_byuid(gname);
+			if (addgrp == NULL) {
+				LOG(LOG_ERROR, "Child devgrp %s not found "
+				    "in pass 2", gname);
+				continue;
+			} else
+				add_group_group(addgrp, grp);
+		}
+	}
+}
+
+/**
+   \brief Debug print a group
+   \param devgrp Group to print
+   \param devs if 1, print devices
+   \param indent indent level
+*/
+
+static void print_group(device_group_t *devgrp, int devs, int indent)
+{
+	wrap_device_t *wdev;
+	device_group_t *cgrp;
+
+	LOG(LOG_DEBUG, "%*sGroup uid:%s name:%s",
+	    indent, "", devgrp->uid, devgrp->name);
+	if (devs) {
+		TAILQ_FOREACH(wdev, &devgrp->members, next) {
+			LOG(LOG_DEBUG, "%*s Member device uid:%s",
+			    indent, "", wdev->dev->uid);
+		}
+	}
+	TAILQ_FOREACH(cgrp, &devgrp->children, next)
+		print_group(cgrp, devs, indent+1);
+}
+
+/**
+   \brief Debug print the device group table
+   \param devs if 1, print devices
+*/
+
+void print_group_table(int devs)
+{
+	device_group_t *devgrp;
+
+	LOG(LOG_DEBUG, "Dumping group table");
+	TAILQ_FOREACH(devgrp, &allgroups, next_all) {
+		/* Look for head nodes */
+		if (devgrp->parent == NULL) {
+			LOG(LOG_DEBUG, "Top group uid:%s name:%s",
+			    devgrp->uid, devgrp->name);
+			print_group(devgrp, devs, 1);
+		}
+	}
+	LOG(LOG_DEBUG, "End of groups");
 }

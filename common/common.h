@@ -119,6 +119,9 @@ int conf_parse_subtype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		       void *result);
 void conf_print_subtype(cfg_opt_t *opt, unsigned int index, FILE *fp);
 
+void parse_devgroups(cfg_t *cfg);
+void print_group_table(int devs);
+
 /* From serial_common.c */
 int serial_connect(char *devnode, int speed, int cflags);
 void serial_eventcb(struct bufferevent *bev, short events, void *arg);

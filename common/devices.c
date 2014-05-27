@@ -53,6 +53,7 @@ int nrofdevs;
 static rb_tree_t devices;
 static rb_tree_t devgroups;
 TAILQ_HEAD(, _device_t) alldevs = TAILQ_HEAD_INITIALIZER(alldevs);
+TAILQ_HEAD(, _device_group_t) allgroups = TAILQ_HEAD_INITIALIZER(allgroups);
 
 static int compare_device_byuid(void *ctx, const void *a, const void *b);
 static int compare_device_uidtokey(void *ctx, const void *a, const void *key);
@@ -183,6 +184,11 @@ device_group_t *new_devgroup(char *uid)
 	rb_tree_insert_node(&devgroups, devgrp);
 	TAILQ_INIT(&devgrp->children);
 	TAILQ_INIT(&devgrp->members);
+	/* throw it in the all device group TAILQ */
+	if (!(devgrp->onq & GROUPONQ_ALL)) {
+		TAILQ_INSERT_TAIL(&allgroups, devgrp, next_all);
+		devgrp->onq |= GROUPONQ_ALL;
+	}
 }
 
 /**
@@ -210,7 +216,7 @@ void add_group_group(device_group_t *group1, device_group_t *group2)
 {
 	TAILQ_INSERT_TAIL(&group2->children, group1, next);
 	group2->onq |= GROUPONQ_NEXT;
-	group2->parent = group1;
+	group1->parent = group2;
 }
 
 /**

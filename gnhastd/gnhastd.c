@@ -51,6 +51,8 @@ char *dumpconf = NULL;
 struct event_base *base;	/**< The primary event base */
 extern TAILQ_HEAD(, _device_t) alldevs;
 extern TAILQ_HEAD(, _client_t) clients;
+extern TAILQ_HEAD(, _device_group_t) allgroups;
+
 
 /* debugging */
 /*_malloc_options = "AJ";*/
@@ -58,6 +60,8 @@ extern TAILQ_HEAD(, _client_t) clients;
 /* Configuration options for the server */
 
 extern cfg_opt_t device_opts[];
+extern cfg_opt_t device_group_opts[];
+
 cfg_opt_t network_opts[] = {
 	CFG_STR("listen", "127.0.0.1", CFGF_NONE),
 	CFG_INT("sslport", 2921, CFGF_NONE),
@@ -72,7 +76,9 @@ cfg_opt_t network_opts[] = {
 cfg_opt_t options[] = {
 	CFG_SEC("network", network_opts, CFGF_NONE),
 	CFG_SEC("device", device_opts, CFGF_MULTI | CFGF_TITLE),
+	CFG_SEC("devgroup", device_group_opts, CFGF_MULTI | CFGF_TITLE),
 	CFG_STR("devconf", GNHASTD_DEVICE_FILE, CFGF_NONE),
+	CFG_STR("devgroupconf", GNHASTD_DEVGROUP_FILE, CFGF_NONE),
 	CFG_INT("devconf_update", 300, CFGF_NONE),
 	CFG_INT("infodump", 600, CFGF_NONE),
 	CFG_FUNC("include", cfg_include),
@@ -118,6 +124,48 @@ void devconf_dump_cb(int nada, short what, void *arg)
 	}
 	LOG(LOG_DEBUG, "Writing device conf file %s", buf);
 	dump_conf(cfg, CONF_DUMP_DEVONLY, buf);
+	if (madebuf)
+		free(buf);
+}
+
+/**
+   \brief Timer callback to update the device group conf file
+   \param nada used for file descriptor
+   \param what why did we fire?
+   \param arg unused
+*/
+
+void devgroupconf_dump_cb(int nada, short what, void *arg)
+{
+	device_group_t *devgrp;
+	cfg_t *dc;
+	char *p, *buf;
+	int madebuf=0;
+
+	p = cfg_getstr(cfg, "devgroupconf");
+	if (p == NULL)
+		return;
+	buf = NULL;
+	if (strlen(p) >= 2) {
+		if (p[0] == '.' && p[1] == '/')
+			buf = cfg_getstr(cfg, "devgroupconf");
+		if (p[0] == '/')
+			buf = cfg_getstr(cfg, "devgroupconf");
+	}
+	/* ok, not an absolute/relative path, set it up */
+
+	if (buf == NULL) {
+		buf = safer_malloc(64 + strlen(p));
+		sprintf(buf, "%s/%s", SYSCONFDIR,
+			cfg_getstr(cfg, "devgroupconf"));
+		madebuf++;
+	}
+
+	TAILQ_FOREACH(devgrp, &allgroups, next_all) {
+		dc = new_conf_from_devgrp(cfg, devgrp);
+	}
+	LOG(LOG_DEBUG, "Writing device group conf file %s", buf);
+	dump_conf(cfg, CONF_DUMP_GROUPONLY, buf);
 	if (madebuf)
 		free(buf);
 }
@@ -179,7 +227,7 @@ void cb_siginfo(int fd, short what, void *arg)
 
 int main(int argc, char **argv)
 {
-	cfg_t *network;
+	cfg_t *devgroups;
 	extern char *optarg;
 	extern int optind;
 	int ch;
@@ -231,10 +279,18 @@ int main(int argc, char **argv)
 	init_argcomm();
 	init_commands();
 
+	parse_devgroups(cfg);
+	if (debugmode)
+		print_group_table(1);
+
 	/* schedule periodic rewrites of devices.conf */
 	if (cfg_getint(cfg, "devconf_update") > 0) {
 		secs.tv_sec = cfg_getint(cfg, "devconf_update");
 		ev = event_new(base, -1, EV_PERSIST, devconf_dump_cb, NULL);
+		event_add(ev, &secs);
+		/* and one for devgroup conf */
+		ev = event_new(base, -1, EV_PERSIST, devgroupconf_dump_cb,
+			       NULL);
 		event_add(ev, &secs);
 	}
 
@@ -275,6 +331,7 @@ int main(int argc, char **argv)
 
 	/* Close it all down */
 	devconf_dump_cb(0, 0, 0);
+	devgroupconf_dump_cb(0, 0, 0);
 	cfg_free(cfg);
 	closelog();
 	return 0;

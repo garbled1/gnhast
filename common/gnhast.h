@@ -227,6 +227,7 @@ enum DATATYPE_TYPES {
 #define DEVONQ_ALL	(1<<2)
 #define WRAPONQ_NEXT	(1<<1)
 #define GROUPONQ_NEXT	(1<<1)
+#define GROUPONQ_ALL	(1<<2)
 
 /* device flags */
 
@@ -310,6 +311,7 @@ typedef struct _device_group_t {
 					    ties to next in wrap_device_t */
 	TAILQ_HEAD(, _device_group_t) children; /**< \brief child groups */
 	TAILQ_ENTRY(_device_group_t) next;	/**< \brief my siblings */
+	TAILQ_ENTRY(_device_group_t) next_all;  /**< \brief next in global */
 } device_group_t;
 
 #endif /* _GNHAST_H_ */

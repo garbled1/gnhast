@@ -5,6 +5,7 @@
 #define GNHASTD_LOG_FILE	"gnhastd.log"
 #define GNHASTD_PID_FILE	"gnhastd.pid"
 #define GNHASTD_DEVICE_FILE	"devices.conf"
+#define GNHASTD_DEVGROUP_FILE	"devgroups.conf"
 
 void init_netloop(void);
 void buf_read_cb(struct bufferevent *in, void *arg);
