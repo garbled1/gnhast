@@ -580,7 +580,7 @@ void update_dd_dev(device_t *dev)
 	}
 	dbuf = print_data_dev(dev, DATALOC_DATA);
 	if (dbuf) {
-		gtk_entry_set_text(GTK_ENTRY(dd_fields[DD_VALUE].entry), buf);
+		gtk_entry_set_text(GTK_ENTRY(dd_fields[DD_VALUE].entry), dbuf);
 		free(dbuf);
 	}
 }
@@ -745,9 +745,9 @@ GtkWidget *create_window1(void)
 	GtkWidget *menuitem4, *menuitem4_menu, *about1;
 	GtkWidget *notebook1;
 	GtkWidget *hbox1;
-	GtkWidget *scrolledwindow1, *viewport1, *hpaned1, *devicetree;
+	GtkWidget *scrolledwindow1, *hpaned1, *devicetree;
 	GtkWidget *scrolledwindow3, *iconview1, *page1_title;
-	GtkWidget *scrolledwindow2;
+	GtkWidget *scrolledwindow2, *ddscrolledwindow;
 	GtkWidget *treeview1, *page2_title, *hpaned2, *devicetree2;
 	GtkWidget *table1, *dd_col0_title, *dd_col1_title;
 	GtkWidget *dd_save_button, *dd_reset_button;
@@ -951,23 +951,18 @@ GtkWidget *create_window1(void)
 
 	/**** Overview Pane ****/
 
+	hpaned1 = gtk_hpaned_new();
+	gtk_widget_show(hpaned1);
+	gtk_box_pack_start(GTK_BOX(hbox1), hpaned1, TRUE, TRUE, 0);
+	gtk_paned_set_position(GTK_PANED(hpaned1), 0);
+	GLADE_HOOKUP_OBJECT(window1, hpaned1, "hpaned1");
+
 	scrolledwindow1 = gtk_scrolled_window_new(NULL, NULL);
 	gtk_widget_show(scrolledwindow1);
-	gtk_box_pack_start(GTK_BOX(hbox1), scrolledwindow1, TRUE, TRUE, 0);
+	gtk_paned_pack1(GTK_PANED(hpaned1), scrolledwindow1, FALSE, TRUE);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolledwindow1), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(scrolledwindow1), GTK_SHADOW_IN);
 	GLADE_HOOKUP_OBJECT(window1, scrolledwindow1, "scrolledwindow1");
-
-	viewport1 = gtk_viewport_new(NULL, NULL);
-	gtk_widget_show(viewport1);
-	gtk_container_add(GTK_CONTAINER(scrolledwindow1), viewport1);
-	GLADE_HOOKUP_OBJECT(window1, viewport1, "viewport1");
-
-	hpaned1 = gtk_hpaned_new();
-	gtk_widget_show(hpaned1);
-	gtk_container_add(GTK_CONTAINER(viewport1), hpaned1);
-	gtk_paned_set_position(GTK_PANED(hpaned1), 0);
-	GLADE_HOOKUP_OBJECT(window1, hpaned1, "hpaned1");
 
 	/* The device tree for the Overview pane */
 	devicetree = create_devicetree_view_and_model();
@@ -985,9 +980,9 @@ GtkWidget *create_window1(void)
 	g_signal_connect(devicetree, "key-press-event",
 			 G_CALLBACK(treeview_keypress_cb), NULL);
 	GLADE_HOOKUP_OBJECT(window1, devicetree, "devicetree");
+	gtk_container_add(GTK_CONTAINER(scrolledwindow1), devicetree);
 
-	gtk_paned_pack1(GTK_PANED(hpaned1), devicetree, FALSE, TRUE);
-
+	/* The iconview pane */
 	scrolledwindow3 = gtk_scrolled_window_new(NULL, NULL);
 	gtk_widget_show(scrolledwindow3);
 	gtk_paned_pack2(GTK_PANED(hpaned1), scrolledwindow3, TRUE, TRUE);
@@ -1055,10 +1050,14 @@ GtkWidget *create_window1(void)
 	gtk_paned_set_position(GTK_PANED(hpaned2), 0);
 	GLADE_HOOKUP_OBJECT(window1, hpaned2, "hpaned2");
 
+	ddscrolledwindow = gtk_scrolled_window_new(NULL, NULL);
+	gtk_widget_show(ddscrolledwindow);
+	gtk_paned_pack1(GTK_PANED(hpaned2), ddscrolledwindow, FALSE, TRUE);
+
 	/* Device tree for the Device Details pane */
 	devicetree2 = create_devicetree_view_and_model();
 	gtk_widget_show(devicetree2);
-	gtk_paned_pack1(GTK_PANED(hpaned2), devicetree2, FALSE, TRUE);
+	gtk_container_add(GTK_CONTAINER(ddscrolledwindow), devicetree2);
 	GLADE_HOOKUP_OBJECT(window1, devicetree2, "devicetree2");
 
 	dd_select = gtk_tree_view_get_selection(GTK_TREE_VIEW(devicetree2));

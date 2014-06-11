@@ -525,27 +525,34 @@ int main (int argc, char **argv)
 {
 	extern char *optarg;
 	extern int optind;
-	char *username, *path;
+	char *username, *path, *logname = NULL;
 	struct passwd *userinfo;
 	int ch;
 
 	/* process command line arguments */
-	while ((ch = getopt(argc, argv, "?c:dm:")) != -1)
+	while ((ch = getopt(argc, argv, "?c:dl:")) != -1)
 		switch (ch) {
 		case 'c':	/* Set configfile */
-			conffile = optarg;
+			conffile = strdup(optarg);
 			break;
 		case 'd':
 			debugmode = 1;
 			break;
+		case 'l':
+			logname = strdup(optarg);
+			break;
 		default:
 		case '?':	/* you blew it */
-			(void)fprintf(stderr, "usage:\n%s [-c configfile]\n",
+			(void)fprintf(stderr, "usage:\n%s [-c configfile]"
+				      " [-l logfile]\n",
 				      getprogname());
 			return(EXIT_FAILURE);
 			/*NOTREACHED*/
 			break;
 		}
+
+	if (logname != NULL)
+		logfile = openlog(logname);
 
 	gtk_set_locale();
 	gtk_init(&argc, &argv);
@@ -599,8 +606,8 @@ int main (int argc, char **argv)
 
 	request_devlist();
 
-	/* call the event2 loop once a second */
-	g_timeout_add_seconds(1, run_event_base, NULL);
+	/* call the event2 loop 4 times a second */
+	g_timeout_add(250, run_event_base, NULL);
 
 	gtk_main();
 	return 0;

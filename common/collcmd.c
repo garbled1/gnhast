@@ -296,9 +296,10 @@ int cmd_register_group(pargs_t *args, void *arg)
 
 int cmd_update(pargs_t *args, void *arg)
 {
-	int i;
+	int i, j;
 	device_t *dev;
 	char *uid=NULL;
+	char *p, *hold, *fhold;
 	client_t *client = (client_t *)arg;
 
 	/* loop through the args and find the UID */
@@ -356,6 +357,36 @@ int cmd_update(pargs_t *args, void *arg)
 		case SC_WATTSEC:
 		case SC_NUMBER:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.ll);
+			break;
+		case SC_HANDLER:
+			if (dev->handler != NULL)
+				free(dev->handler);
+			dev->handler = strdup(args[i].arg.c);
+			break;
+		case SC_HARGS:
+			fhold = hold = strdup(args[i].arg.c);
+			/* free the old hargs */
+			for (j = 0; j < dev->nrofhargs; j++)
+				free(dev->hargs[j]);
+			if (dev->hargs)
+				free(dev->hargs);
+			/* count the arguments */
+			for ((p = strtok(hold, ",")), j=0; p;
+			     (p = strtok(NULL, ",")), j++);
+			dev->nrofhargs = j;
+			dev->hargs = safer_malloc(sizeof(char *) *
+						  dev->nrofhargs);
+			free(fhold);
+			fhold = hold = strdup(args[i].arg.c);
+			for ((p = strtok(hold, ",")), j=0;
+			     p && j < dev->nrofhargs;
+			     (p = strtok(NULL, ",")), j++) {
+				dev->hargs[j] = strdup(p);
+			}
+			free(fhold);
+			LOG(LOG_NOTICE, "Handler args uid:%s changed to %s,"
+			    " %d arguments", dev->uid, args[i].arg.c,
+			    dev->nrofhargs);
 			break;
 		}
 	}

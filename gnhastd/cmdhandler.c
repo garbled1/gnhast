@@ -588,7 +588,8 @@ int cmd_modify(pargs_t *args, void *arg)
 			    dev->uid, dev->rrdname);
 			break;
 		case SC_HANDLER:
-			free(dev->handler);
+			if (dev->handler != NULL)
+				free(dev->handler);
 			dev->handler = strdup(args[i].arg.c);
 			LOG(LOG_NOTICE, "Changing uid:%s handler to %s",
 			    dev->uid, dev->handler);
