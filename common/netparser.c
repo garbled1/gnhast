@@ -334,8 +334,12 @@ char **parse_netcommand(char *buf, int *arg_count)
 				free(buf2);
 				*arg_count = i;
 				return(ret_str);
-			} else
+			} else {
 				buf++;
+				/* skip sequential whitespace */
+				while (*buf == ' ' && *buf)
+					*buf++;
+			}
 		} else {
 			*buf2++ = *buf++;
 		}

@@ -223,6 +223,85 @@ double gn_maybe_scale(device_t *dev, int scale, double val)
 }
 
 /**
+   \brief Modify a device's details
+   \param dev The device to modify
+   \param out the bufferevent we are scheduling on
+*/
+void gn_modify_device(device_t *dev, struct bufferevent *out)
+{
+	struct evbuffer *send;
+	double d=0.0;
+	uint32_t u=0;
+	int64_t ll=0;
+	int i;
+
+	/* Verify sanity, is our device registerable? */
+	if (dev->name == NULL || dev->uid == NULL) {
+		LOG(LOG_ERROR, "Attempt to register unnamed device");
+		return;
+	}
+	send = evbuffer_new();
+	/* Command to modify is "mod", start with that */
+	evbuffer_add_printf(send, "mod ");
+
+	/* We use the ARGNM macro to generate the argument words so if they
+	   change, we don't have to re-write all our code.
+	*/
+	evbuffer_add_printf(send, "%s:%s %s:\"%s\" ", ARGNM(SC_UID), dev->uid,
+			    ARGNM(SC_NAME), dev->name);
+	if (dev->rrdname)
+		evbuffer_add_printf(send, "%s:%s ", ARGNM(SC_RRDNAME),
+				    dev->rrdname);
+	if (dev->scale)
+		evbuffer_add_printf(send, "%s:%d ", ARGNM(SC_SCALE),
+				    dev->scale);
+
+	/* switch and do watermarks */
+	switch (datatype_dev(dev)) {
+	case DATATYPE_UINT:
+		get_data_dev(dev, DATALOC_LOWAT, &u);
+		evbuffer_add_printf(send, " %s:%d ", ARGNM(SC_LOWAT), u);
+		get_data_dev(dev, DATALOC_HIWAT, &u);
+		evbuffer_add_printf(send, "%s:%d ", ARGNM(SC_HIWAT), u);
+		break;
+	case DATATYPE_LL:
+		get_data_dev(dev, DATALOC_LOWAT, &ll);
+		evbuffer_add_printf(send, " %s:%jd ", ARGNM(SC_LOWAT), ll);
+		get_data_dev(dev, DATALOC_HIWAT, &ll);
+		evbuffer_add_printf(send, "%s:%jd", ARGNM(SC_HIWAT), ll);
+		break;
+	case DATATYPE_DOUBLE:
+	default:
+		get_data_dev(dev, DATALOC_LOWAT, &d);
+		evbuffer_add_printf(send, " %s:%f ", ARGNM(SC_LOWAT), d);
+		get_data_dev(dev, DATALOC_HIWAT, &d);
+		evbuffer_add_printf(send, "%s:%f", ARGNM(SC_HIWAT), d);
+		break;
+	}
+
+	if (dev->handler)
+		evbuffer_add_printf(send, " %s:%s", ARGNM(SC_HANDLER),
+				    dev->handler);
+
+	if (dev->hargs && dev->nrofhargs > 0) {
+		evbuffer_add_printf(send, " %s:", ARGNM(SC_HARGS));
+		for (i = 0; i < dev->nrofhargs && dev->hargs[i] != NULL; i++) {
+			if (i != 0)
+				evbuffer_add_printf(send, ",");
+			evbuffer_add_printf(send, "%s", dev->hargs[i]);
+		}
+	}
+	evbuffer_add_printf(send, "\n");
+
+	/* schedule the bufferevent write */
+	
+	bufferevent_write_buffer(out, send);
+	bufferevent_enable(out, EV_READ|EV_WRITE);
+	evbuffer_free(send);
+}
+
+
+/**
    \brief Register a device with the server
    \param dev The device to inform server about
    \param out the bufferevent we are scheduling on
@@ -261,6 +340,42 @@ void gn_register_device(device_t *dev, struct bufferevent *out)
 	evbuffer_add_printf(send, "%s:%d %s:%d %s:%d\n", ARGNM(SC_DEVTYPE),
 			    dev->type, ARGNM(SC_PROTO), dev->proto,
 			    ARGNM(SC_SUBTYPE), dev->subtype);
+
+	/* schedule the bufferevent write */
+	
+	bufferevent_write_buffer(out, send);
+	bufferevent_enable(out, EV_READ|EV_WRITE);
+	evbuffer_free(send);
+}
+
+/**
+   \brief Register a device group with the server, only send name
+   \param devgrp The device group to inform server about
+   \param out the bufferevent we are scheduling on
+*/
+
+void gn_register_devgroup_nameonly(device_group_t *devgrp,
+				   struct bufferevent *out)
+{
+	struct evbuffer *send;
+
+	/* Verify sanity, is our device registerable? */
+	if (devgrp->name == NULL || devgrp->uid == NULL) {
+		LOG(LOG_ERROR, "Attempt to register unnamed device group");
+		return;
+	}
+
+	send = evbuffer_new();
+	/* Command to register groups is "regg", start with that */
+	evbuffer_add_printf(send, "regg ");
+
+	/* We use the ARGNM macro to generate the argument words so if they
+	   change, we don't have to re-write all our code.
+	*/
+	evbuffer_add_printf(send, "%s:%s %s:\"%s\" ", ARGNM(SC_UID),
+			    devgrp->uid, ARGNM(SC_NAME), devgrp->name);
+
+	evbuffer_add_printf(send, "\n");
 
 	/* schedule the bufferevent write */
 	
@@ -382,28 +497,43 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 
 	/* fill in the details */
 	evbuffer_add_printf(send, "%s:%s ", ARGNM(SC_UID), dev->uid);
-	if ((what & GNC_UPD_NAME) && dev->name != NULL)
+	if (((what & GNC_UPD_NAME) || (what & GNC_UPD_FULL))
+	    && dev->name != NULL)
 		evbuffer_add_printf(send, "%s:\"%s\" ",  ARGNM(SC_NAME),
 				    dev->name);
-	if ((what & GNC_UPD_RRDNAME) && dev->rrdname != NULL)
+	if (((what & GNC_UPD_RRDNAME) || (what & GNC_UPD_FULL))
+	    && dev->rrdname != NULL)
 		evbuffer_add_printf(send, "%s:%s ",  ARGNM(SC_RRDNAME),
 				    dev->rrdname);
-	if ((what & GNC_UPD_HANDLER) && dev->handler != NULL)
+	if (((what & GNC_UPD_HANDLER) || (what & GNC_UPD_FULL))
+	    && dev->handler != NULL)
 		evbuffer_add_printf(send, "%s:%s ",  ARGNM(SC_HANDLER),
 				    dev->handler);
-	if ((what & GNC_UPD_HARGS) && dev->nrofhargs > 0 && dev->hargs != NULL) {
+	if (((what & GNC_UPD_HARGS)  || (what & GNC_UPD_FULL))
+	    && dev->nrofhargs > 0 && dev->hargs != NULL) {
 		evbuffer_add_printf(send, "%s:",  ARGNM(SC_HARGS));
 		evbuffer_add_printf(send, "\"%s\"", dev->hargs[0]);
 		for (i=1; i < dev->nrofhargs; i++)
 			evbuffer_add_printf(send, ",\"%s\"", dev->hargs[i]);
 		evbuffer_add_printf(send, " ");
 	}
-	/* switch and do water */
+	/* do everything else */
+	if (what & GNC_UPD_FULL) {
+		evbuffer_add_printf(send, "%s:%d %s:%d %s:%d ",
+				    ARGNM(SC_DEVTYPE), dev->type,
+				    ARGNM(SC_PROTO), dev->proto,
+				    ARGNM(SC_SUBTYPE), dev->subtype);
+		if (dev->scale)
+			evbuffer_add_printf(send, "%s:%d ", ARGNM(SC_SCALE),
+					    dev->scale);
+	}
+
+	/* switch and do watermarks and values */
 	switch (datatype_dev(dev)) {
 	case DATATYPE_UINT:
 		get_data_dev(dev, DATALOC_DATA, &u);
 		evbuffer_add_printf(send, "%s:%d", ARGDEV(dev), u);
-		if (what & GNC_UPD_WATER) {
+		if ((what & GNC_UPD_WATER) || (what & GNC_UPD_FULL)) {
 			get_data_dev(dev, DATALOC_LOWAT, &u);
 			evbuffer_add_printf(send, " %s:%d ",
 					    ARGNM(SC_LOWAT), u);
@@ -415,7 +545,7 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 	case DATATYPE_LL:
 		get_data_dev(dev, DATALOC_DATA, &ll);
 		evbuffer_add_printf(send, "%s:%jd", ARGDEV(dev), ll);
-		if (what & GNC_UPD_WATER) {
+		if ((what & GNC_UPD_WATER) || (what & GNC_UPD_FULL)) {
 			get_data_dev(dev, DATALOC_LOWAT, &ll);
 			evbuffer_add_printf(send, " %s:%jd ",
 					    ARGNM(SC_LOWAT), ll);
@@ -429,7 +559,7 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 		get_data_dev(dev, DATALOC_DATA, &d);
 		evbuffer_add_printf(send, "%s:%f", ARGDEV(dev),
 				    gn_maybe_scale(dev, scale, d));
-		if (what & GNC_UPD_WATER) {
+		if ((what & GNC_UPD_WATER) || (what & GNC_UPD_FULL)) {
 			get_data_dev(dev, DATALOC_LOWAT, &d);
 			evbuffer_add_printf(send, " %s:%f ",
 					    ARGNM(SC_LOWAT), d);

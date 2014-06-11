@@ -74,6 +74,63 @@ static const rb_tree_ops_t devgroup__alltree_ops = {
 	.rbto_context = NULL
 };
 
+/** The device type name map table */
+name_map_t devtype_map[] = {
+	{DEVICE_NONE, "none"},
+	{DEVICE_SWITCH, "switch"},
+	{DEVICE_DIMMER, "dimmer"},
+	{DEVICE_SENSOR, "sensor"},
+	{DEVICE_TIMER, "timer"},
+};
+
+name_map_t devproto_map[] = {
+	{PROTO_NONE, "none"},
+	{PROTO_INSTEON_V1, "insteon-v1"},
+	{PROTO_INSTEON_V2, "insteon-v2"},
+	{PROTO_INSTEON_V2CS, "insteon-v2cs"},
+	{PROTO_SENSOR_OWFS, "sensor-owfs"},
+	{PROTO_SENSOR_BRULTECH_GEM, "brultech-gem"},
+	{PROTO_SENSOR_BRULTECH_ECM1240, "brultech-ecm1240"},
+	{PROTO_SENSOR_WMR918, "wmr918"},
+	{PROTO_SENSOR_AD2USB, "ad2usb"},
+	{PROTO_SENSOR_ICADDY, "icaddy"},
+	{PROTO_SENSOR_VENSTAR, "venstar"},
+};
+
+name_map_t devsubtype_map[] = {
+	{SUBTYPE_NONE, "none"},
+	{SUBTYPE_SWITCH, "switch"},
+	{SUBTYPE_OUTLET, "outlet"},
+	{SUBTYPE_TEMP, "temp"},
+	{SUBTYPE_HUMID, "humid"},
+	{SUBTYPE_LUX, "lux"},
+	{SUBTYPE_BOOL, "bool"},
+	{SUBTYPE_COUNTER, "counter"},
+	{SUBTYPE_PRESSURE, "pressure"},
+	{SUBTYPE_SPEED, "windspeed"},
+	{SUBTYPE_DIR, "winddir"},
+	{SUBTYPE_MOISTURE, "moisture"},
+	{SUBTYPE_WETNESS, "wetness"},
+	{SUBTYPE_HUB, "hub"},
+	{SUBTYPE_VOLTAGE, "voltage"},
+	{SUBTYPE_WATTSEC, "wattsec"},
+	{SUBTYPE_WATT, "watt"},
+	{SUBTYPE_AMPS, "amps"},
+	{SUBTYPE_RAINRATE, "rainrate"},
+	{SUBTYPE_WEATHER, "weather"},
+	{SUBTYPE_ALARMSTATUS, "alarmstatus"},
+	{SUBTYPE_NUMBER, "number"},
+	{SUBTYPE_PERCENTAGE, "percentage"},
+	{SUBTYPE_FLOWRATE, "flowrate"},
+	{SUBTYPE_DISTANCE, "distance"},
+	{SUBTYPE_VOLUME, "volume"},
+	{SUBTYPE_TIMER, "timer"},
+	{SUBTYPE_THMODE, "thmode"},
+	{SUBTYPE_THSTATE, "thstate"},
+	{SUBTYPE_SMNUMBER, "smnumber"},
+};
+
+
 /** \brief Compare two devices by uid */
 
 static int compare_device_byuid(void *ctx, const void *a, const void *b) 
@@ -208,6 +265,26 @@ void add_dev_group(device_t *dev, device_group_t *devgrp)
 }
 
 /**
+   \brief Remove a device from a group
+   \param dev device to remove
+   \param devgrp device group to remove from
+   \note basically nukes the wrapdev
+*/
+
+void remove_dev_group(device_t *dev, device_group_t *devgrp)
+{
+	wrap_device_t *wrap;
+
+	TAILQ_FOREACH(wrap, &devgrp->members, next) {
+		if (wrap->dev == dev) {
+			TAILQ_REMOVE(&devgrp->members, wrap, next);
+			free(wrap);
+			return;
+		}
+	}
+}
+
+/**
    \brief Add a group to a group
    \param group1 group to add
    \param group2 group to add to
@@ -221,7 +298,26 @@ void add_group_group(device_group_t *group1, device_group_t *group2)
 	TAILQ_INSERT_TAIL(&group2->children, wrapg, nextg);
 	wrapg->onq |= GROUPONQ_NEXT;
 	wrapg->parent = group2;
-	group1->subgroup = 1;
+	group1->subgroup++;
+}
+
+/**
+   \brief remove a group from a group
+   \param group1 group to remove
+   \param group2 group to remove from
+*/
+void remove_group_group(device_group_t *group1, device_group_t *group2)
+{
+	wrap_group_t *wrapg;
+
+	TAILQ_FOREACH(wrapg, &group2->children, nextg) {
+		if (wrapg->group == group1) {
+			wrapg->group->subgroup--;
+			TAILQ_REMOVE(&group2->children, wrapg, nextg);
+			free(wrapg);
+			return;
+		}
+	}
 }
 
 /**
@@ -522,6 +618,41 @@ void store_data_dev(device_t *dev, int where, void *data)
 		break;
 	}
 	}
+}
+
+/**
+   \brief Print data to a buf that must be freed
+   \param dev device to print
+   \param where data location to print
+   \return char pointer to string that must be freed
+*/
+
+char *print_data_dev(device_t *dev, int where)
+{
+	char buf[256];
+	double d=0.0;
+	uint32_t u=0;
+	int64_t ll=0;
+
+	if (dev == NULL)
+		return NULL;
+
+	switch (datatype_dev(dev)) {
+	case DATATYPE_UINT:
+		get_data_dev(dev, where, &u);
+		sprintf(buf, "%d", u);
+		break;
+	case DATATYPE_LL:
+		get_data_dev(dev, where, &ll);
+		sprintf(buf, "%jd", u);
+		break;
+	case DATATYPE_DOUBLE:
+	default:
+		get_data_dev(dev, where, &d);
+		sprintf(buf, "%f", d);
+		break;
+	}
+	return strdup(buf);
 }
 
 /**

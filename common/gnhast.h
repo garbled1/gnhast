@@ -59,6 +59,7 @@ enum DEV_TYPES {
 	DEVICE_DIMMER,
 	DEVICE_SENSOR,
 	DEVICE_TIMER,
+	NROF_TYPES,
 };
 #define DEVICE_MAX DEVICE_TIMER
 
@@ -74,8 +75,9 @@ enum PROTO_TYPES {
 	PROTO_SENSOR_AD2USB,
 	PROTO_SENSOR_ICADDY,
 	PROTO_SENSOR_VENSTAR,
+	NROF_PROTOS,
 };
-#define PROTO_MAX PROTO_SENSOR_ICADDY
+#define PROTO_MAX PROTO_SENSOR_VENSTAR
 
 enum SUBTYPE_TYPES {
 	SUBTYPE_NONE,
@@ -108,6 +110,7 @@ enum SUBTYPE_TYPES {
 	SUBTYPE_THSTATE, /* stored in state */
 	SUBTYPE_SMNUMBER, /* 8bit number stored in state */
 	SUBTYPE_BOOL,
+	NROF_SUBTYPES,
 };
 #define SUBTYPE_MAX SUBTYPE_BOOL
 /* used in owsrv to limit which sensors we can talk about
@@ -181,6 +184,17 @@ struct _client_t;
 struct _device_t;
 struct _wrap_device_t;
 struct _wrap_group_t;
+
+enum NAME_MAP_LIST {
+	NAME_MAP_PROTO,
+	NAME_MAP_TYPE,
+	NAME_MAP_SUBTYPE,
+};
+
+typedef struct _name_map_t {
+	int id;
+	char *name;
+} name_map_t;
 
 /** The client type, used to store data for events */
 typedef struct _client_t {

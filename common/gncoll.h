@@ -8,6 +8,7 @@
 #define GNC_UPD_HANDLER	(1<<4)
 #define GNC_UPD_HARGS	(1<<5)
 #define GNC_UPD_WATER	(1<<6) /* watermarks */
+#define GNC_UPD_FULL	(1<<7)
 
 /* GNC_UPD_XXX bits 8-16 are reserved for scale */
 #define GNC_UPD_SCALE(x)	(1<<(8+x))
@@ -21,7 +22,10 @@ double gn_scale_speed(double speed, int cur, int new);
 double gn_scale_length(double length, int cur, int new);
 double gn_scale_light(double light, int cur, int new);
 double gn_maybe_scale(device_t *dev, int scale, double val);
+void gn_modify_device(device_t *dev, struct bufferevent *out);
 void gn_register_device(device_t *dev, struct bufferevent *out);
+void gn_register_devgroup_nameonly(device_group_t *devgrp,
+				   struct bufferevent *out);
 void gn_register_devgroup(device_group_t *devgrp, struct bufferevent *out);
 void gn_update_device(device_t *dev, int what, struct bufferevent *out);
 void gn_disconnect(struct bufferevent *bev);

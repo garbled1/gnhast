@@ -139,6 +139,17 @@ int cmd_endldevs(pargs_t *args, void *arg)
 }
 
 /**
+   \brief Handle a endlgrps device command
+   \param args The list of arguments
+   \param arg void pointer to client_t of provider
+*/
+
+int cmd_endlgrps(pargs_t *args, void *arg)
+{
+	return;
+}
+
+/**
    \brief Called when a chg command occurs
    \param dev device that got updated
    \param arg pointer to client_t

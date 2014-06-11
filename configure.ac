@@ -48,6 +48,9 @@ AC_PATH_PROG([RRDTOOL], [rrdtool], [/usr/pkg/bin/rrdtool],
 	[$PATH$PATH_SEPARATOR/usr/bin$PATH_SEPARATOR/usr/pkg/bin$PATH_SEPARATOR/usr/local/bin])
 
 PKG_CHECK_MODULES([RRD], [librrd])
+PKG_CHECK_MODULES([GTK2], [gtk+-2.0 >= 2.0.0], [HAVE_GTK2=1], [NO_GTK2=1])
+AC_SUBST(GTK2_CFLAGS)
+AC_SUBST(GTK2_LIBS)
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -63,6 +66,7 @@ AC_CHECK_FUNCS([gethostbyaddr gettimeofday inet_ntoa \
 AC_CHECK_FUNC(rb_tree_init, [HAVE_RBTREE=1],)
 AC_CHECK_FUNC(getprogname, , AC_CHECK_LIB(bsd, getprogname,, AC_MSG_ERROR(["No libbsd compat lib"])))
 AM_CONDITIONAL([NEED_RBTREE], [test "x$HAVE_RBTREE" = x])
+AM_CONDITIONAL([HAVE_GTK2], [test "$HAVE_GTK2" = 1])
 AC_CHECK_FUNC(clock_gettime, , AC_CHECK_LIB(rt, clock_gettime,, AC_MSG_ERROR(["No librt"])))
 
 AC_CONFIG_FILES([Makefile \
@@ -79,6 +83,8 @@ AC_CONFIG_FILES([Makefile \
 		 venstarcoll/Makefile \
 		 handlers/Makefile \
 		 tools/Makefile \
+		 gtk-gnhast/Makefile \
+		 data/Makefile \
 		 libconfuse/Makefile])
 
 AC_OUTPUT

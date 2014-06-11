@@ -63,6 +63,7 @@ commands_t commands[] = {
 	{"ldevs", cmd_list_devices, 0},
 	{"lgrps", cmd_list_groups, 0},
 	{"ask", cmd_ask_device, 0},
+	{"askf", cmd_ask_full_device, 0},
 	{"cactiask", cmd_cactiask_device, 0},
 	{"disconnect", cmd_disconnect, 0},
 	{"client", cmd_client, 0},
@@ -395,11 +396,13 @@ int cmd_register(pargs_t *args, void *arg)
 
 int cmd_register_group(pargs_t *args, void *arg)
 {
-	int i;
+	int i, found;
 	char *uid=NULL, *name=NULL, *grouplist=NULL, *devlist=NULL;
 	char *tmpbuf, *p;
 	device_group_t *devgrp, *cgrp;
 	device_t *dev;
+	wrap_group_t *wrapg;
+	wrap_device_t *wrap;
 	client_t *client = (client_t *)arg;
 
 	for (i=0; args[i].cword != -1; i++) {
@@ -437,14 +440,13 @@ int cmd_register_group(pargs_t *args, void *arg)
 			return(-1);
 		}
 		devgrp = new_devgroup(uid);
-		devgrp->uid = uid;
 	} else
 		LOG(LOG_DEBUG, "Updating existing device group uid:%s", uid);
 
 	devgrp->name = name;
 
 	if (grouplist != NULL) {
-		tmpbuf = grouplist;
+		tmpbuf = strdup(grouplist);
 		for (p = strtok(tmpbuf, ","); p; p = strtok(NULL, ",")) {
 			cgrp = find_devgroup_byuid(p);
 			if (cgrp == NULL)
@@ -457,11 +459,31 @@ int cmd_register_group(pargs_t *args, void *arg)
 				    "group %s", cgrp->uid, uid);
 			}
 		}
+		free(tmpbuf);
+		/* Now look for groups that no longer belong */
+		TAILQ_FOREACH(wrapg, &devgrp->children, nextg) {
+			LOG(LOG_DEBUG, "Working on: %s", wrapg->group->uid);
+			found = 0;
+			tmpbuf = strdup(grouplist);
+			for (p = strtok(tmpbuf, ","); p;
+			     p = strtok(NULL, ",")) {
+				if (strcmp(p, wrapg->group->uid) == 0) {
+					found = 1;
+					continue;
+				}
+			}
+			if (!found) {
+				LOG(LOG_DEBUG, "removing group %s from group "
+				    "%s", wrapg->group->uid, devgrp->uid);
+				remove_group_group(wrapg->group, devgrp);
+			}
+			free(tmpbuf);
+		}
 		free(grouplist);
 	}
 
 	if (devlist != NULL) {
-		tmpbuf = devlist;
+		tmpbuf = strdup(devlist);
 		for (p = strtok(tmpbuf, ","); p; p = strtok(NULL, ",")) {
 			dev = find_device_byuid(p);
 			if (dev == NULL)
@@ -473,6 +495,25 @@ int cmd_register_group(pargs_t *args, void *arg)
 				LOG(LOG_DEBUG, "Adding child device %s to "
 				    "group %s", dev->uid, uid);
 			}
+		}
+		free(tmpbuf);
+		TAILQ_FOREACH(wrap, &devgrp->members, next) {
+			found = 0;
+			tmpbuf = devlist;
+			for (p = strtok(tmpbuf, ","); p;
+			     p = strtok(NULL, ",")) {
+				if ((strlen(p) == strlen(wrap->dev->uid)) &&
+				    strcmp(p, wrap->dev->uid) == 0) {
+					found = 1;
+					continue;
+				}
+			}
+			if (!found) {
+				LOG(LOG_DEBUG, "removing device %s from group "
+				    "%s", wrap->dev->uid, devgrp->uid);
+				remove_dev_group(wrap->dev, devgrp);
+			}
+			free(tmpbuf);
 		}
 		free(devlist);
 	}
@@ -666,6 +707,8 @@ int cmd_feed(pargs_t *args, void *arg)
 		}
 	}
 	secs.tv_sec = rate;
+	if (uid == NULL)
+		return -1;
 	dev = find_device_byuid(uid);
 	if (dev == NULL)
 		return -1;
@@ -842,6 +885,32 @@ int cmd_ask_device(pargs_t *args, void *arg)
 				continue;
 			gn_update_device(dev, what|GNC_UPD_SCALE(scale),
 					 client->ev);
+			client->sentdata++;
+		}
+	}
+	return 0;
+}
+
+/**
+   \brief Handle a ask device command
+   \param args The list of arguments
+   \param arg void pointer to client_t of connection
+*/
+
+int cmd_ask_full_device(pargs_t *args, void *arg)
+{
+	int i;
+	device_t *dev;
+	char *uid = NULL;
+	client_t *client = (client_t *)arg;
+
+	for (i=0; args[i].cword != -1; i++) {
+		if (args[i].cword == SC_UID) {
+			uid = args[i].arg.c;
+			dev = find_device_byuid(uid);
+			if (dev == NULL)
+				continue;
+			gn_update_device(dev, GNC_UPD_FULL, client->ev);
 			client->sentdata++;
 		}
 	}

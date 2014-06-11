@@ -55,6 +55,7 @@
 #include "confuse.h"
 
 extern int cmd_endldevs(pargs_t *args, void *arg);
+extern int cmd_endlgrps(pargs_t *args, void *arg);
 extern void coll_upd_cb(device_t *dev, void *arg);
 extern void coll_chg_switch_cb(device_t *dev, int state, void *arg);
 extern void coll_chg_dimmer_cb(device_t *dev, double level, void *arg);
@@ -69,7 +70,9 @@ extern cfg_t *cfg;
 commands_t commands[] = {
 	{"chg", cmd_change, 0},
 	{"reg", cmd_register, 0},
+	{"regg", cmd_register_group, 0},
 	{"endldevs", cmd_endldevs, 0},
+	{"endlgrps", cmd_endlgrps, 0},
 	{"upd", cmd_update, 0},
 	{"mod", cmd_modify, 0},
 };
@@ -189,6 +192,98 @@ int cmd_register(pargs_t *args, void *arg)
 
 	if (new)
 		insert_device(dev);
+
+	return(0);
+}
+
+/**
+	\brief Handle a register group command
+	\param args The list of arguments
+	\param arg void pointer to client_t of provider
+*/
+
+int cmd_register_group(pargs_t *args, void *arg)
+{
+	int i, new=0;
+	char *uid=NULL, *name=NULL, *grouplist=NULL, *devlist=NULL;
+	device_t *dev;
+	char *tmpbuf, *p;
+	device_group_t *devgrp, *cgrp;
+
+	for (i=0; args[i].cword != -1; i++) {
+		switch (args[i].cword) {
+		case SC_UID:
+			uid = strdup(args[i].arg.c);
+			break;
+		case SC_NAME:
+			name = strdup(args[i].arg.c);
+			break;
+		case SC_GROUPLIST:
+			grouplist = strdup(args[i].arg.c);
+			break;
+		case SC_DEVLIST:
+			devlist = strdup(args[i].arg.c);
+			break;
+		}
+	}
+
+	if (uid == NULL) {
+		LOG(LOG_ERROR, "Got register group command without UID");
+		return(-1); /* MUST have UID */
+	}
+
+	LOG(LOG_DEBUG, "Register group: uid=%s name=%s grouplist=%s "
+	    "devlist=%s", uid, (name) ? name : "NULL",
+	    (grouplist) ? grouplist : "NULL", (devlist) ? devlist : "NULL");
+
+	devgrp = find_devgroup_byuid(uid);
+	if (devgrp == NULL) {
+		LOG(LOG_DEBUG, "Creating new device group for uid %s", uid);
+		if (name == NULL) {
+			LOG(LOG_ERROR, "Attempt to register new device without"
+			    " name");
+			return(-1);
+		}
+		devgrp = new_devgroup(uid);
+		devgrp->uid = uid;
+	} else
+		LOG(LOG_DEBUG, "Updating existing device group uid:%s", uid);
+
+	devgrp->name = name;
+
+	if (grouplist != NULL) {
+		tmpbuf = grouplist;
+		for (p = strtok(tmpbuf, ","); p; p = strtok(NULL, ",")) {
+			cgrp = find_devgroup_byuid(p);
+			if (cgrp == NULL)
+				LOG(LOG_ERROR, "Cannot find child group %s "
+				    "while attempting to register group %s",
+				    p, uid);
+			else if (!group_in_group(cgrp, devgrp)){
+				add_group_group(cgrp, devgrp);
+				LOG(LOG_DEBUG, "Adding child group %s to "
+				    "group %s", cgrp->uid, uid);
+			}
+		}
+		free(grouplist);
+	}
+
+	if (devlist != NULL) {
+		tmpbuf = devlist;
+		for (p = strtok(tmpbuf, ","); p; p = strtok(NULL, ",")) {
+			dev = find_device_byuid(p);
+			if (dev == NULL)
+				LOG(LOG_ERROR, "Cannot find child device %s "
+				    "while attempting to register group %s",
+				    p, uid);
+			else if (!dev_in_group(dev, devgrp)) {
+				add_dev_group(dev, devgrp);
+				LOG(LOG_DEBUG, "Adding child device %s to "
+				    "group %s", dev->uid, uid);
+			}
+		}
+		free(devlist);
+	}
 
 	return(0);
 }

@@ -633,8 +633,12 @@ ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
 LIBOBJS
+HAVE_GTK2_FALSE
+HAVE_GTK2_TRUE
 NEED_RBTREE_FALSE
 NEED_RBTREE_TRUE
+GTK2_LIBS
+GTK2_CFLAGS
 RRD_LIBS
 RRD_CFLAGS
 PKG_CONFIG_LIBDIR
@@ -784,7 +788,9 @@ PKG_CONFIG
 PKG_CONFIG_PATH
 PKG_CONFIG_LIBDIR
 RRD_CFLAGS
-RRD_LIBS'
+RRD_LIBS
+GTK2_CFLAGS
+GTK2_LIBS'
 
 
 # Initialize some variables set by options.
@@ -1440,6 +1446,8 @@ Some influential environment variables:
               path overriding pkg-config's built-in search path
   RRD_CFLAGS  C compiler flags for RRD, overriding pkg-config
   RRD_LIBS    linker flags for RRD, overriding pkg-config
+  GTK2_CFLAGS C compiler flags for GTK2, overriding pkg-config
+  GTK2_LIBS   linker flags for GTK2, overriding pkg-config
 
 Use these variables to override the choices made by `configure' or to help
 it to find libraries and programs with nonstandard names/locations.
@@ -13909,6 +13917,79 @@ $as_echo "yes" >&6; }
 
 fi
 
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for GTK2" >&5
+$as_echo_n "checking for GTK2... " >&6; }
+
+if test -n "$GTK2_CFLAGS"; then
+    pkg_cv_GTK2_CFLAGS="$GTK2_CFLAGS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"gtk+-2.0 >= 2.0.0\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "gtk+-2.0 >= 2.0.0") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_GTK2_CFLAGS=`$PKG_CONFIG --cflags "gtk+-2.0 >= 2.0.0" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+if test -n "$GTK2_LIBS"; then
+    pkg_cv_GTK2_LIBS="$GTK2_LIBS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"gtk+-2.0 >= 2.0.0\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "gtk+-2.0 >= 2.0.0") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_GTK2_LIBS=`$PKG_CONFIG --libs "gtk+-2.0 >= 2.0.0" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+   	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        GTK2_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "gtk+-2.0 >= 2.0.0" 2>&1`
+        else
+	        GTK2_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "gtk+-2.0 >= 2.0.0" 2>&1`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$GTK2_PKG_ERRORS" >&5
+
+	NO_GTK2=1
+elif test $pkg_failed = untried; then
+     	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+	NO_GTK2=1
+else
+	GTK2_CFLAGS=$pkg_cv_GTK2_CFLAGS
+	GTK2_LIBS=$pkg_cv_GTK2_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+	HAVE_GTK2=1
+fi
+
+
+
 # Checks for typedefs, structures, and compiler characteristics.
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for an ANSI C-conforming const" >&5
 $as_echo_n "checking for an ANSI C-conforming const... " >&6; }
@@ -14121,6 +14202,14 @@ else
   NEED_RBTREE_FALSE=
 fi
 
+ if test "$HAVE_GTK2" = 1; then
+  HAVE_GTK2_TRUE=
+  HAVE_GTK2_FALSE='#'
+else
+  HAVE_GTK2_TRUE='#'
+  HAVE_GTK2_FALSE=
+fi
+
 ac_fn_c_check_func "$LINENO" "clock_gettime" "ac_cv_func_clock_gettime"
 if test "x$ac_cv_func_clock_gettime" = xyes; then :
 
@@ -14175,7 +14264,7 @@ fi
 fi
 
 
-ac_config_files="$ac_config_files Makefile gnhastd/Makefile fakecoll/Makefile owsrvcoll/Makefile rrdcoll/Makefile brulcoll/Makefile insteoncoll/Makefile wmr918coll/Makefile wupwscoll/Makefile ad2usbcoll/Makefile icaddycoll/Makefile venstarcoll/Makefile handlers/Makefile tools/Makefile libconfuse/Makefile"
+ac_config_files="$ac_config_files Makefile gnhastd/Makefile fakecoll/Makefile owsrvcoll/Makefile rrdcoll/Makefile brulcoll/Makefile insteoncoll/Makefile wmr918coll/Makefile wupwscoll/Makefile ad2usbcoll/Makefile icaddycoll/Makefile venstarcoll/Makefile handlers/Makefile tools/Makefile gtk-gnhast/Makefile data/Makefile libconfuse/Makefile"
 
 
 cat >confcache <<\_ACEOF
@@ -14321,6 +14410,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${NEED_RBTREE_TRUE}" && test -z "${NEED_RBTREE_FALSE}"; then
   as_fn_error $? "conditional \"NEED_RBTREE\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${HAVE_GTK2_TRUE}" && test -z "${HAVE_GTK2_FALSE}"; then
+  as_fn_error $? "conditional \"HAVE_GTK2\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 
@@ -15209,6 +15302,8 @@ do
     "venstarcoll/Makefile") CONFIG_FILES="$CONFIG_FILES venstarcoll/Makefile" ;;
     "handlers/Makefile") CONFIG_FILES="$CONFIG_FILES handlers/Makefile" ;;
     "tools/Makefile") CONFIG_FILES="$CONFIG_FILES tools/Makefile" ;;
+    "gtk-gnhast/Makefile") CONFIG_FILES="$CONFIG_FILES gtk-gnhast/Makefile" ;;
+    "data/Makefile") CONFIG_FILES="$CONFIG_FILES data/Makefile" ;;
     "libconfuse/Makefile") CONFIG_FILES="$CONFIG_FILES libconfuse/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;

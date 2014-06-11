@@ -987,6 +987,10 @@ cfg_t *dump_conf(cfg_t *cfg, int flags, const char *filename)
 	LOG(LOG_NOTICE, "Rewriting configuration file");
 	t = time(NULL);
 	fp = fopen(filename, "w");
+	if (fp == NULL) {
+		LOG(LOG_ERROR, "Could not open %s for writing", filename);
+		return;
+	}
 	fprintf(fp, "# Config file for %s\n", getprogname());
 	fprintf(fp, "# Generated on %s", ctime(&t));
 	fprintf(fp, "#\n\n");

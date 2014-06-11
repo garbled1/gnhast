@@ -1,3 +1,7 @@
+if HAVE_GTK2
+GTKGNHASTDIR = gtk-gnhast
+endif
+
 SUBDIRS = libconfuse \
 	gnhastd \
 	fakecoll \
@@ -11,4 +15,6 @@ SUBDIRS = libconfuse \
 	icaddycoll \
 	venstarcoll \
 	tools \
-	handlers
+	data \
+	handlers $(GTKGNHASTDIR)
+

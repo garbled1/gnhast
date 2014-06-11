@@ -209,7 +209,7 @@ cfg_t *new_rrdconf_from_dev(cfg_t *cfg, device_t *dev)
 }
 
 /**
-   \brief Handle a enldevs device command
+   \brief Handle a endldevs device command
    \param args The list of arguments
    \param arg void pointer to client_t of provider
 */
@@ -227,6 +227,18 @@ int cmd_endldevs(pargs_t *args, void *arg)
 	dump_conf(cfg, 0, dumpconf);
 	exit(0);
 }
+
+/**
+   \brief Handle a endlgrps device command
+   \param args The list of arguments
+   \param arg void pointer to client_t of provider
+*/
+
+int cmd_endlgrps(pargs_t *args, void *arg)
+{
+	return;
+}
+
 
 /**
    \brief Called when an upd command occurs

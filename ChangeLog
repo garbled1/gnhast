@@ -1,25 +1,100 @@
+0.2.4 - Development Version
+	Added Collectors:
+		ad2usbcoll
+		icaddycoll
+		venstarcall
+		gtk-gnhast
+	
+	Added Handlers:
+		timer
+		timer2
+
+	Added Tools:
+		ssdp_scan
+		modhargs
+		addhandler
+		notify_listen
+		venstar_stats
+
+	New Features:
+
+	Added gtk-gnhast. A gtk2 application that allows for easy overview and
+	editing of your setup.  Designed to make creation of groups easier.
+	
+	Fully flesh out group system.  Now devices can be members of groups,
+	as well as groups being members of other groups.
+
+	New command "regg" to register a group.
+
+	New command "lgrps" to list groups.
+
+	Add venstar_stats script, to pull daily usage data off the venstar and
+	save to an rrd.  This doesn't fit well with the general gnhastd
+	concept, so did it as an extra. (only useful for graphing).
+
+	Add Venstar T5900/T5800 collector for Venstar Thermostats.
+
+	Added http and jsmn helper routines to ease coding of future
+	http/json stuff.
+
+	Add icaddycoll, the collector for the IrrigationCaddy. Can read status
+	of valves, programs, and run individual valves or programs.
+
+	Add ssdp_scan and notify_listen.  Simple tools to view SSDP and UPNP
+	data on the network, and see what is out there.
+
+	Imported jsmn from: http://zserge.bitbucket.org
+
+	More Insteon fixes, change the way groups work in the insteon tools.
+
+	Added automatic reset code to the brultech collector.  If it detects
+	a hang condition, will automatically connect to the wiznet device and
+	reset it.
+
+	Add tools directory.  Add modhargs and addhandler, simple scripts to
+	patch a handler or hargs into a running gnhast instance.
+
+	Add example timer scripts, timer and timer2, for setting a light on
+	for a given time when a condition occurs.
+
+	Add ad2usbcoll collector for the NuTech AD2USB device.  Interfaces
+	with Honeywell Vista alarms, and allows reading of alarm states.
+
+	Added new subtypes, alarmstatus, number, percentage,
+	thmode (thermostat mode), smnumber (small number), flowrate, distance,
+	volume (sound).
+
 0.2.3 - Release 7/9/13
-    Added Collectors:
-	wupwscoll
-	wmr918coll
-    Added Handlers:
-	nightlight
-	switchon
-	switchoff
-    New features:
-	Make gnhastd aware of the unit that data is stored in.  Now a collector tells
-gnhast what scale it is feeding data in (ex, Celcius). When requesting data, you can
-request it in a different scale, and the server will auto-caclulate.
-	Add a wupwscoll collector.  This collector will publish weather data to
-weather underground, and pwsweather.com.
-	Add wmr918coll collector.  Collects data from oregon scientific weather stations.
-Works on wx200's wmr918's, and can also connect to a running wx200d instance and
-gather data from that.
+    	Added Collectors:
+		wupwscoll
+		wmr918coll
+	Added Handlers:
+		nightlight
+		switchon
+		switchoff
+    	New features:
+	
+	Make gnhastd aware of the unit that data is stored in.
+	Now a collector tells gnhast what scale it is feeding data in
+	(ex, Celcius). When requesting data, you can request it in a
+	different scale, and the server will auto-caclulate.
+	
+	Add a wupwscoll collector.  This collector will publish weather data
+	to weather underground, and pwsweather.com.
+	
+	Add wmr918coll collector.  Collects data from oregon scientific
+	weather stations. Works on wx200's wmr918's, and can also connect to
+	a running wx200d instance and gather data from that.
+	
 	Insteon i2cs code now tested and working fully.
-	Added basic handlers for a nightlight routine, and switching devices on and off.
-	Add a modify command to gnhastd, so you can edit the config file on the fly by
-sending it simple commands.  This allows you to add a handler or tweak names/watermarks
-on a running instance.
+	
+	Added basic handlers for a nightlight routine, and switching devices
+	on and off.
+	
+	Add a modify command to gnhastd, so you can edit the config file on
+	the fly by sending it simple commands.  This allows you to add a
+	handler or tweak names/watermarks on a running instance.
+	
 	Port to Linux.
 
 0.2 - Initial Release 5/29/13

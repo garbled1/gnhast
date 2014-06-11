@@ -246,12 +246,23 @@ void coll_chg_cb(device_t *dev, void *arg)
 }
 
 /**
-   \brief Handle a enldevs device command
+   \brief Handle a endldevs device command
    \param args The list of arguments
    \param arg void pointer to client_t of provider
 */
 
 int cmd_endldevs(pargs_t *args, void *arg)
+{
+	return;
+}
+
+/**
+   \brief Handle a endlgrps device command
+   \param args The list of arguments
+   \param arg void pointer to client_t of provider
+*/
+
+int cmd_endlgrps(pargs_t *args, void *arg)
 {
 	return;
 }
