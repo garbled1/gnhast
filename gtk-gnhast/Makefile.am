@@ -15,6 +15,8 @@ gtk_gnhast_SOURCES = \
         $(top_srcdir)/common/confparser.c \
         $(top_srcdir)/common/gncoll.c \
         $(top_srcdir)/common/collcmd.c \
+        $(top_srcdir)/common/genconn.c \
+        $(top_srcdir)/common/genconn.h \
         $(top_srcdir)/common/common.h \
         $(top_srcdir)/common/gnhast.h \
         $(top_srcdir)/common/confuse.h \
@@ -22,6 +24,7 @@ gtk_gnhast_SOURCES = \
         $(top_srcdir)/common/gncoll.h \
         $(top_srcdir)/common/collcmd.h \
 	main.c \
+	gtk-gnhast.h collector.h \
 	support.c support.h \
 	interface.c interface.h \
 	callbacks.c callbacks.h

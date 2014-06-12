@@ -118,6 +118,52 @@ int parsed_command(char *command, pargs_t *args, void *arg)
 	}
 }
 
+/*** Weak Reference Stubs ***/
+
+/**
+   \brief Called when an upd command occurs (stub)
+   \param dev device that got updated
+   \param arg pointer to client_t
+*/
+
+void __attribute__((weak)) coll_upd_cb(device_t *dev, void *arg)
+{
+	return;
+}
+
+/**
+   \brief Called when an chg command occurs (stub)
+   \param dev device that got updated
+   \param arg pointer to client_t
+*/
+
+void __attribute__((weak)) coll_chg_cb(device_t *dev, void *arg)
+{
+	return;
+}
+
+/**
+   \brief Handle a enldevs device command (stub)
+   \param args The list of arguments
+   \param arg void pointer to client_t of provider
+*/
+
+int __attribute__((weak)) cmd_endldevs(pargs_t *args, void *arg)
+{
+	return;
+}
+
+/**
+   \brief Handle a endlgrps device command (stub)
+   \param args The list of arguments
+   \param arg void pointer to client_t of provider
+*/
+
+int __attribute__((weak)) cmd_endlgrps(pargs_t *args, void *arg)
+{
+	return;
+}
+
 /**
 	\brief Handle a register device command
 	\param args The list of arguments

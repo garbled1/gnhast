@@ -64,6 +64,7 @@
 #include "brultech.h"
 #include "confparser.h"
 #include "gncoll.h"
+#include "collcmd.h"
 
 void connect_event_cb(struct bufferevent *ev, short what, void *arg);
 void brul_netconnect_event_cb(struct bufferevent *ev, short what, void *arg);
@@ -861,7 +862,7 @@ again:
 	/* if we get here, we have a data packet */
 	evbuf = bufferevent_get_input(in);
 rereadheader:
-	header = evbuffer_pullup(evbuf, 3);
+	header = (threebyte_t *)evbuffer_pullup(evbuf, 3);
 	if (header == NULL)
 		return; /* ??? */
 	LOG(LOG_DEBUG, "header = %X %X %X", header->byte[0], header->byte[1],
@@ -922,27 +923,6 @@ void brul_netconnect_event_cb(struct bufferevent *ev, short what, void *arg)
       General routines/gnhastd connection stuff
 *****/
 
-
-/**
-   \brief A read callback, got data from server
-   \param in The bufferevent that fired
-   \param arg optional arg
-*/
-
-void buf_read_cb(struct bufferevent *in, void *arg)
-{
-	char *data;
-	struct evbuffer *input;
-	size_t len;
-
-	input = bufferevent_get_input(in);
-	data = evbuffer_readln(input, &len, EVBUFFER_EOL_CRLF);
-	if (len) {
-		printf("Got data? %s\n", data);
-		free(data);
-	}
-}
-
 /**
    \brief A write callback, if we need to tell server something
    \param out The bufferevent that fired
@@ -991,7 +971,7 @@ void connect_server_cb(int nada, short what, void *arg)
 
 	conn->bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
 	if (conn->type == CONN_TYPE_GNHASTD)
-		bufferevent_setcb(conn->bev, buf_read_cb, NULL,
+		bufferevent_setcb(conn->bev, gnhastd_read_cb, NULL,
 				  connect_event_cb, conn);
 	else if (conn->type == CONN_TYPE_BRUL)
 		bufferevent_setcb(conn->bev, brul_buf_read_cb, NULL,

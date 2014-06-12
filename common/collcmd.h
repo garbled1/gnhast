@@ -11,5 +11,4 @@ int cmd_change(pargs_t *args, void *arg);
 int cmd_modify(pargs_t *args, void *arg);
 void gnhastd_read_cb(struct bufferevent *in, void *arg);
 
-
 #endif /*_COLLCMD_H_*/

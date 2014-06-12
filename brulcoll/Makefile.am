@@ -11,6 +11,8 @@ brulcoll_SOURCES = \
 	$(top_srcdir)/common/netparser.c \
 	$(top_srcdir)/common/confparser.c \
 	$(top_srcdir)/common/gncoll.c \
+	$(top_srcdir)/common/collcmd.c \
+	$(top_srcdir)/common/collcmd.h \
 	$(top_srcdir)/common/common.h \
 	$(top_srcdir)/common/gnhast.h \
 	$(top_srcdir)/common/confuse.h \

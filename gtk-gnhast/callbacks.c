@@ -52,6 +52,7 @@
 #include "confparser.h"
 #include "gncoll.h"
 #include "collcmd.h"
+#include "genconn.h"
 #include "callbacks.h"
 #include "interface.h"
 #include "support.h"

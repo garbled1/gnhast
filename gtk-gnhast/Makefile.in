@@ -107,22 +107,24 @@ am__gtk_gnhast_SOURCES_DIST = $(top_srcdir)/common/common.c \
 	$(top_srcdir)/common/netparser.c \
 	$(top_srcdir)/common/confparser.c \
 	$(top_srcdir)/common/gncoll.c $(top_srcdir)/common/collcmd.c \
+	$(top_srcdir)/common/genconn.c $(top_srcdir)/common/genconn.h \
 	$(top_srcdir)/common/common.h $(top_srcdir)/common/gnhast.h \
 	$(top_srcdir)/common/confuse.h \
 	$(top_srcdir)/common/confparser.h \
 	$(top_srcdir)/common/gncoll.h $(top_srcdir)/common/collcmd.h \
-	main.c support.c support.h interface.c interface.h callbacks.c \
-	callbacks.h $(top_srcdir)/linux/bswap16.c \
-	$(top_srcdir)/linux/bswap32.c $(top_srcdir)/linux/bswap64.c \
-	$(top_srcdir)/linux/rb.c $(top_srcdir)/linux/queue.h \
-	$(top_srcdir)/linux/endian.h $(top_srcdir)/linux/rbtree.h \
-	$(top_srcdir)/linux/time.h
+	main.c gtk-gnhast.h collector.h support.c support.h \
+	interface.c interface.h callbacks.c callbacks.h \
+	$(top_srcdir)/linux/bswap16.c $(top_srcdir)/linux/bswap32.c \
+	$(top_srcdir)/linux/bswap64.c $(top_srcdir)/linux/rb.c \
+	$(top_srcdir)/linux/queue.h $(top_srcdir)/linux/endian.h \
+	$(top_srcdir)/linux/rbtree.h $(top_srcdir)/linux/time.h
 @NEED_RBTREE_TRUE@am__objects_1 = bswap16.$(OBJEXT) bswap32.$(OBJEXT) \
 @NEED_RBTREE_TRUE@	bswap64.$(OBJEXT) rb.$(OBJEXT)
 am_gtk_gnhast_OBJECTS = common.$(OBJEXT) devices.$(OBJEXT) \
 	netparser.$(OBJEXT) confparser.$(OBJEXT) gncoll.$(OBJEXT) \
-	collcmd.$(OBJEXT) main.$(OBJEXT) support.$(OBJEXT) \
-	interface.$(OBJEXT) callbacks.$(OBJEXT) $(am__objects_1)
+	collcmd.$(OBJEXT) genconn.$(OBJEXT) main.$(OBJEXT) \
+	support.$(OBJEXT) interface.$(OBJEXT) callbacks.$(OBJEXT) \
+	$(am__objects_1)
 gtk_gnhast_OBJECTS = $(am_gtk_gnhast_OBJECTS)
 gtk_gnhast_DEPENDENCIES = $(top_builddir)/libconfuse/libconfuse.la
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -328,12 +330,14 @@ gtk_gnhast_SOURCES = $(top_srcdir)/common/common.c \
 	$(top_srcdir)/common/netparser.c \
 	$(top_srcdir)/common/confparser.c \
 	$(top_srcdir)/common/gncoll.c $(top_srcdir)/common/collcmd.c \
+	$(top_srcdir)/common/genconn.c $(top_srcdir)/common/genconn.h \
 	$(top_srcdir)/common/common.h $(top_srcdir)/common/gnhast.h \
 	$(top_srcdir)/common/confuse.h \
 	$(top_srcdir)/common/confparser.h \
 	$(top_srcdir)/common/gncoll.h $(top_srcdir)/common/collcmd.h \
-	main.c support.c support.h interface.c interface.h callbacks.c \
-	callbacks.h $(am__append_1)
+	main.c gtk-gnhast.h collector.h support.c support.h \
+	interface.c interface.h callbacks.c callbacks.h \
+	$(am__append_1)
 gtk_gnhast_LDADD = @GTK2_LIBS@ $(top_builddir)/libconfuse/libconfuse.la
 all: all-am
 
@@ -437,6 +441,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/common.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/confparser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/devices.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/genconn.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gncoll.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/interface.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/main.Po@am__quote@
@@ -548,6 +553,20 @@ collcmd.obj: $(top_srcdir)/common/collcmd.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/collcmd.c' object='collcmd.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o collcmd.obj `if test -f '$(top_srcdir)/common/collcmd.c'; then $(CYGPATH_W) '$(top_srcdir)/common/collcmd.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/collcmd.c'; fi`
+
+genconn.o: $(top_srcdir)/common/genconn.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT genconn.o -MD -MP -MF $(DEPDIR)/genconn.Tpo -c -o genconn.o `test -f '$(top_srcdir)/common/genconn.c' || echo '$(srcdir)/'`$(top_srcdir)/common/genconn.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/genconn.Tpo $(DEPDIR)/genconn.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/genconn.c' object='genconn.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o genconn.o `test -f '$(top_srcdir)/common/genconn.c' || echo '$(srcdir)/'`$(top_srcdir)/common/genconn.c
+
+genconn.obj: $(top_srcdir)/common/genconn.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT genconn.obj -MD -MP -MF $(DEPDIR)/genconn.Tpo -c -o genconn.obj `if test -f '$(top_srcdir)/common/genconn.c'; then $(CYGPATH_W) '$(top_srcdir)/common/genconn.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/genconn.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/genconn.Tpo $(DEPDIR)/genconn.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/genconn.c' object='genconn.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o genconn.obj `if test -f '$(top_srcdir)/common/genconn.c'; then $(CYGPATH_W) '$(top_srcdir)/common/genconn.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/genconn.c'; fi`
 
 bswap16.o: $(top_srcdir)/linux/bswap16.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT bswap16.o -MD -MP -MF $(DEPDIR)/bswap16.Tpo -c -o bswap16.o `test -f '$(top_srcdir)/linux/bswap16.c' || echo '$(srcdir)/'`$(top_srcdir)/linux/bswap16.c

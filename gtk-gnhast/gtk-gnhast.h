@@ -1,16 +1,18 @@
 #ifndef _GTK_GNHAST_H_
 #define _GKT_GNHAST_H_
 
+#include "collector.h"
+
 #define GTK_GNHAST_CONFIG_FILE "gtk-gnhast.conf"
 #define GNHASTD_DEVICE_FILE     "devices.conf"
 #define GNHASTD_DEVGROUP_FILE   "devgroups.conf"
-#define COLLECTOR_NAME "gtk-gnhast"
 #define INVALID_UID "_INVALID_UID_"
 #define FEED_RATE 60
 #define CTX_DEBUG "DEBUG"
 #define CTX_NOTICE "NOTICE"
 #define CTX_ERROR "ERROR"
 
+#if 0
 typedef struct _connection_t {
 	int port;
 	int type;
@@ -21,6 +23,7 @@ typedef struct _connection_t {
 	time_t lastdata;
 	int shutdown;
 } connection_t;
+#endif
 
 typedef struct _dd_field_t {
 	GtkWidget *label;
