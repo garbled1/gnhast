@@ -283,8 +283,6 @@ void on_dd_save_activate(GtkButton *button, gpointer user_data)
 	device_t *dev;
 	device_group_t *devgrp;
 	char *uid, *data, *data2, *rrdname;
-	char *p, *hold, *fhold;
-	int j;
 	double d;
 	uint32_t u;
 	int64_t ll;
@@ -343,33 +341,20 @@ void on_dd_save_activate(GtkButton *button, gpointer user_data)
 
 		/* handler */
 		data = (char *)gtk_entry_get_text(GTK_ENTRY(dd_fields[DD_HANDLER].entry));
-		if (dev->handler != NULL)
-			free(dev->handler);
-		dev->handler = strdup(data);
-
-		/* hargs (code stolen from cmdhandler.c) */
-
-		data = (char *)gtk_entry_get_text(GTK_ENTRY(dd_fields[DD_HARGS].entry));
-		fhold = hold = strdup(data);
-		/* free the old hargs */
-		for (j = 0; j < dev->nrofhargs; j++)
-			free(dev->hargs[j]);
-		if (dev->hargs)
-			free(dev->hargs);
-		/* count the arguments */
-		for ((p = strtok(hold, ",")), j=0; p;
-		     (p = strtok(NULL, ",")), j++);
-		dev->nrofhargs = j;
-		dev->hargs = safer_malloc(sizeof(char *) *
-					  dev->nrofhargs);
-		free(fhold);
-		fhold = hold = strdup(data);
-		for ((p = strtok(hold, ",")), j=0;
-		     p && j < dev->nrofhargs;
-		     (p = strtok(NULL, ",")), j++) {
-			dev->hargs[j] = strdup(p);
+		/* if handler is empty and new one is, skip this */
+		if (strlen(data) > 0 ||
+		    (strlen(data) == 0 && dev->handler != NULL)) {
+			if (dev->handler != NULL)
+				free(dev->handler);
+			if (strlen(data) > 0)
+				dev->handler = strdup(data);
 		}
-		free(fhold);
+
+		/* hargs */
+		data = (char *)gtk_entry_get_text(GTK_ENTRY(dd_fields[DD_HARGS].entry));
+		if (strlen(data) > 0 ||
+		    (strlen(data) == 0 && dev->nrofhargs > 1))
+			parse_hargs(dev, data);
 
 		/* lowat & hiwat */
 		data = (char *)gtk_entry_get_text(GTK_ENTRY(dd_fields[DD_LOWAT].entry));

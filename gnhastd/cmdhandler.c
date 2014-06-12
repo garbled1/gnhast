@@ -538,7 +538,7 @@ int cmd_modify(pargs_t *args, void *arg)
 	double d;
 	uint32_t u;
 	device_t *dev;
-	char *uid=NULL, *p, *hold, *fhold;
+	char *uid=NULL;
 	client_t *client = (client_t *)arg;
 	struct evbuffer *send;
 
@@ -613,26 +613,7 @@ int cmd_modify(pargs_t *args, void *arg)
 			        "low watermark", args[i].arg.d);
 			break;
 		case SC_HARGS:
-			fhold = hold = strdup(args[i].arg.c);
-			/* free the old hargs */
-			for (j = 0; j < dev->nrofhargs; j++)
-				free(dev->hargs[j]);
-			if (dev->hargs)
-				free(dev->hargs);
-			/* count the arguments */
-			for ((p = strtok(hold, ",")), j=0; p;
-			     (p = strtok(NULL, ",")), j++);
-			dev->nrofhargs = j;
-			dev->hargs = safer_malloc(sizeof(char *) *
-						  dev->nrofhargs);
-			free(fhold);
-			fhold = hold = strdup(args[i].arg.c);
-			for ((p = strtok(hold, ",")), j=0;
-			     p && j < dev->nrofhargs;
-			     (p = strtok(NULL, ",")), j++) {
-				dev->hargs[j] = strdup(p);
-			}
-			free(fhold);
+			parse_hargs(dev, args[i].arg.c);
 			LOG(LOG_NOTICE, "Handler args uid:%s changed to %s,"
 			    " %d arguments", dev->uid, args[i].arg.c,
 			    dev->nrofhargs);

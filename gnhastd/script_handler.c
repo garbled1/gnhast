@@ -63,8 +63,15 @@ void run_handler_dev(device_t *dev)
 	char **cmd;
 	client_t *client;
 
+	/* sanity checks */
+
 	if (dev->handler == NULL) {
 		LOG(LOG_ERROR, "Attempt to call handler for device w/o handler");
+		return;
+	}
+	if (access(dev->handler, X_OK)) {
+		LOG(LOG_ERROR, "Handler %s does not exist or is not"
+		    " executable", dev->handler);
 		return;
 	}
 

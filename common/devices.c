@@ -644,7 +644,7 @@ char *print_data_dev(device_t *dev, int where)
 		break;
 	case DATATYPE_LL:
 		get_data_dev(dev, where, &ll);
-		sprintf(buf, "%jd", u);
+		sprintf(buf, "%jd", ll);
 		break;
 	case DATATYPE_DOUBLE:
 	default:
@@ -653,6 +653,55 @@ char *print_data_dev(device_t *dev, int where)
 		break;
 	}
 	return strdup(buf);
+}
+
+/**
+   \brief parse an hargs string and fixup hargs
+   \param dev device
+   \param data string to parse
+*/
+
+void parse_hargs(device_t *dev, char *data)
+{
+	char *p, *hold, *fhold;
+	int j;
+
+	if (data == NULL)
+		return;
+
+	/* Maybe they want to nuke the hargs?  ok. */
+	if (strlen(data) < 1) {
+		/* free the old hargs */
+		for (j = 0; j < dev->nrofhargs; j++)
+			free(dev->hargs[j]);
+		if (dev->hargs)
+			free(dev->hargs);
+		dev->nrofhargs = 0;
+		return;
+	}
+
+	fhold = hold = strdup(data);
+
+	/* free the old hargs */
+	for (j = 0; j < dev->nrofhargs; j++)
+		free(dev->hargs[j]);
+	if (dev->hargs)
+		free(dev->hargs);
+
+	/* count the arguments */
+	for ((p = strtok(hold, ",")), j=0; p;
+	     (p = strtok(NULL, ",")), j++);
+	dev->nrofhargs = j;
+	dev->hargs = safer_malloc(sizeof(char *) *
+				  dev->nrofhargs);
+	free(fhold);
+	fhold = hold = strdup(data);
+	for ((p = strtok(hold, ",")), j=0;
+	     p && j < dev->nrofhargs;
+	     (p = strtok(NULL, ",")), j++) {
+		dev->hargs[j] = strdup(p);
+	}
+	free(fhold);
 }
 
 /**

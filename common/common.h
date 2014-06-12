@@ -96,6 +96,7 @@ void init_devtable(cfg_t *cfg, int readconf);
 void get_data_dev(device_t *dev, int where, void *data);
 void store_data_dev(device_t *dev, int where, void *data);
 char *print_data_dev(device_t *dev, int where);
+void parse_hargs(device_t *dev, char *data);
 int datatype_dev(device_t *dev);
 int device_watermark(device_t *dev);
 void cb_timerdev_update(int fd, short what, void *arg);
