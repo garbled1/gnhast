@@ -43,6 +43,9 @@
 #include <string.h>
 #include <errno.h>
 #include <netdb.h>
+#include <time.h>
+#include <signal.h>
+#include <event2/dns.h>
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
 #include <event2/event.h>
@@ -50,104 +53,75 @@
 #include "common.h"
 #include "gnhast.h"
 #include "confuse.h"
+#include "collcmd.h"
+#include "genconn.h"
 #include "gncoll.h"
+#include "collector.h"
 
-#define COLLECTOR_NAME "fakecoll"
+/* There is a bunch of extraneous stuff in this example that really isn't
+   needed to just get the fakecoll working, however, I've built it like a
+   normal collector, so it can be easily copied and hacked up.
+*/
+
+/* internal stuffs here */
+int loopmax = FAKECOLL_LOOPMAX;
+int loopcur = 0;
+device_t *deva, *devb, *devc;
 
 /** our logfile */
 FILE *logfile;
-
 char *dumpconf = NULL;
+char *conffile = SYSCONFDIR "/" FAKECOLL_CONFIG_FILE;;
 
-/** Need the argtable in scope, so we can generate proper commands for the server */
+/* Need the argtable in scope, so we can generate proper commands
+   for the server */
 extern argtable_t argtable[];
 
 /** The event base */
 struct event_base *base;
 struct evdns_base *dns_base;
 
-cfg_t *cfg;
+cfg_t *cfg, *gnhastd_c;
 
-/* empty options to satisfy confparser */
-cfg_opt_t options[] = {
+#define CONN_TYPE_GNHASTD       1
+char *conntype[3] = {
+        "none",
+        "gnhastd",
+};
+connection_t *gnhastd_conn;
+int need_rereg = 0;
+extern int debugmode;
+
+/* Example options setup */
+
+extern cfg_opt_t device_opts[];
+
+cfg_opt_t gnhastd_opts[] = {
+	CFG_STR("hostname", "127.0.0.1", CFGF_NONE),
+	CFG_INT("port", 2920, CFGF_NONE),
 	CFG_END(),
 };
 
+cfg_opt_t options[] = {
+	CFG_SEC("gnhastd", gnhastd_opts, CFGF_NONE),
+	CFG_SEC("device", device_opts, CFGF_MULTI | CFGF_TITLE),
+	CFG_STR("logfile", FAKECOLL_LOG_FILE, CFGF_NONE),
+	CFG_STR("pidfile", FAKECOLL_PID_FILE, CFGF_NONE),
+	CFG_END(),
+};
+
+void cb_generate_chaff(int fd, short what, void *arg);
+void cb_sigterm(int fd, short what, void *arg);
+void cb_shutdown(int fd, short what, void *arg);
+
+
+/*** Collector specific code goes here ***/
 
 /**
-	\brief A read callback, got data from server
-	\param in The bufferevent that fired
-	\param arg optional arg
-*/
-
-void buf_read_cb(struct bufferevent *in, void *arg)
-{
-	char *data;
-	struct evbuffer *input;
-	size_t len;
-
-	input = bufferevent_get_input(in);
-	data = evbuffer_readln(input, &len, EVBUFFER_EOL_CRLF);
-	if (len) {
-		printf("Got data? %s\n", data);
-		free(data);
-	}
-}
-
-/**
-	\brief A write callback, if we need to tell server something
-	\param out The bufferevent that fired
-	\param arg optional argument
-*/
-
-void buf_write_cb(struct bufferevent *out, void *arg)
-{
-	struct evbuffer *send;
-
-	send = evbuffer_new();
-	evbuffer_add_printf(send, "test\n");
-	bufferevent_write_buffer(out, send);
-	evbuffer_free(send);
-}
-
-/**
-	\brief Error callback, close down connection
-	\param ev The bufferevent that fired
-	\param what why did it fire?
-	\param arg set to the client structure, so we can free it out and close fd
-*/
-
-void buf_error_cb(struct bufferevent *ev, short what, void *arg)
-{
-	client_t *client = (client_t *)arg;
-
-	if (what & BEV_EVENT_CONNECTED) {
-		LOG(LOG_NOTICE, "Connected to server");
-	} else {
-		bufferevent_free(client->ev);
-		close(client->fd);
-		free(client);
-		exit(2);
-	}
-}
-
-/**
-	\brief A simple timer callback that stops the event loop
-	\param nada used for file descriptor
-	\param what why did we fire?
-	\param arg optional argument
-*/
-
-void timer_cb(int nada, short what, void *arg)
-{
-	event_loopbreak();
-}
-
-/**
-	\brief random number generator, between x and y
-	\param min smallest number
-	\param max largest number
-	\return The random number
+   \brief random number generator, between x and y
+   \param min smallest number
+   \param max largest number
+   \return The random number
 */
 
 int rndm(int min, int max)
@@ -162,10 +136,10 @@ int rndm(int min, int max)
 }
 
 /**
-	\brief random number generator, between x and y, float value
-	\param min smallest number
-	\param max largest number
-	\return The random number
+   \brief random number generator, between x and y, float value
+   \param min smallest number
+   \param max largest number
+   \return The random number
 */
 
 float frndm(float min, float max)
@@ -180,17 +154,73 @@ float frndm(float min, float max)
 }
 
 /**
-	\brief Quick routine to generate lots of fake events
-	\param out bufferevent to schedule to
+   \brief Generate chaff callback so we can test the engine
+   \param fd unused
+   \param what what happened?
+   \param arg unused
 */
 
-void generate_chaff(struct bufferevent *out)
+void cb_generate_chaff(int fd, short what, void *arg)
 {
-	device_t *deva, *devb, *devc;
-	int i, j;
+	int j;
 	uint8_t s, ss;
 	double d, dd;
 	struct timeval secs = { 0, 0 };
+	struct event *timer_ev;
+
+	loopcur++;
+
+	j = rndm(0, 2);
+	switch(j) {
+	case 0:
+		s = rndm(0, 1);
+		store_data_dev(deva, DATALOC_DATA, &s);
+		gn_update_device(deva, 0, gnhastd_conn->bev);
+		get_data_dev(deva, DATALOC_LAST, &ss);
+		LOG(LOG_NOTICE, "Storing on %s:%d last: %d",
+		    deva->name, s, ss);
+		break;
+	case 1:
+		d = frndm(60.0, 110.0);
+		store_data_dev(devb, DATALOC_DATA, &d);
+		get_data_dev(devb, DATALOC_LAST, &dd);
+		gn_update_device(devb, 0, gnhastd_conn->bev);
+		LOG(LOG_NOTICE, "Storing on %s:%f last: %f",
+		    devb->name, d, dd);
+		break;
+	case 2:
+		d = frndm(0.0, 100.0);
+		store_data_dev(devc, DATALOC_DATA, &d);
+		get_data_dev(devc, DATALOC_LAST, &dd);
+		gn_update_device(devc, 0, gnhastd_conn->bev);
+		LOG(LOG_NOTICE, "Storing on %s:%f last: %f",
+		    devc->name, d, dd);
+		break;
+	}
+
+	if (loopcur >= loopmax) {
+		cb_sigterm(0, 0, NULL);
+		return;
+	}
+
+	/* otherwise, schedule another one */
+
+	/* sleep for 2-10 seconds */
+	secs.tv_sec = rndm(2, 10);
+
+	/* schedule ourselves as a timer */
+	timer_ev = evtimer_new(base, cb_generate_chaff, NULL);
+	evtimer_add(timer_ev, &secs);
+}
+
+/**
+   \brief Build the fake devices and setup the event loop
+*/
+
+void build_chaff_engine(void)
+{
+	struct timeval secs = { 0, 0 };
+	struct event *timer_ev;
 
 	/* Setup 3 fake devices */
 	deva = smalloc(device_t);
@@ -216,74 +246,84 @@ void generate_chaff(struct bufferevent *out)
 	devc->subtype = SUBTYPE_OUTLET;
 
 	/* tell the server about the three devices */
-	gn_register_device(deva, out);
-	gn_register_device(devb, out);
-	gn_register_device(devc, out);
+	gn_register_device(deva, gnhastd_conn->bev);
+	gn_register_device(devb, gnhastd_conn->bev);
+	gn_register_device(devc, gnhastd_conn->bev);
 
-	/* Generate 50 device updates */
-	for (i=0; i < 50; i++) {
-		j = rndm(0, 2);
-		switch(j) {
-		case 0:
-			s = rndm(0, 1);
-			store_data_dev(deva, DATALOC_DATA, &s);
-			gn_update_device(deva, 0, out);
-			get_data_dev(deva, DATALOC_LAST, &ss);
-			LOG(LOG_NOTICE, "Storing on %s:%d last: %d",
-			    deva->name, s, ss);
-			break;
-		case 1:
-			d = frndm(60.0, 110.0);
-			store_data_dev(devb, DATALOC_DATA, &d);
-			get_data_dev(devb, DATALOC_LAST, &dd);
-			gn_update_device(devb, 0, out);
-			LOG(LOG_NOTICE, "Storing on %s:%f last: %f",
-			    devb->name, d, dd);
-			break;
-		case 2:
-			d = frndm(0.0, 100.0);
-			store_data_dev(devc, DATALOC_DATA, &d);
-			get_data_dev(devc, DATALOC_LAST, &dd);
-			gn_update_device(devc, 0, out);
-			LOG(LOG_NOTICE, "Storing on %s:%f last: %f",
-			    devc->name, d, dd);
-			break;
-		}
-		/* sleep for 2-10 seconds */
-		secs.tv_sec = rndm(2, 10);
-		/* this timer will stop the eventloop and let us generate a new event */
-		event_base_loopexit(base, &secs);
-		/* fire the event engine up */
-		event_base_dispatch(base);
-	}
+	/* sleep for 2-10 seconds */
+	secs.tv_sec = rndm(2, 10);
+
+	/* schedule a chaff timer */
+	timer_ev = evtimer_new(base, cb_generate_chaff, NULL);
+	evtimer_add(timer_ev, &secs);
 }
+
+
+/*****
+  Signal handlers and related phizz
+*****/
+
+/**
+   \brief Shutdown timer
+   \param fd unused
+   \param what what happened?
+   \param arg unused
+*/
+
+void cb_shutdown(int fd, short what, void *arg)
+{
+	LOG(LOG_WARNING, "Clean shutdown timed out, stopping");
+	event_base_loopexit(base, NULL);
+}
+
+/**
+   \brief A sigterm handler
+   \param fd unused
+   \param what what happened?
+   \param arg unused
+*/
+
+void cb_sigterm(int fd, short what, void *arg)
+{
+	struct timeval secs = { 30, 0 };
+	struct event *ev;
+
+	LOG(LOG_NOTICE, "Recieved SIGTERM, shutting down");
+	gnhastd_conn->shutdown = 1;
+	gn_disconnect(gnhastd_conn->bev);
+	ev = evtimer_new(base, cb_shutdown, NULL);
+	evtimer_add(ev, &secs);
+}
+
+/**
+   \brief Main itself
+   \param argc count
+   \param arvg vector
+   \return int
+*/
 
 int main(int argc, char **argv)
 {
-        struct sockaddr_in serv_addr;
-        struct hostent *server;
-	client_t *srv;
+	struct event *ev;
 	extern char *optarg;
 	extern int optind;
-	int ch, port = 2920;
-	char *conffile = "none"; /* XXX Fixme */
-	char *gnhastdserver = "127.0.0.1";
-
-	/* Initialize the event system */
-	base = event_base_new();
-	dns_base = evdns_base_new(base, 1);
-
-	/* Initialize the argtable */
-	init_argcomm();
+	int ch, port = -1;
+	char *gnhastdserver = NULL;
 
 	/* process command line arguments */
-	while ((ch = getopt(argc, argv, "?c:s:p:")) != -1)
+	while ((ch = getopt(argc, argv, "?c:dl:s:p:")) != -1)
 		switch (ch) {
 		case 'c':	/* Set configfile */
-			conffile = optarg;
+			conffile = strdup(optarg);
+			break;
+		case 'd':	/* debugging mode */
+			debugmode = 1;
+			break;
+		case 'l':
+			loopmax = atoi(optarg);
 			break;
 		case 's':	/* set servername */
-			gnhastdserver = optarg;
+			gnhastdserver = strdup(optarg);
 			break;
 		case 'p':	/* portnum */
 			port = atoi(optarg);
@@ -291,31 +331,77 @@ int main(int argc, char **argv)
 		default:
 		case '?':	/* you blew it */
 			(void)fprintf(stderr, "usage:\n%s [-c configfile]"
-			    "[-s server] [-p port]\n", getprogname());
+				      "[-l loops] [-s server] [-p port]\n",
+				      getprogname());
 			return(EXIT_FAILURE);
 			/*NOTREACHED*/
 			break;
 		}
 
+	if (!debugmode)
+		if (daemon(0, 0) == -1)
+			LOG(LOG_FATAL, "Failed to daemonize: %s",
+			    strerror(errno));
 
-	/* Setup our socket */
-	srv = smalloc(client_t);
+	/* Initialize the event system */
+	base = event_base_new();
+	dns_base = evdns_base_new(base, 1);
 
-	srv->ev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
-	bufferevent_setcb(srv->ev, buf_read_cb, NULL, buf_error_cb, srv);
-	bufferevent_enable(srv->ev, EV_READ|EV_WRITE);
+	/* Initialize the argtable */
+	init_argcomm();
+	/* Initialize the device table */
+	init_devtable(cfg, 0);
 
-	bufferevent_socket_connect_hostname(srv->ev, dns_base, AF_UNSPEC,
-					    gnhastdserver, port);
-	srv->fd = bufferevent_getfd(srv->ev);
+	cfg = parse_conf(conffile);
 
-	gn_client_name(srv->ev, COLLECTOR_NAME);
+	if (!debugmode)
+		logfile = openlog(cfg_getstr(cfg, "logfile"));
+
+	writepidfile(cfg_getstr(cfg, "pidfile"));
+
+	/* Now, parse the details of connecting to the gnhastd server */
+
+	if (cfg) {
+		gnhastd_c = cfg_getsec(cfg, "gnhastd");
+		if (!gnhastd_c)
+			LOG(LOG_FATAL, "Error reading config file, "
+			    "gnhastd section");
+	}
+
+	gnhastd_conn = smalloc(connection_t);
+	if (port != -1)
+		gnhastd_conn->port = port;
+	else
+		gnhastd_conn->port = cfg_getint(gnhastd_c, "port");
+	if (gnhastdserver != NULL)
+		gnhastd_conn->host = gnhastdserver;
+	else
+		gnhastd_conn->host = cfg_getstr(gnhastd_c, "hostname");
+	gnhastd_conn->type = CONN_TYPE_GNHASTD;
+	/* cheat, and directly call the timer callback
+	   This sets up a connection to the server. */
+	generic_connect_server_cb(0, 0, gnhastd_conn);
+	gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
+
+	/* setup signal handlers */
+	ev = evsignal_new(base, SIGHUP, cb_sighup, conffile);
+	event_add(ev, NULL);
+	ev = evsignal_new(base, SIGTERM, cb_sigterm, NULL);
+	event_add(ev, NULL);
+	ev = evsignal_new(base, SIGINT, cb_sigterm, NULL);
+	event_add(ev, NULL);
+	ev = evsignal_new(base, SIGQUIT, cb_sigterm, NULL);
+	event_add(ev, NULL);
 
 	/* spam the server */
-	generate_chaff(srv->ev);
+	build_chaff_engine();
 
-	/* Close out the fd, and bail */
-        close(srv->fd); 
+	/* go forth and destroy */
+	event_base_dispatch(base);
+
+	/* Close out the log, and bail */
+	closelog();
+	delete_pidfile();
 	return(0);
 }
 
