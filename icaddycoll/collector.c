@@ -725,47 +725,6 @@ void icaddy_startfeed(char *url_prefix)
 
 
 /*****
-      General routines/gnhastd connection stuff
-*****/
-
-
-/*****
-  Signal handlers and related phizz
-*****/
-
-/**
-   \brief Shutdown timer
-   \param fd unused
-   \param what what happened?
-   \param arg unused
-*/
-
-void cb_shutdown(int fd, short what, void *arg)
-{
-	LOG(LOG_WARNING, "Clean shutdown timed out, stopping");
-	event_base_loopexit(base, NULL);
-}
-
-/**
-   \brief A sigterm handler
-   \param fd unused
-   \param what what happened?
-   \param arg unused
-*/
-
-void cb_sigterm(int fd, short what, void *arg)
-{
-	struct timeval secs = { 30, 0 };
-	struct event *ev;
-
-	LOG(LOG_NOTICE, "Recieved SIGTERM, shutting down");
-	gnhastd_conn->shutdown = 1;
-	gn_disconnect(gnhastd_conn->bev);
-	ev = evtimer_new(base, cb_shutdown, NULL);
-	evtimer_add(ev, &secs);
-}
-
-/*****
   irrigationcaddy discovery stuff
 *****/
 
@@ -799,14 +758,14 @@ void cb_end_discovery(int fd, short what, void *arg)
 		} else {
 			LOG(LOG_ERROR, "No hostname set in conf file, and "
 			    "too many IrrigationCaddys found, giving up.");
-			cb_shutdown(0, 0, NULL);
+			generic_cb_shutdown(0, 0, NULL);
 			return; /*NOTREACHED*/
 		}
 	}
 
 	if (hn == NULL) {
 		LOG(LOG_ERROR, "Hostname still NULL, giving up");
-		cb_shutdown(0, 0, NULL);
+		generic_cb_shutdown(0, 0, NULL);
 		return; /*NOTREACHED*/
 	}
 
@@ -829,7 +788,7 @@ void cb_end_discovery(int fd, short what, void *arg)
 	}
 	if (icaddy_url == NULL) {
 		LOG(LOG_ERROR, "Couldn't find a matching controller, punt");
-		cb_shutdown(0, 0, NULL);
+		generic_cb_shutdown(0, 0, NULL);
 		return; /*NOTREACHED*/
 	}
 	LOG(LOG_NOTICE, "Set connect URL to %s", icaddy_url);
@@ -1091,11 +1050,11 @@ int main(int argc, char **argv)
 	/* setup signal handlers */
 	ev = evsignal_new(base, SIGHUP, cb_sighup, conffile);
 	event_add(ev, NULL);
-	ev = evsignal_new(base, SIGTERM, cb_sigterm, NULL);
+	ev = evsignal_new(base, SIGTERM, generic_cb_sigterm, NULL);
 	event_add(ev, NULL);
-	ev = evsignal_new(base, SIGINT, cb_sigterm, NULL);
+	ev = evsignal_new(base, SIGINT, generic_cb_sigterm, NULL);
 	event_add(ev, NULL);
-	ev = evsignal_new(base, SIGQUIT, cb_sigterm, NULL);
+	ev = evsignal_new(base, SIGQUIT, generic_cb_sigterm, NULL);
 	event_add(ev, NULL);
 
 	/* update timer devices */

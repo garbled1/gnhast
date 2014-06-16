@@ -131,3 +131,35 @@ void generic_connect_event_cb(struct bufferevent *ev, short what, void *arg)
 			event_base_loopexit(base, NULL);
 	}
 }
+
+/**
+   \brief Shutdown timer
+   \param fd unused
+   \param what what happened?
+   \param arg unused
+*/
+
+void generic_cb_shutdown(int fd, short what, void *arg)
+{
+	LOG(LOG_WARNING, "Clean shutdown timed out, stopping");
+	event_base_loopexit(base, NULL);
+}
+
+/**
+   \brief A sigterm handler
+   \param fd unused
+   \param what what happened?
+   \param arg unused
+*/
+
+void generic_cb_sigterm(int fd, short what, void *arg)
+{
+	struct timeval secs = { 30, 0 };
+	struct event *ev;
+
+	LOG(LOG_NOTICE, "Recieved SIGTERM, shutting down");
+	gnhastd_conn->shutdown = 1;
+	gn_disconnect(gnhastd_conn->bev);
+	ev = evtimer_new(base, generic_cb_shutdown, NULL);
+	evtimer_add(ev, &secs);
+}

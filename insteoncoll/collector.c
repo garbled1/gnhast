@@ -572,19 +572,6 @@ void parse_devices(cfg_t *cfg)
 }
 
 /**
-   \brief Shutdown timer
-   \param fd unused
-   \param what what happened?
-   \param arg unused
-*/
-
-void cb_shutdown(int fd, short what, void *arg)
-{
-	LOG(LOG_WARNING, "Clean shutdown timed out, stopping");
-	event_base_loopexit(base, NULL);
-}
-
-/**
    \brief A sigterm handler
    \param fd unused
    \param what what happened?
@@ -600,7 +587,7 @@ void cb_sigterm(int fd, short what, void *arg)
 	gnhastd_conn->shutdown = 1;
 	gn_disconnect(gnhastd_conn->bev);
 	bufferevent_free(plm_conn->bev);
-	ev = evtimer_new(base, cb_shutdown, NULL);
+	ev = evtimer_new(base, generic_cb_shutdown, NULL);
 	evtimer_add(ev, &secs);
 }
 
