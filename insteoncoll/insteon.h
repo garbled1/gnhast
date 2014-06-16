@@ -1,11 +1,12 @@
 #ifndef _INSTEON_H_
 #define _INSTEON_H_
 
+#include "collector.h"
+
 #define INSTEON_DB_FILE		"insteon.db"
 #define INSTEONCOLL_LOG_FILE	"insteoncoll.log"
 #define INSTEONCOLL_PID_FILE	"insteoncoll.pid"
 #define INSTEONCOLL_CONF_FILE	"insteoncoll.conf"
-#define COLLECTOR_NAME		"insteoncoll"
 
 /* PLM defines */
 
@@ -158,15 +159,6 @@ typedef struct _insteon_devdata_t {
 
 #define CONN_TYPE_PLM		1
 #define CONN_TYPE_GNHASTD	2
-
-typedef struct _connection_t {
-	int port;
-	int type;
-	int lastcmd;
-	char *host;
-	struct bufferevent *bev;
-	int shutdown;
-} connection_t;
 
 /****************
 	Funtions from insteon_common.c

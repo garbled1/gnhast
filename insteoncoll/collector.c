@@ -58,6 +58,7 @@
 #include "confparser.h"
 #include "confuse.h"
 #include "gncoll.h"
+#include "genconn.h"
 #include "collcmd.h"
 #include "insteon.h"
 
@@ -68,8 +69,6 @@ extern int nrofdevs;
 extern char *conntype[];
 extern commands_t commands[];
 
-void connect_event_cb(struct bufferevent *ev, short what, void *arg);
-void connect_server_cb(int nada, short what, void *arg);
 void plm_query_all_devices(void);
 void plm_query_grouped_devices(device_t *dev, uint group);
 
@@ -161,39 +160,6 @@ void storelog_dimmer(device_t *dev, double d)
 /**********************************************
 	gnhastd handlers
 **********************************************/
-
-/**
-   \brief Called when an upd command occurs
-   \param dev device that got updated
-   \param arg pointer to client_t
-*/
-
-void coll_upd_cb(device_t *dev, void *arg)
-{
-	return;
-}
-
-/**
-   \brief Handle a enldevs device command
-   \param args The list of arguments
-   \param arg void pointer to client_t of provider
-*/
-
-int cmd_endldevs(pargs_t *args, void *arg)
-{
-	return 0;
-}
-
-/**
-   \brief Handle a endlgrps device command
-   \param args The list of arguments
-   \param arg void pointer to client_t of provider
-*/
-
-int cmd_endlgrps(pargs_t *args, void *arg)
-{
-	return 0;
-}
 
 /**
    \brief Called when a switch chg command occurs
@@ -569,117 +535,6 @@ void plm_query_grouped_devices(device_t *dev, uint group)
       General routines/gnhastd connection stuff
 *****/
 
-
-/**
-   \brief A write callback, if we need to tell server something
-   \param out The bufferevent that fired
-   \param arg optional argument
-*/
-
-void buf_write_cb(struct bufferevent *out, void *arg)
-{
-	struct evbuffer *send;
-
-	send = evbuffer_new();
-	evbuffer_add_printf(send, "test\n");
-	bufferevent_write_buffer(out, send);
-	evbuffer_free(send);
-}
-
-/**
-   \brief Error callback, close down connection
-   \param ev The bufferevent that fired
-   \param what why did it fire?
-   \param arg set to the client structure, so we can free it out and close fd
-*/
-
-void buf_error_cb(struct bufferevent *ev, short what, void *arg)
-{
-	client_t *client = (client_t *)arg;
-
-	bufferevent_free(client->ev);
-	close(client->fd);
-	free(client);
-	exit(2);
-}
-
-/**
-   \brief A timer callback that initiates a new connection
-   \param nada used for file descriptor
-   \param what why did we fire?
-   \param arg pointer to connection_t
-   \note also used to manually initiate a connection
-*/
-
-void connect_server_cb(int nada, short what, void *arg)
-{
-	connection_t *conn = (connection_t *)arg;
-	device_t *dev;
-
-	conn->bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
-	if (conn->type == CONN_TYPE_GNHASTD)
-		bufferevent_setcb(conn->bev, gnhastd_read_cb, NULL,
-				  connect_event_cb, conn);
-
-	bufferevent_enable(conn->bev, EV_READ|EV_WRITE);
-	bufferevent_socket_connect_hostname(conn->bev, dns_base, AF_UNSPEC,
-					    conn->host, conn->port);
-
-	if (conn->type == CONN_TYPE_GNHASTD) {
-		LOG(LOG_NOTICE, "Attempting to connect to %s @ %s:%d",
-		    conntype[conn->type], conn->host, conn->port);
-		if (need_rereg) {
-			TAILQ_FOREACH(dev, &alldevs, next_all)
-				if (dev->name != NULL)
-					gn_register_device(dev, conn->bev);
-			gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
-		}
-		need_rereg = 0;
-	}
-}
-
-/**
-   \brief Event callback used with connections
-   \param ev The bufferevent that fired
-   \param what why did it fire?
-   \param arg pointer to connection_t;
-*/
-
-void connect_event_cb(struct bufferevent *ev, short what, void *arg)
-{
-	int err;
-	connection_t *conn = (connection_t *)arg;
-	struct event *tev; /* timer event */
-	struct timeval secs = { 30, 0 }; /* retry in 30 seconds */
-
-	if (what & BEV_EVENT_CONNECTED) {
-		LOG(LOG_NOTICE, "Connected to %s", conntype[conn->type]);
-	} else if (what & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
-		if (what & BEV_EVENT_ERROR) {
-			err = bufferevent_socket_get_dns_error(ev);
-			if (err)
-				LOG(LOG_FATAL,
-				    "DNS Failure connecting to %s: %s",
-				    conntype[conn->type], strerror(err));
-		}
-		LOG(LOG_NOTICE, "Lost connection to %s, closing",
-		    conntype[conn->type]);
-		bufferevent_free(ev);
-
-		if (!conn->shutdown) {
-			/* we need to reconnect! */
-			need_rereg = 1;
-			tev = evtimer_new(base, connect_server_cb, conn);
-			evtimer_add(tev, &secs); /* XXX leak? */
-			LOG(LOG_NOTICE, "Attempting reconnection to "
-			    "%s @ %s:%d in %d seconds",
-			    conntype[conn->type], conn->host, conn->port,
-			    secs.tv_sec);
-		} else 
-			event_base_loopexit(base, NULL);
-	}
-}
-
 /**
    \brief Parse the config file for devices and load them
    \param cfg config base
@@ -855,7 +710,7 @@ main(int argc, char *argv[])
 	gnhastd_conn->host = cfg_getstr(gnhastd_c, "hostname");
 	/* cheat, and directly call the timer callback
 	   This sets up a connection to the server. */
-	connect_server_cb(0, 0, gnhastd_conn);
+	generic_connect_server_cb(0, 0, gnhastd_conn);
 	gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
 
 	/* setup signal handlers */

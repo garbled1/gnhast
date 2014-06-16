@@ -52,6 +52,7 @@
 #include "common.h"
 #include "confparser.h"
 #include "confuse.h"
+#include "genconn.h"
 #include "insteon.h"
 
 extern int errno;

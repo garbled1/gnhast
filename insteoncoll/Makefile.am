@@ -6,14 +6,15 @@ bin_PROGRAMS = insteon_discover insteoncoll insteon_aldb
 
 insteon_discover_SOURCES = \
 	$(top_srcdir)/common/common.c \
+	$(top_srcdir)/common/common.h \
 	$(top_srcdir)/common/devices.c \
 	$(top_srcdir)/common/confparser.c \
+	$(top_srcdir)/common/confparser.h \
 	$(top_srcdir)/common/serial_common.c \
 	$(top_srcdir)/common/gnhast.h \
-	$(top_srcdir)/common/common.h \
-	$(top_srcdir)/common/confparser.h \
 	$(top_srcdir)/common/confuse.h \
-	insteon.h \
+	$(top_srcdir)/common/genconn.h \
+	insteon.h collector.h \
 	insteon_common.c \
 	insteon_discover.c
 
@@ -31,19 +32,21 @@ endif
 
 insteoncoll_SOURCES = \
 	$(top_srcdir)/common/common.c \
+	$(top_srcdir)/common/common.h \
 	$(top_srcdir)/common/devices.c \
 	$(top_srcdir)/common/confparser.c \
+	$(top_srcdir)/common/confparser.h \
 	$(top_srcdir)/common/netparser.c \
 	$(top_srcdir)/common/gncoll.c \
+	$(top_srcdir)/common/gncoll.h \
+	$(top_srcdir)/common/genconn.c \
+	$(top_srcdir)/common/genconn.h \
 	$(top_srcdir)/common/collcmd.c \
+	$(top_srcdir)/common/collcmd.h \
 	$(top_srcdir)/common/serial_common.c \
 	$(top_srcdir)/common/gnhast.h \
-	$(top_srcdir)/common/common.h \
-	$(top_srcdir)/common/confparser.h \
 	$(top_srcdir)/common/confuse.h \
-	$(top_srcdir)/common/gncoll.h \
-	$(top_srcdir)/common/collcmd.h \
-	insteon.h \
+	insteon.h collector.h \
 	insteon_common.c \
 	collector.c
 
@@ -68,7 +71,8 @@ insteon_aldb_SOURCES = \
 	$(top_srcdir)/common/common.h \
 	$(top_srcdir)/common/confparser.h \
 	$(top_srcdir)/common/confuse.h \
-	insteon.h \
+	$(top_srcdir)/common/genconn.h \
+	insteon.h collector.h \
 	insteon_common.c \
 	insteon_aldb.c
 

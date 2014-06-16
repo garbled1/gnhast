@@ -46,6 +46,7 @@
 #include "gnhast.h"
 #include "common.h"
 #include "confparser.h"
+#include "genconn.h"
 #include "confuse.h"
 #include "insteon.h"
 
