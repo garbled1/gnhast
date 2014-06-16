@@ -21,9 +21,11 @@ icaddycoll_SOURCES = \
 	$(top_srcdir)/common/http_func.h \
 	$(top_srcdir)/common/jsmn_func.c \
 	$(top_srcdir)/common/jsmn_func.h \
+	$(top_srcdir)/common/genconn.c \
+	$(top_srcdir)/common/genconn.h \
 	$(top_srcdir)/jsmn/jsmn.c \
 	$(top_srcdir)/jsmn/jsmn.h \
-	icaddy.h \
+	icaddy.h collector.h \
 	collector.c
 
 if NEED_RBTREE

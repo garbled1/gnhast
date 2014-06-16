@@ -115,18 +115,21 @@ am__icaddycoll_SOURCES_DIST = $(top_srcdir)/common/common.c \
 	$(top_srcdir)/common/http_func.c \
 	$(top_srcdir)/common/http_func.h \
 	$(top_srcdir)/common/jsmn_func.c \
-	$(top_srcdir)/common/jsmn_func.h $(top_srcdir)/jsmn/jsmn.c \
-	$(top_srcdir)/jsmn/jsmn.h icaddy.h collector.c \
-	$(top_srcdir)/linux/bswap16.c $(top_srcdir)/linux/bswap32.c \
-	$(top_srcdir)/linux/bswap64.c $(top_srcdir)/linux/rb.c \
-	$(top_srcdir)/linux/queue.h $(top_srcdir)/linux/endian.h \
-	$(top_srcdir)/linux/rbtree.h $(top_srcdir)/linux/time.h
+	$(top_srcdir)/common/jsmn_func.h \
+	$(top_srcdir)/common/genconn.c $(top_srcdir)/common/genconn.h \
+	$(top_srcdir)/jsmn/jsmn.c $(top_srcdir)/jsmn/jsmn.h icaddy.h \
+	collector.h collector.c $(top_srcdir)/linux/bswap16.c \
+	$(top_srcdir)/linux/bswap32.c $(top_srcdir)/linux/bswap64.c \
+	$(top_srcdir)/linux/rb.c $(top_srcdir)/linux/queue.h \
+	$(top_srcdir)/linux/endian.h $(top_srcdir)/linux/rbtree.h \
+	$(top_srcdir)/linux/time.h
 @NEED_RBTREE_TRUE@am__objects_1 = bswap16.$(OBJEXT) bswap32.$(OBJEXT) \
 @NEED_RBTREE_TRUE@	bswap64.$(OBJEXT) rb.$(OBJEXT)
 am_icaddycoll_OBJECTS = common.$(OBJEXT) devices.$(OBJEXT) \
 	netparser.$(OBJEXT) confparser.$(OBJEXT) gncoll.$(OBJEXT) \
 	collcmd.$(OBJEXT) http_func.$(OBJEXT) jsmn_func.$(OBJEXT) \
-	jsmn.$(OBJEXT) collector.$(OBJEXT) $(am__objects_1)
+	genconn.$(OBJEXT) jsmn.$(OBJEXT) collector.$(OBJEXT) \
+	$(am__objects_1)
 icaddycoll_OBJECTS = $(am_icaddycoll_OBJECTS)
 icaddycoll_DEPENDENCIES = $(top_builddir)/libconfuse/libconfuse.la
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -365,8 +368,10 @@ icaddycoll_SOURCES = $(top_srcdir)/common/common.c \
 	$(top_srcdir)/common/http_func.c \
 	$(top_srcdir)/common/http_func.h \
 	$(top_srcdir)/common/jsmn_func.c \
-	$(top_srcdir)/common/jsmn_func.h $(top_srcdir)/jsmn/jsmn.c \
-	$(top_srcdir)/jsmn/jsmn.h icaddy.h collector.c $(am__append_1)
+	$(top_srcdir)/common/jsmn_func.h \
+	$(top_srcdir)/common/genconn.c $(top_srcdir)/common/genconn.h \
+	$(top_srcdir)/jsmn/jsmn.c $(top_srcdir)/jsmn/jsmn.h icaddy.h \
+	collector.h collector.c $(am__append_1)
 confexampledir = $(datarootdir)/gnhast/examples
 dist_confexample_DATA = \
 	icaddy.conf
@@ -474,6 +479,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/common.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/confparser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/devices.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/genconn.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gncoll.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/http_func.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jsmn.Po@am__quote@
@@ -613,6 +619,20 @@ jsmn_func.obj: $(top_srcdir)/common/jsmn_func.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/jsmn_func.c' object='jsmn_func.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o jsmn_func.obj `if test -f '$(top_srcdir)/common/jsmn_func.c'; then $(CYGPATH_W) '$(top_srcdir)/common/jsmn_func.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/jsmn_func.c'; fi`
+
+genconn.o: $(top_srcdir)/common/genconn.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT genconn.o -MD -MP -MF $(DEPDIR)/genconn.Tpo -c -o genconn.o `test -f '$(top_srcdir)/common/genconn.c' || echo '$(srcdir)/'`$(top_srcdir)/common/genconn.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/genconn.Tpo $(DEPDIR)/genconn.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/genconn.c' object='genconn.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o genconn.o `test -f '$(top_srcdir)/common/genconn.c' || echo '$(srcdir)/'`$(top_srcdir)/common/genconn.c
+
+genconn.obj: $(top_srcdir)/common/genconn.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT genconn.obj -MD -MP -MF $(DEPDIR)/genconn.Tpo -c -o genconn.obj `if test -f '$(top_srcdir)/common/genconn.c'; then $(CYGPATH_W) '$(top_srcdir)/common/genconn.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/genconn.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/genconn.Tpo $(DEPDIR)/genconn.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/genconn.c' object='genconn.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o genconn.obj `if test -f '$(top_srcdir)/common/genconn.c'; then $(CYGPATH_W) '$(top_srcdir)/common/genconn.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/genconn.c'; fi`
 
 jsmn.o: $(top_srcdir)/jsmn/jsmn.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT jsmn.o -MD -MP -MF $(DEPDIR)/jsmn.Tpo -c -o jsmn.o `test -f '$(top_srcdir)/jsmn/jsmn.c' || echo '$(srcdir)/'`$(top_srcdir)/jsmn/jsmn.c

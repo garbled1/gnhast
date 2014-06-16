@@ -1,10 +1,11 @@
 #ifndef _ICADDY_H_
 #define _ICADDY_H_
 
+#include "collector.h"
+
 #define ICADDYCOLL_CONFIG_FILE  "icaddycoll.conf"
 #define ICADDYCOLL_LOG_FILE     "icaddycoll.log"
 #define ICADDYCOLL_PID_FILE     "icaddycoll.pid"
-#define COLLECTOR_NAME		"icaddycoll"
 
 #define ICADDY_DPORT		30303
 #define ICADDY_DSTRING		"Discovery: Who is out there?"
@@ -23,14 +24,6 @@
 #define ICJ_RUNOFF_URL	"/stopSprinklers.htm"
 #define ICJ_RUNOFF_POST	"stop=off"
 #define ICJ_STOPPROG_POST	"stop=active"
-
-typedef struct _connection_t {
-        int port;
-        int type;
-        char *host;
-        struct bufferevent *bev;
-        int shutdown;
-} connection_t;
 
 typedef struct _http_ctx_t {
         struct evhttp_uri *uri;
