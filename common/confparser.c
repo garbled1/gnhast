@@ -49,6 +49,9 @@
 /* Externs */
 extern cfg_opt_t options[];
 extern TAILQ_HEAD(, _device_group_t) allgroups;
+extern name_map_t devtype_map[];
+extern name_map_t devproto_map[];
+extern name_map_t devsubtype_map[];
 
 static int conf_parse_proto(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 			      void *result);
@@ -155,32 +158,18 @@ int conf_parse_bool(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 static int conf_parse_proto(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 			      void *result)
 {
-	if (strcmp(value, "insteon-v1") == 0)
-		*(int *)result = PROTO_INSTEON_V1;
-	else if (strcmp(value, "insteon-v2") == 0)
-		*(int *)result = PROTO_INSTEON_V2;
-	else if (strcmp(value, "insteon-v2cs") == 0)
-		*(int *)result = PROTO_INSTEON_V2CS;
-	else if (strcmp(value, "sensor-owfs") == 0)
-		*(int *)result = PROTO_SENSOR_OWFS;
-	else if (strcmp(value, "brultech-gem") == 0)
-		*(int *)result = PROTO_SENSOR_BRULTECH_GEM;
-	else if (strcmp(value, "brultech-ecm1240") == 0)
-		*(int *)result = PROTO_SENSOR_BRULTECH_ECM1240;
-	else if (strcmp(value, "wmr918") == 0)
-		*(int *)result = PROTO_SENSOR_WMR918;
-	else if (strcmp(value, "ad2usb") == 0)
-		*(int *)result = PROTO_SENSOR_AD2USB;
-	else if (strcmp(value, "icaddy") == 0)
-		*(int *)result = PROTO_SENSOR_ICADDY;
-	else if (strcmp(value, "venstar") == 0)
-		*(int *)result = PROTO_SENSOR_VENSTAR;
-	else {
-		cfg_error(cfg, "invalid value for option '%s': %s",
-		    cfg_opt_name(opt), value);
-		return -1;
+	int i;
+
+	for (i=0; i < NROF_PROTOS; i++) {
+		if (strcmp(value, devproto_map[i].name) == 0) {
+			*(int *)result = devproto_map[i].id;
+			return 0;
+		}
 	}
-	return 0;
+
+	cfg_error(cfg, "invalid value for option '%s': %s",
+		  cfg_opt_name(opt), value);
+	return -1;
 }
 
 /**
@@ -192,44 +181,14 @@ static int conf_parse_proto(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 
 static void conf_print_proto(cfg_opt_t *opt, unsigned int index, FILE *fp)
 {
-	switch (cfg_opt_getnint(opt, index)) {
-	case PROTO_NONE:
-		fprintf(fp, "NONE");
-		break;
-	case PROTO_INSTEON_V1:
-		fprintf(fp, "insteon-v1");
-		break;
-	case PROTO_INSTEON_V2:
-		fprintf(fp, "insteon-v2");
-		break;
-	case PROTO_INSTEON_V2CS:
-		fprintf(fp, "insteon-v2cs");
-		break;
-	case PROTO_SENSOR_OWFS:
-		fprintf(fp, "sensor-owfs");
-		break;
-	case PROTO_SENSOR_BRULTECH_GEM:
-		fprintf(fp, "brultech-gem");
-		break;
-	case PROTO_SENSOR_BRULTECH_ECM1240:
-		fprintf(fp, "brultech-ecm1240");
-		break;
-	case PROTO_SENSOR_WMR918:
-		fprintf(fp, "wmr918");
-		break;
-	case PROTO_SENSOR_AD2USB:
-		fprintf(fp, "ad2usb");
-		break;
-	case PROTO_SENSOR_ICADDY:
-		fprintf(fp, "icaddy");
-		break;
-	case PROTO_SENSOR_VENSTAR:
-		fprintf(fp, "venstar");
-		break;
-	default:
-		fprintf(fp, "NONE");
-		break;
+	int i;
+
+	i = cfg_opt_getnint(opt, index);
+	if (i > 0 && i < NROF_PROTOS) {
+		fprintf(fp, "%s", devproto_map[i].name);
+		return;
 	}
+	fprintf(fp, "%s", devproto_map[PROTO_NONE].name);
 }
 
 /**
@@ -238,20 +197,18 @@ static void conf_print_proto(cfg_opt_t *opt, unsigned int index, FILE *fp)
 int conf_parse_type(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		    void *result)
 {
-	if (strcmp(value,"switch") == 0)
-		*(int *)result = DEVICE_SWITCH;
-	else if (strcmp(value,"dimmer") == 0)
-		*(int *)result = DEVICE_DIMMER;
-	else if (strcmp(value,"sensor") == 0)
-		*(int *)result = DEVICE_SENSOR;
-	else if (strcmp(value,"timer") == 0)
-		*(int *)result = DEVICE_TIMER;
-	else {
-		cfg_error(cfg, "invalid value for option '%s': %s",
-		    cfg_opt_name(opt), value);
-		return -1;
+	int i;
+
+	for (i=0; i < NROF_TYPES; i++) {
+		if (strcmp(value, devtype_map[i].name) == 0) {
+			*(int *)result = devtype_map[i].id;
+			return 0;
+		}
 	}
-	return 0;
+
+	cfg_error(cfg, "invalid value for option '%s': %s",
+		  cfg_opt_name(opt), value);
+	return -1;
 }
 
 /**
@@ -285,26 +242,14 @@ static void conf_print_bool(cfg_opt_t *opt, unsigned int index, FILE *fp)
 
 static void conf_print_type(cfg_opt_t *opt, unsigned int index, FILE *fp)
 {
-	switch (cfg_opt_getnint(opt, index)) {
-	case DEVICE_NONE:
-		fprintf(fp, "NONE");
-		break;
-	case DEVICE_SWITCH:
-		fprintf(fp, "switch");
-		break;
-	case DEVICE_DIMMER:
-		fprintf(fp, "dimmer");
-		break;
-	case DEVICE_SENSOR:
-		fprintf(fp, "sensor");
-		break;
-	case DEVICE_TIMER:
-		fprintf(fp, "timer");
-		break;
-	default:
-		fprintf(fp, "NONE");
-		break;
+	int i;
+
+	i = cfg_opt_getnint(opt, index);
+	if (i > 0 && i < NROF_TYPES) {
+		fprintf(fp, "%s", devtype_map[i].name);
+		return;
 	}
+	fprintf(fp, "%s", devtype_map[DEVICE_NONE].name);
 }
 
 /**
@@ -314,72 +259,19 @@ static void conf_print_type(cfg_opt_t *opt, unsigned int index, FILE *fp)
 int conf_parse_subtype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		       void *result)
 {
-	if (strcmp(value, "switch") == 0)
-		*(int *)result = SUBTYPE_SWITCH;
-	else if (strcmp(value, "outlet") == 0)
-		*(int *)result = SUBTYPE_OUTLET;
-	else if (strcmp(value, "temp") == 0)
-		*(int *)result = SUBTYPE_TEMP;
-	else if (strcmp(value, "humid") == 0)
-		*(int *)result = SUBTYPE_HUMID;
-	else if (strcmp(value, "lux") == 0)
-		*(int *)result = SUBTYPE_LUX;
-	else if (strcmp(value, "bool") == 0)
-		*(int *)result = SUBTYPE_BOOL;
-	else if (strcmp(value, "counter") == 0)
-		*(int *)result = SUBTYPE_COUNTER;
-	else if (strcmp(value, "pressure") == 0)
-		*(int *)result = SUBTYPE_PRESSURE;
-	else if (strcmp(value, "windspeed") == 0)
-		*(int *)result = SUBTYPE_SPEED;
-	else if (strcmp(value, "winddir") == 0)
-		*(int *)result = SUBTYPE_DIR;
-	else if (strcmp(value, "moisture") == 0)
-		*(int *)result = SUBTYPE_MOISTURE;
-	else if (strcmp(value, "wetness") == 0)
-		*(int *)result = SUBTYPE_WETNESS;
-	else if (strcmp(value, "hub") == 0)
-		*(int *)result = SUBTYPE_HUB;
-	else if (strcmp(value, "voltage") == 0)
-		*(int *)result = SUBTYPE_VOLTAGE;
-	else if (strcmp(value, "wattsec") == 0)
-		*(int *)result = SUBTYPE_WATTSEC;
-	else if (strcmp(value, "watt") == 0)
-		*(int *)result = SUBTYPE_WATT;
-	else if (strcmp(value, "amps") == 0)
-		*(int *)result = SUBTYPE_AMPS;
-	else if (strcmp(value, "rainrate") == 0)
-		*(int *)result = SUBTYPE_RAINRATE;
-	else if (strcmp(value, "weather") == 0)
-		*(int *)result = SUBTYPE_WEATHER;
-	else if (strcmp(value, "alarmstatus") == 0)
-		*(int *)result = SUBTYPE_ALARMSTATUS;
-	else if (strcmp(value, "number") == 0)
-		*(int *)result = SUBTYPE_NUMBER;
-	else if (strcmp(value, "percentage") == 0)
-		*(int *)result = SUBTYPE_PERCENTAGE;
-	else if (strcmp(value, "flowrate") == 0)
-		*(int *)result = SUBTYPE_FLOWRATE;
-	else if (strcmp(value, "distance") == 0)
-		*(int *)result = SUBTYPE_DISTANCE;
-	else if (strcmp(value, "volume") == 0)
-		*(int *)result = SUBTYPE_VOLUME;
-	else if (strcmp(value, "timer") == 0)
-		*(int *)result = SUBTYPE_TIMER;
-	else if (strcmp(value, "thmode") == 0)
-		*(int *)result = SUBTYPE_THMODE;
-	else if (strcmp(value, "thstate") == 0)
-		*(int *)result = SUBTYPE_THSTATE;
-	else if (strcmp(value, "smnumber") == 0)
-		*(int *)result = SUBTYPE_SMNUMBER;
-	else {
-		cfg_error(cfg, "invalid value for option '%s': %s",
-		    cfg_opt_name(opt), value);
-		return -1;
-	}
-	return 0;
-}
+	int i;
 
+	for (i=0; i < NROF_SUBTYPES; i++) {
+		if (strcmp(value, devsubtype_map[i].name) == 0) {
+			*(int *)result = devsubtype_map[i].id;
+			return 0;
+		}
+	}
+
+	cfg_error(cfg, "invalid value for option '%s': %s",
+		  cfg_opt_name(opt), value);
+	return -1;
+}
 
 /**
 	\brief Used to print subtypes
@@ -390,101 +282,14 @@ int conf_parse_subtype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 
 void conf_print_subtype(cfg_opt_t *opt, unsigned int index, FILE *fp)
 {
-	switch (cfg_opt_getnint(opt, index)) {
-	case SUBTYPE_NONE:
-		fprintf(fp, "NONE");
-		break;
-	case SUBTYPE_SWITCH:
-		fprintf(fp, "switch");
-		break;
-	case SUBTYPE_OUTLET:
-		fprintf(fp, "outlet");
-		break;
-	case SUBTYPE_TEMP:
-		fprintf(fp, "temp");
-		break;
-	case SUBTYPE_HUMID:
-		fprintf(fp, "humid");
-		break;
-	case SUBTYPE_LUX:
-		fprintf(fp, "lux");
-		break;
-	case SUBTYPE_BOOL:
-		fprintf(fp, "bool");
-		break;
-	case SUBTYPE_COUNTER:
-		fprintf(fp, "counter");
-		break;
-	case SUBTYPE_PRESSURE:
-		fprintf(fp, "pressure");
-		break;
-	case SUBTYPE_SPEED:
-		fprintf(fp, "windspeed");
-		break;
-	case SUBTYPE_DIR:
-		fprintf(fp, "winddir");
-		break;
-	case SUBTYPE_MOISTURE:
-		fprintf(fp, "moisture");
-		break;
-	case SUBTYPE_WETNESS:
-		fprintf(fp, "wetness");
-		break;
-	case SUBTYPE_HUB:
-		fprintf(fp, "hub");
-		break;
-	case SUBTYPE_VOLTAGE:
-		fprintf(fp, "voltage");
-		break;
-	case SUBTYPE_WATTSEC:
-		fprintf(fp, "wattsec");
-		break;
-	case SUBTYPE_WATT:
-		fprintf(fp, "watt");
-		break;
-	case SUBTYPE_AMPS:
-		fprintf(fp, "amps");
-		break;
-	case SUBTYPE_RAINRATE:
-		fprintf(fp, "rainrate");
-		break;
-	case SUBTYPE_WEATHER:
-		fprintf(fp, "weather");
-		break;
-	case SUBTYPE_ALARMSTATUS:
-		fprintf(fp, "alarmstatus");
-		break;
-	case SUBTYPE_NUMBER:
-		fprintf(fp, "number");
-		break;
-	case SUBTYPE_PERCENTAGE:
-		fprintf(fp, "percentage");
-		break;
-	case SUBTYPE_FLOWRATE:
-		fprintf(fp, "flowrate");
-		break;
-	case SUBTYPE_DISTANCE:
-		fprintf(fp, "distance");
-		break;
-	case SUBTYPE_VOLUME:
-		fprintf(fp, "volume");
-		break;
-	case SUBTYPE_TIMER:
-		fprintf(fp, "timer");
-		break;
-	case SUBTYPE_THMODE:
-		fprintf(fp, "thmode");
-		break;
-	case SUBTYPE_THSTATE:
-		fprintf(fp, "thstate");
-		break;
-	case SUBTYPE_SMNUMBER:
-		fprintf(fp, "smnumber");
-		break;
-	default:
-		fprintf(fp, "NONE");
-		break;
+	int i;
+
+	i = cfg_opt_getnint(opt, index);
+	if (i > 0 && i < NROF_SUBTYPES) {
+		fprintf(fp, "%s", devsubtype_map[i].name);
+		return;
 	}
+	fprintf(fp, "%s", devsubtype_map[SUBTYPE_NONE].name);
 }
 
 /**
@@ -730,7 +535,6 @@ void conf_print_lightscale(cfg_opt_t *opt, unsigned int index, FILE *fp)
 /*****
       General routines
 *****/
-
 
 /**
 	\brief Find the cfg entry for a device by it's UID

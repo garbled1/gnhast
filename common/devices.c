@@ -76,7 +76,7 @@ static const rb_tree_ops_t devgroup__alltree_ops = {
 
 /** The device type name map table */
 name_map_t devtype_map[] = {
-	{DEVICE_NONE, "none"},
+	{DEVICE_NONE, "NONE"},
 	{DEVICE_SWITCH, "switch"},
 	{DEVICE_DIMMER, "dimmer"},
 	{DEVICE_SENSOR, "sensor"},
@@ -84,7 +84,7 @@ name_map_t devtype_map[] = {
 };
 
 name_map_t devproto_map[] = {
-	{PROTO_NONE, "none"},
+	{PROTO_NONE, "NONE"},
 	{PROTO_INSTEON_V1, "insteon-v1"},
 	{PROTO_INSTEON_V2, "insteon-v2"},
 	{PROTO_INSTEON_V2CS, "insteon-v2cs"},
@@ -98,7 +98,7 @@ name_map_t devproto_map[] = {
 };
 
 name_map_t devsubtype_map[] = {
-	{SUBTYPE_NONE, "none"},
+	{SUBTYPE_NONE, "NONE"},
 	{SUBTYPE_SWITCH, "switch"},
 	{SUBTYPE_OUTLET, "outlet"},
 	{SUBTYPE_TEMP, "temp"},
