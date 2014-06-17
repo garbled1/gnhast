@@ -103,23 +103,26 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am__wmr918coll_SOURCES_DIST = $(top_srcdir)/common/common.c \
+	$(top_srcdir)/common/common.h \
 	$(top_srcdir)/common/serial_common.c \
 	$(top_srcdir)/common/devices.c \
 	$(top_srcdir)/common/netparser.c \
 	$(top_srcdir)/common/confparser.c \
-	$(top_srcdir)/common/gncoll.c $(top_srcdir)/common/common.h \
-	$(top_srcdir)/common/gnhast.h $(top_srcdir)/common/confuse.h \
 	$(top_srcdir)/common/confparser.h \
-	$(top_srcdir)/common/gncoll.h wmr918.h collector.c \
-	$(top_srcdir)/linux/bswap16.c $(top_srcdir)/linux/bswap32.c \
-	$(top_srcdir)/linux/bswap64.c $(top_srcdir)/linux/rb.c \
-	$(top_srcdir)/linux/queue.h $(top_srcdir)/linux/endian.h \
-	$(top_srcdir)/linux/rbtree.h $(top_srcdir)/linux/time.h
+	$(top_srcdir)/common/gncoll.c $(top_srcdir)/common/gncoll.h \
+	$(top_srcdir)/common/collcmd.c $(top_srcdir)/common/collcmd.h \
+	$(top_srcdir)/common/gnhast.h $(top_srcdir)/common/confuse.h \
+	wmr918.h collector.c $(top_srcdir)/linux/bswap16.c \
+	$(top_srcdir)/linux/bswap32.c $(top_srcdir)/linux/bswap64.c \
+	$(top_srcdir)/linux/rb.c $(top_srcdir)/linux/queue.h \
+	$(top_srcdir)/linux/endian.h $(top_srcdir)/linux/rbtree.h \
+	$(top_srcdir)/linux/time.h
 @NEED_RBTREE_TRUE@am__objects_1 = bswap16.$(OBJEXT) bswap32.$(OBJEXT) \
 @NEED_RBTREE_TRUE@	bswap64.$(OBJEXT) rb.$(OBJEXT)
 am_wmr918coll_OBJECTS = common.$(OBJEXT) serial_common.$(OBJEXT) \
 	devices.$(OBJEXT) netparser.$(OBJEXT) confparser.$(OBJEXT) \
-	gncoll.$(OBJEXT) collector.$(OBJEXT) $(am__objects_1)
+	gncoll.$(OBJEXT) collcmd.$(OBJEXT) collector.$(OBJEXT) \
+	$(am__objects_1)
 wmr918coll_OBJECTS = $(am_wmr918coll_OBJECTS)
 wmr918coll_DEPENDENCIES = $(top_builddir)/libconfuse/libconfuse.la
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -319,15 +322,16 @@ AM_CPPFLAGS = -DLOCALSTATEDIR=\"$(localstatedir)\" \
 	-I$(top_srcdir)/common
 
 wmr918coll_SOURCES = $(top_srcdir)/common/common.c \
+	$(top_srcdir)/common/common.h \
 	$(top_srcdir)/common/serial_common.c \
 	$(top_srcdir)/common/devices.c \
 	$(top_srcdir)/common/netparser.c \
 	$(top_srcdir)/common/confparser.c \
-	$(top_srcdir)/common/gncoll.c $(top_srcdir)/common/common.h \
-	$(top_srcdir)/common/gnhast.h $(top_srcdir)/common/confuse.h \
 	$(top_srcdir)/common/confparser.h \
-	$(top_srcdir)/common/gncoll.h wmr918.h collector.c \
-	$(am__append_1)
+	$(top_srcdir)/common/gncoll.c $(top_srcdir)/common/gncoll.h \
+	$(top_srcdir)/common/collcmd.c $(top_srcdir)/common/collcmd.h \
+	$(top_srcdir)/common/gnhast.h $(top_srcdir)/common/confuse.h \
+	wmr918.h collector.c $(am__append_1)
 wmr918coll_LDADD = $(top_builddir)/libconfuse/libconfuse.la
 all: all-am
 
@@ -426,6 +430,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bswap16.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bswap32.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bswap64.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/collcmd.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/collector.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/common.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/confparser.Po@am__quote@
@@ -539,6 +544,20 @@ gncoll.obj: $(top_srcdir)/common/gncoll.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/gncoll.c' object='gncoll.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o gncoll.obj `if test -f '$(top_srcdir)/common/gncoll.c'; then $(CYGPATH_W) '$(top_srcdir)/common/gncoll.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/gncoll.c'; fi`
+
+collcmd.o: $(top_srcdir)/common/collcmd.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT collcmd.o -MD -MP -MF $(DEPDIR)/collcmd.Tpo -c -o collcmd.o `test -f '$(top_srcdir)/common/collcmd.c' || echo '$(srcdir)/'`$(top_srcdir)/common/collcmd.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/collcmd.Tpo $(DEPDIR)/collcmd.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/collcmd.c' object='collcmd.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o collcmd.o `test -f '$(top_srcdir)/common/collcmd.c' || echo '$(srcdir)/'`$(top_srcdir)/common/collcmd.c
+
+collcmd.obj: $(top_srcdir)/common/collcmd.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT collcmd.obj -MD -MP -MF $(DEPDIR)/collcmd.Tpo -c -o collcmd.obj `if test -f '$(top_srcdir)/common/collcmd.c'; then $(CYGPATH_W) '$(top_srcdir)/common/collcmd.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/collcmd.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/collcmd.Tpo $(DEPDIR)/collcmd.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/collcmd.c' object='collcmd.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o collcmd.obj `if test -f '$(top_srcdir)/common/collcmd.c'; then $(CYGPATH_W) '$(top_srcdir)/common/collcmd.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/collcmd.c'; fi`
 
 bswap16.o: $(top_srcdir)/linux/bswap16.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT bswap16.o -MD -MP -MF $(DEPDIR)/bswap16.Tpo -c -o bswap16.o `test -f '$(top_srcdir)/linux/bswap16.c' || echo '$(srcdir)/'`$(top_srcdir)/linux/bswap16.c

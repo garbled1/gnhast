@@ -50,6 +50,7 @@
 #include "common.h"
 #include "gnhast.h"
 #include "confuse.h"
+#include "collcmd.h"
 #include "owsrv.h"
 #include "confparser.h"
 #include "gncoll.h"
@@ -580,43 +581,6 @@ void ows_connect_event_cb(struct bufferevent *ev, short what, void *arg)
       General routines/gnhastd connection stuff
 *****/
 
-
-/**
-   \brief A read callback, got data from server
-   \param in The bufferevent that fired
-   \param arg optional arg
-*/
-
-void buf_read_cb(struct bufferevent *in, void *arg)
-{
-	char *data;
-	struct evbuffer *input;
-	size_t len;
-
-	input = bufferevent_get_input(in);
-	data = evbuffer_readln(input, &len, EVBUFFER_EOL_CRLF);
-	if (len) {
-		printf("Got data? %s\n", data);
-		free(data);
-	}
-}
-
-/**
-   \brief A write callback, if we need to tell server something
-   \param out The bufferevent that fired
-   \param arg optional argument
-*/
-
-void buf_write_cb(struct bufferevent *out, void *arg)
-{
-	struct evbuffer *send;
-
-	send = evbuffer_new();
-	evbuffer_add_printf(send, "test\n");
-	bufferevent_write_buffer(out, send);
-	evbuffer_free(send);
-}
-
 /**
    \brief Error callback, close down connection
    \param ev The bufferevent that fired
@@ -649,7 +613,7 @@ void connect_server_cb(int nada, short what, void *arg)
 
 	conn->bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
 	if (conn->type == CONN_TYPE_GNHASTD)
-		bufferevent_setcb(conn->bev, buf_read_cb, NULL,
+		bufferevent_setcb(conn->bev, gnhastd_read_cb, NULL,
 				  connect_event_cb, conn);
 	else if (conn->type == CONN_TYPE_OWSRV)
 		bufferevent_setcb(conn->bev, ows_buf_read_cb, NULL,

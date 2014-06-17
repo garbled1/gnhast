@@ -1,10 +1,14 @@
 #ifndef _WUPWS_H_
 #define _WUPWS_H_
 
+#include "collector.h"
+
+#define CONN_TYPE_GNHASTD	2
+#define CONN_TYPE_WUPWS		1
+
 #define WUPWSCOLL_CONFIG_FILE	"wupwscoll.conf"
 #define WUPWSCOLL_LOG_FILE	"wupwscoll.log"
 #define WUPWSCOLL_PID_FILE	"wupwscoll.pid"
-#define COLLECTOR_NAME		"wupwscoll"
 
 #define WUPWS_DEBUG_URL		"http://127.0.0.1"
 #define WUPWS_DEBUG_PATH	"/debug"
@@ -33,15 +37,6 @@ struct calcdata {
 	int nrofdata;
 	int vals;
 };
-
-typedef struct _connection_t {
-	int port;
-	int type;
-	char *host;
-	char *server;
-	struct bufferevent *bev;
-	int shutdown;
-} connection_t;
 
 typedef struct _http_ctx_t {
 	struct evhttp_uri *uri;

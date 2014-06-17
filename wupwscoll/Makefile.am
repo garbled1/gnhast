@@ -6,18 +6,20 @@ bin_PROGRAMS = wupwscoll
 
 wupwscoll_SOURCES = \
 	$(top_srcdir)/common/common.c \
+	$(top_srcdir)/common/common.h \
 	$(top_srcdir)/common/devices.c \
 	$(top_srcdir)/common/netparser.c \
 	$(top_srcdir)/common/confparser.c \
+	$(top_srcdir)/common/confparser.h \
+	$(top_srcdir)/common/genconn.c \
+	$(top_srcdir)/common/genconn.h \
 	$(top_srcdir)/common/gncoll.c \
+	$(top_srcdir)/common/gncoll.h \
 	$(top_srcdir)/common/collcmd.c \
-	$(top_srcdir)/common/common.h \
+	$(top_srcdir)/common/collcmd.h \
 	$(top_srcdir)/common/gnhast.h \
 	$(top_srcdir)/common/confuse.h \
-	$(top_srcdir)/common/confparser.h \
-	$(top_srcdir)/common/gncoll.h \
-	$(top_srcdir)/common/collcmd.h \
-	wupws.h \
+	wupws.h collector.h \
 	collector.c
 
 if NEED_RBTREE

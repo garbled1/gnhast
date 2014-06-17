@@ -6,16 +6,18 @@ bin_PROGRAMS = wmr918coll
 
 wmr918coll_SOURCES = \
 	$(top_srcdir)/common/common.c \
+	$(top_srcdir)/common/common.h \
 	$(top_srcdir)/common/serial_common.c \
 	$(top_srcdir)/common/devices.c \
 	$(top_srcdir)/common/netparser.c \
 	$(top_srcdir)/common/confparser.c \
+	$(top_srcdir)/common/confparser.h \
 	$(top_srcdir)/common/gncoll.c \
-	$(top_srcdir)/common/common.h \
+	$(top_srcdir)/common/gncoll.h \
+	$(top_srcdir)/common/collcmd.c \
+	$(top_srcdir)/common/collcmd.h \
 	$(top_srcdir)/common/gnhast.h \
 	$(top_srcdir)/common/confuse.h \
-	$(top_srcdir)/common/confparser.h \
-	$(top_srcdir)/common/gncoll.h \
 	wmr918.h \
 	collector.c
 

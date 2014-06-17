@@ -58,6 +58,7 @@
 #include "confparser.h"
 #include "gncoll.h"
 #include "collcmd.h"
+#include "genconn.h"
 #include "wupws.h"
 
 char *conffile = SYSCONFDIR "/" WUPWSCOLL_CONFIG_FILE;
@@ -85,6 +86,11 @@ struct evhttp_connection *http_cn = NULL;
 
 /** The connection streams for our connection */
 connection_t *gnhastd_conn;
+char *conntype[] = {
+	"none",
+	"wupws",
+	"gnhastd",
+};
 
 /* Configuration file setup */
 
@@ -126,46 +132,6 @@ cfg_opt_t options[] = {
 /*****
       Stubs
 *****/
-
-/**
-   \brief Handle a enldevs device command
-   \param args The list of arguments
-   \param arg void pointer to client_t of provider
-*/
-
-int cmd_endldevs(pargs_t *args, void *arg)
-{
-	return;
-}
-
-/**
-   \brief Handle a endlgrps device command
-   \param args The list of arguments
-   \param arg void pointer to client_t of provider
-*/
-
-int cmd_endlgrps(pargs_t *args, void *arg)
-{
-	return;
-}
-
-/**
-   \brief Called when a chg command occurs
-   \param dev device that got updated
-   \param arg pointer to client_t
-*/
-
-void coll_chg_cb(device_t *dev, void *arg)
-{
-	return;
-}
-
-/**
-   \brief Called when a number chg command occurs
-   \param dev device that got updated
-   \param num new number
-   \param arg pointer to client_t
-*/
 
 /**
    \brief Called when an upd command occurs
@@ -557,113 +523,6 @@ void wupws_startfeed(int fd, short what, void *arg)
 	    secs.tv_sec);
 }
 
-
-/*****
-      General routines/gnhastd connection stuff
-*****/
-
-/**
-   \brief A write callback, if we need to tell server something
-   \param out The bufferevent that fired
-   \param arg optional argument
-*/
-
-void buf_write_cb(struct bufferevent *out, void *arg)
-{
-	struct evbuffer *send;
-
-	send = evbuffer_new();
-	evbuffer_add_printf(send, "test\n");
-	bufferevent_write_buffer(out, send);
-	evbuffer_free(send);
-}
-
-/**
-   \brief Error callback, close down connection
-   \param ev The bufferevent that fired
-   \param what why did it fire?
-   \param arg set to the client structure, so we can free it out and close fd
-*/
-
-void buf_error_cb(struct bufferevent *ev, short what, void *arg)
-{
-	client_t *client = (client_t *)arg;
-
-	bufferevent_free(client->ev);
-	close(client->fd);
-	free(client);
-	exit(2);
-}
-
-/**
-   \brief A timer callback that initiates a new connection
-   \param nada used for file descriptor
-   \param what why did we fire?
-   \param arg pointer to connection_t
-   \note also used to manually initiate a connection
-*/
-
-void connect_server_cb(int nada, short what, void *arg)
-{
-	connection_t *conn = (connection_t *)arg;
-
-	conn->bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
-	bufferevent_setcb(conn->bev, gnhastd_read_cb, NULL,
-			  connect_event_cb, conn);
-
-	bufferevent_enable(conn->bev, EV_READ|EV_WRITE);
-	bufferevent_socket_connect_hostname(conn->bev, dns_base, AF_UNSPEC,
-					    conn->host, conn->port);
-	LOG(LOG_NOTICE, "Attempting to connect to %s @ %s:%d",
-	    conn->server, conn->host, conn->port);
-
-	if (need_rereg) {
-		wupws_establish_feeds(); /* ask for feeds */
-		gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
-	}
-}
-
-
-/**
-   \brief Event callback used with connections
-   \param ev The bufferevent that fired
-   \param what why did it fire?
-   \param arg pointer to connection_t;
-*/
-
-void connect_event_cb(struct bufferevent *ev, short what, void *arg)
-{
-	int err;
-	connection_t *conn = (connection_t *)arg;
-	struct event *tev; /* timer event */
-	struct timeval secs = { 30, 0 }; /* retry in 30 seconds */
-
-	if (what & BEV_EVENT_CONNECTED) {
-		LOG(LOG_NOTICE, "Connected to %s", conn->server);
-	} else if (what & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
-		if (what & BEV_EVENT_ERROR) {
-			err = bufferevent_socket_get_dns_error(ev);
-			if (err)
-				LOG(LOG_FATAL,
-				    "DNS Failure connecting to %s: %s",
-				    conn->server, strerror(err));
-		}
-		LOG(LOG_NOTICE, "Lost connection to %s, closing", conn->server);
-		bufferevent_free(ev);
-
-		if (!conn->shutdown) {
-			/* we need to reconnect! */
-			need_rereg = 1;
-			tev = evtimer_new(base, connect_server_cb, conn);
-			evtimer_add(tev, &secs); /* XXX leaks? */
-			LOG(LOG_NOTICE, "Attempting reconnection to "
-			    "conn->server @ %s:%d in %d seconds",
-			    conn->host, conn->port, secs.tv_sec);
-		} else
-			event_base_loopexit(base, NULL);
-	}
-}
-
 /**
    \brief Parse the config file for devices and load them
    \param cfg config base
@@ -683,38 +542,6 @@ void parse_devices(cfg_t *cfg)
 		//if (dumpconf == NULL && dev->name != NULL)
 		//	gn_register_device(dev, gnhastd_conn->bev);
 	}
-}
-
-/**
-   \brief Shutdown timer
-   \param fd unused
-   \param what what happened?
-   \param arg unused
-*/
-
-void cb_shutdown(int fd, short what, void *arg)
-{
-	LOG(LOG_WARNING, "Clean shutdown timed out, stopping");
-	event_base_loopexit(base, NULL);
-}
-
-/**
-   \brief A sigterm handler
-   \param fd unused
-   \param what what happened?
-   \param arg unused
-*/
-
-void cb_sigterm(int fd, short what, void *arg)
-{
-	struct timeval secs = { 30, 0 };
-	struct event *ev;
-
-	LOG(LOG_NOTICE, "Recieved SIGTERM, shutting down");
-	gnhastd_conn->shutdown = 1;
-	gn_disconnect(gnhastd_conn->bev);
-	ev = evtimer_new(base, cb_shutdown, NULL);
-	evtimer_add(ev, &secs);
 }
 
 /**
@@ -788,7 +615,7 @@ int main(int argc, char **argv)
 	gnhastd_conn = smalloc(connection_t);
 	gnhastd_conn->port = cfg_getint(gnhastd_c, "port");
 	gnhastd_conn->host = cfg_getstr(gnhastd_c, "hostname");
-	gnhastd_conn->server = strdup("gnhastd");
+	gnhastd_conn->type = CONN_TYPE_GNHASTD;
 
 	wupws_c = cfg_getsec(cfg, "wupwscoll");
 	if (cfg_getstr(wupws_c, "pwsid") == NULL ||
@@ -806,16 +633,16 @@ int main(int argc, char **argv)
 	/* setup signal handlers */
 	ev = evsignal_new(base, SIGHUP, cb_sighup, conffile);
 	event_add(ev, NULL);
-	ev = evsignal_new(base, SIGTERM, cb_sigterm, NULL);
+	ev = evsignal_new(base, SIGTERM, generic_cb_sigterm, NULL);
 	event_add(ev, NULL);
-	ev = evsignal_new(base, SIGINT, cb_sigterm, NULL);
+	ev = evsignal_new(base, SIGINT, generic_cb_sigterm, NULL);
 	event_add(ev, NULL);
-	ev = evsignal_new(base, SIGQUIT, cb_sigterm, NULL);
+	ev = evsignal_new(base, SIGQUIT, generic_cb_sigterm, NULL);
 	event_add(ev, NULL);
 
 	/* cheat, and directly call the timer callback
 	   This sets up a connection to the server. */
-	connect_server_cb(0, 0, gnhastd_conn);
+	generic_connect_server_cb(0, 0, gnhastd_conn);
 	gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
 
 	ev = evtimer_new(base, wupws_startfeed, NULL);
