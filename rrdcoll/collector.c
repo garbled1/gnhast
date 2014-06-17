@@ -541,24 +541,6 @@ void rrdc_read_cb(struct bufferevent *in, void *arg)
       General routines/gnhastd connection stuff
 *****/
 
-
-
-/**
-   \brief A write callback, if we need to tell server something
-   \param out The bufferevent that fired
-   \param arg optional argument
-*/
-
-void buf_write_cb(struct bufferevent *out, void *arg)
-{
-	struct evbuffer *send;
-
-	send = evbuffer_new();
-	evbuffer_add_printf(send, "test\n");
-	bufferevent_write_buffer(out, send);
-	evbuffer_free(send);
-}
-
 /**
    \brief Error callback, close down connection
    \param ev The bufferevent that fired
