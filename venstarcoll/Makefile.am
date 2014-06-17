@@ -7,17 +7,19 @@ bin_PROGRAMS = venstarcoll
 
 venstarcoll_SOURCES = \
 	$(top_srcdir)/common/common.c \
+	$(top_srcdir)/common/common.h \
 	$(top_srcdir)/common/devices.c \
 	$(top_srcdir)/common/netparser.c \
 	$(top_srcdir)/common/confparser.c \
+	$(top_srcdir)/common/confparser.h \
 	$(top_srcdir)/common/gncoll.c \
+	$(top_srcdir)/common/gncoll.h \
 	$(top_srcdir)/common/collcmd.c \
-	$(top_srcdir)/common/common.h \
+	$(top_srcdir)/common/collcmd.h \
+	$(top_srcdir)/common/genconn.c \
+	$(top_srcdir)/common/genconn.h \
 	$(top_srcdir)/common/gnhast.h \
 	$(top_srcdir)/common/confuse.h \
-	$(top_srcdir)/common/confparser.h \
-	$(top_srcdir)/common/gncoll.h \
-	$(top_srcdir)/common/collcmd.h \
 	$(top_srcdir)/jsmn/jsmn.c \
 	$(top_srcdir)/jsmn/jsmn.h \
 	$(top_srcdir)/common/http_func.c \
@@ -26,7 +28,7 @@ venstarcoll_SOURCES = \
 	$(top_srcdir)/common/jsmn_func.h \
 	$(top_srcdir)/common/ssdp.c \
 	$(top_srcdir)/common/ssdp.h \
-	venstar.h \
+	venstar.h collector.h \
 	collector.c
 
 if NEED_RBTREE

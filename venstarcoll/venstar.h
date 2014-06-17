@@ -1,10 +1,11 @@
 #ifndef _VENSTAR_H_
 #define _VENSTAR_H_
 
+#include "collector.h"
+
 #define VENSTARCOLL_CONFIG_FILE  "venstarcoll.conf"
 #define VENSTARCOLL_LOG_FILE     "venstarcoll.log"
 #define VENSTARCOLL_PID_FILE     "venstarcoll.pid"
-#define COLLECTOR_NAME		"venstarcoll"
 
 #define VENSTAR_HTTP_PORT	80
 
@@ -21,14 +22,6 @@
 
 #define TTYPE_RES	0
 #define TTYPE_COM	1
-
-typedef struct _connection_t {
-        int port;
-        int type;
-        char *host;
-        struct bufferevent *bev;
-        int shutdown;
-} connection_t;
 
 #define QI_TYPE_STR	0
 #define QI_TYPE_INT	1
