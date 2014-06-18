@@ -328,19 +328,15 @@ void maybe_dump_conf(int forcedump)
 			a = cfg_getopt(section, "tscale");
 			cfg_opt_set_print_func(a, conf_print_tscale);
 
-			section = cfg_getnsec(cfg, "wmr918", i);
 			a = cfg_getopt(section, "lengthscale");
 			cfg_opt_set_print_func(a, conf_print_lscale);
 
-			section = cfg_getnsec(cfg, "wmr918", i);
 			a = cfg_getopt(section, "baroscale");
 			cfg_opt_set_print_func(a, conf_print_baroscale);
 
-			section = cfg_getnsec(cfg, "wmr918", i);
 			a = cfg_getopt(section, "speedscale");
 			cfg_opt_set_print_func(a, conf_print_speedscale);
 
-			section = cfg_getnsec(cfg, "wmr918", i);
 			a = cfg_getopt(section, "conntype");
 			cfg_opt_set_print_func(a, conf_print_conntype);
 		}
@@ -1543,7 +1539,8 @@ void connect_event_cb(struct bufferevent *ev, short what, void *arg)
 void parse_devices(cfg_t *cfg)
 {
 	device_t *dev;
-	cfg_t *devconf;
+	cfg_t *devconf, *section;
+	cfg_opt_t *opt;
 	int i;
 
 	for (i=0; i < cfg_size(cfg, "device"); i++) {
@@ -1555,6 +1552,22 @@ void parse_devices(cfg_t *cfg)
 		if (dumpconf == NULL && dev->name != NULL)
 			gn_register_device(dev, gnhastd_conn->bev);
 	}
+	/* set printing callbacks */
+	section = cfg_getsec(cfg, "wmr918");
+	opt = cfg_getopt(section, "tscale");
+	cfg_opt_set_print_func(opt, conf_print_tscale);
+	
+        opt = cfg_getopt(section, "lengthscale");
+	cfg_opt_set_print_func(opt, conf_print_lscale);
+
+	opt = cfg_getopt(section, "baroscale");
+	cfg_opt_set_print_func(opt, conf_print_baroscale);
+
+	opt = cfg_getopt(section, "speedscale");
+	cfg_opt_set_print_func(opt, conf_print_speedscale);
+
+	opt = cfg_getopt(section, "conntype");
+	cfg_opt_set_print_func(opt, conf_print_conntype);
 }
 
 /**
@@ -1642,6 +1655,8 @@ int main(int argc, char **argv)
 
 	/* Initialize the argtable */
 	init_argcomm();
+	/* Initialize the command table */
+	init_commands();
 	/* Initialize the device table */
 	init_devtable(cfg, 0);
 

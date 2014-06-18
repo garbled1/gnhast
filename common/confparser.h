@@ -16,5 +16,6 @@ cfg_t *dump_conf(cfg_t *cfg, int flags, const char *filename);
 int conf_validate_port(cfg_t *cfg, cfg_opt_t *opt);
 int conf_parse_bool(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		    void *result);
+void conf_print_bool(cfg_opt_t *opt, unsigned int index, FILE *fp);
 
 #endif /*_CONFPARSER_H_*/

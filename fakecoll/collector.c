@@ -313,6 +313,8 @@ int main(int argc, char **argv)
 
 	/* Initialize the argtable */
 	init_argcomm();
+	/* Initialize the command table */
+	init_commands();
 	/* Initialize the device table */
 	init_devtable(cfg, 0);
 

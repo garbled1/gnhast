@@ -48,6 +48,7 @@
 
 /* Externs */
 extern cfg_opt_t options[];
+extern TAILQ_HEAD(, _device_t) alldevs;
 extern TAILQ_HEAD(, _device_group_t) allgroups;
 extern name_map_t devtype_map[];
 extern name_map_t devproto_map[];
@@ -128,6 +129,11 @@ int conf_validate_rrdname(cfg_t *cfg, cfg_opt_t *opt)
 
 /**
    \brief parse a bool
+   \param cfg the config base
+   \param opt the option we are parsing
+   \param the value of the option
+   \param result result of option parsing will be stored here
+   \return success
 */
 int conf_parse_bool(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		    void *result)
@@ -154,7 +160,13 @@ int conf_parse_bool(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 
 /**
    \brief parse a protocol
+   \param cfg the config base
+   \param opt the option we are parsing
+   \param the value of the option
+   \param result result of option parsing will be stored here
+   \return success
 */
+
 static int conf_parse_proto(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 			      void *result)
 {
@@ -193,7 +205,13 @@ static void conf_print_proto(cfg_opt_t *opt, unsigned int index, FILE *fp)
 
 /**
    \brief parse a type
+   \param cfg the config base
+   \param opt the option we are parsing
+   \param the value of the option
+   \param result result of option parsing will be stored here
+   \return success
 */
+
 int conf_parse_type(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		    void *result)
 {
@@ -218,7 +236,7 @@ int conf_parse_type(cfg_t *cfg, cfg_opt_t *opt, const char *value,
    \param fp passed FILE
 */
 
-static void conf_print_bool(cfg_opt_t *opt, unsigned int index, FILE *fp)
+void conf_print_bool(cfg_opt_t *opt, unsigned int index, FILE *fp)
 {
 	switch (cfg_opt_getnint(opt, index)) {
 	case 0:
@@ -254,6 +272,11 @@ static void conf_print_type(cfg_opt_t *opt, unsigned int index, FILE *fp)
 
 /**
    \brief parse a subtype by name
+   \param cfg the config base
+   \param opt the option we are parsing
+   \param the value of the option
+   \param result result of option parsing will be stored here
+   \return success
 */
 
 int conf_parse_subtype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
@@ -294,9 +317,15 @@ void conf_print_subtype(cfg_opt_t *opt, unsigned int index, FILE *fp)
 
 /**
    \brief parse a temperature scale
+   \param cfg the config base
+   \param opt the option we are parsing
+   \param the value of the option
+   \param result result of option parsing will be stored here
+   \return success
 */
+
 int conf_parse_tscale(cfg_t *cfg, cfg_opt_t *opt, const char *value,
-		    void *result)
+		      void *result)
 {
 	if (strcasecmp(value, "F") == 0)
 		*(int *)result = TSCALE_F;
@@ -350,6 +379,11 @@ void conf_print_tscale(cfg_opt_t *opt, unsigned int index, FILE *fp)
 
 /**
    \brief parse a speed scale
+   \param cfg the config base
+   \param opt the option we are parsing
+   \param the value of the option
+   \param result result of option parsing will be stored here
+   \return success
 */
 int conf_parse_speedscale(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		    void *result)
@@ -397,9 +431,15 @@ void conf_print_speedscale(cfg_opt_t *opt, unsigned int index, FILE *fp)
 
 /**
    \brief parse a length scale
+   \param cfg the config base
+   \param opt the option we are parsing
+   \param the value of the option
+   \param result result of option parsing will be stored here
+   \return success
 */
+
 int conf_parse_lscale(cfg_t *cfg, cfg_opt_t *opt, const char *value,
-		    void *result)
+		      void *result)
 {
 	if (strcasecmp(value, "IN") == 0)
 		*(int *)result = LENGTH_IN;
@@ -441,9 +481,15 @@ void conf_print_lscale(cfg_opt_t *opt, unsigned int index, FILE *fp)
 
 /**
    \brief parse a barometer scale
+   \param cfg the config base
+   \param opt the option we are parsing
+   \param the value of the option
+   \param result result of option parsing will be stored here
+   \return success
 */
+
 int conf_parse_baroscale(cfg_t *cfg, cfg_opt_t *opt, const char *value,
-		    void *result)
+			 void *result)
 {
 	if (strcasecmp(value, "IN") == 0)
 		*(int *)result = BAROSCALE_IN;
@@ -490,9 +536,15 @@ void conf_print_baroscale(cfg_opt_t *opt, unsigned int index, FILE *fp)
 
 /**
    \brief parse a light scale
+   \param cfg the config base
+   \param opt the option we are parsing
+   \param the value of the option
+   \param result result of option parsing will be stored here
+   \return success
 */
+
 int conf_parse_lightscale(cfg_t *cfg, cfg_opt_t *opt, const char *value,
-		    void *result)
+			  void *result)
 {
 	if (strcasecmp(value, "WM2") == 0)
 		*(int *)result = LIGHT_WM2;
@@ -595,9 +647,14 @@ device_t *new_dev_from_conf(cfg_t *cfg, char *uid)
 	if (devconf == NULL)
 		return NULL;
 
-	/* otherwise, start loading */
-	dev = smalloc(device_t);
-	dev->uid = strdup(uid);
+	/* If the device exists, re-use it, otherwise, build a new one */
+	dev = find_device_byuid(uid);
+	if (dev == NULL) {
+		dev = smalloc(device_t);
+		dev->uid = strdup(uid);
+	}
+
+	/* now load the device with data from the conf file */
 	if (cfg_getstr(devconf, "loc") != NULL)
 		dev->loc = strdup(cfg_getstr(devconf, "loc"));
 	else
@@ -787,6 +844,7 @@ cfg_t *dump_conf(cfg_t *cfg, int flags, const char *filename)
 	cfg_t *section;
 	int i;
 	time_t t;
+	device_t *dev;
 
 	LOG(LOG_NOTICE, "Rewriting configuration file");
 	t = time(NULL);
@@ -795,6 +853,10 @@ cfg_t *dump_conf(cfg_t *cfg, int flags, const char *filename)
 		LOG(LOG_ERROR, "Could not open %s for writing", filename);
 		return;
 	}
+	/* Make sure all changes make it in */
+	TAILQ_FOREACH(dev, &alldevs, next_all)
+		(void)new_conf_from_dev(cfg, dev);
+
 	fprintf(fp, "# Config file for %s\n", getprogname());
 	fprintf(fp, "# Generated on %s", ctime(&t));
 	fprintf(fp, "#\n\n");

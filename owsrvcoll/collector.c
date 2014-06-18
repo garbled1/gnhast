@@ -120,7 +120,7 @@ cfg_opt_t gnhastd_opts[] = {
 };
 
 cfg_opt_t owsrvcoll_opts[] = {
-	CFG_STR("tscale", "F", CFGF_NONE),
+	CFG_INT_CB("tscale", TSCALE_F, CFGF_NONE, conf_parse_tscale),
 	CFG_INT("update", 60, CFGF_NONE),
 	CFG_INT("rescan", 15, CFGF_NONE),
 	CFG_END(),
@@ -684,6 +684,7 @@ void parse_devices(cfg_t *cfg)
 {
 	device_t *dev;
 	cfg_t *devconf;
+	cfg_opt_t *opt;
 	int i;
 
 	for (i=0; i < cfg_size(cfg, "device"); i++) {
@@ -695,6 +696,11 @@ void parse_devices(cfg_t *cfg)
 		if (dumpconf == NULL && dev->name != NULL)
 			gn_register_device(dev, gnhastd_conn->bev);
 	}
+
+	/* setup print functions */
+	opt = cfg_getopt(owsrvcoll_c, "tscale");
+	if (opt)
+		cfg_opt_set_print_func(opt, conf_print_tscale);
 }
 
 /**
@@ -778,6 +784,8 @@ int main(int argc, char **argv)
 
 	/* Initialize the argtable */
 	init_argcomm();
+	/* Initialize the command table */
+	init_commands();
 	/* Initialize the device table */
 	init_devtable(cfg, 0);
 	loopnr = 0;
@@ -824,22 +832,21 @@ int main(int argc, char **argv)
 	owserver_conn->port = cfg_getint(owserver_c, "port");
 	owserver_conn->type = CONN_TYPE_OWSRV;
 	owserver_conn->host = cfg_getstr(owserver_c, "hostname");
-	buf = cfg_getstr(owsrvcoll_c, "tscale");
-	switch (*buf) {
-	case 'C':
+	switch (cfg_getint(owsrvcoll_c, "tscale")) {
+	case TSCALE_C:
 		owserver_conn->owbase = OWFLAG_TEMP_C;
 		tempscale = TSCALE_C;
 		break;
-	case 'K':
+	case TSCALE_K:
 		owserver_conn->owbase = OWFLAG_TEMP_K;
 		tempscale = TSCALE_K;
 		break;
-	case 'R':
+	case TSCALE_R:
 		owserver_conn->owbase = OWFLAG_TEMP_R;
 		tempscale = TSCALE_R;
 		break;
 	default:
-	case 'F':
+	case TSCALE_F:
 		owserver_conn->owbase = OWFLAG_TEMP_F;
 		tempscale = TSCALE_F;
 		break;

@@ -138,7 +138,8 @@ cfg_opt_t brultech_opts[] = {
 	CFG_STR("hostname", "127.0.0.1", CFGF_NONE),
 	CFG_INT("port", 80, CFGF_NONE),
 	CFG_INT_CB("model", BRUL_MODEL_GEM, CFGF_NONE, conf_parse_brul_model),
-	CFG_INT_CB("connection", BRUL_COMM_NET, CFGF_NONE, conf_parse_brul_conn),
+	CFG_INT_CB("connection", BRUL_COMM_NET, CFGF_NONE,
+		   conf_parse_brul_conn),
 	CFG_STR("serialdev", "/dev/dty01", CFGF_NONE),
 	CFG_END(),
 };
@@ -150,7 +151,7 @@ cfg_opt_t gnhastd_opts[] = {
 };
 
 cfg_opt_t brulcoll_opts[] = {
-	CFG_STR("tscale", "F", CFGF_NONE),
+	CFG_INT_CB("tscale", TSCALE_F, CFGF_NONE, conf_parse_tscale),
 	CFG_INT("update", 10, CFGF_NONE),
 	CFG_INT("pkttype", BRUL_PKT_32NET, CFGF_NONE),	
 	CFG_END(),
@@ -172,14 +173,19 @@ cfg_opt_t options[] = {
 
 /**
    \brief parse brultech model type
+   \param cfg the config base
+   \param opt the option we are parsing
+   \param the value of the option
+   \param result result of option parsing will be stored here
+   \return success
 */
 
 static int conf_parse_brul_model(cfg_t *cfg, cfg_opt_t *opt, const char *value,
-			      void *result)
+				 void *result)
 {
 	if (strcasecmp(value, "gem") == 0)
 		*(int *)result = BRUL_MODEL_GEM;
-	else if (strcasecmp(value,"ecm1240") == 0)
+	else if (strcasecmp(value, "ecm1240") == 0)
 		*(int *)result = BRUL_MODEL_ECM1240;
 	else {
 		cfg_error(cfg, "invalid value for option '%s': %s",
@@ -190,11 +196,38 @@ static int conf_parse_brul_model(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 }
 
 /**
+   \brief Used to print brultech model
+   \param opt option structure
+   \param index number of option to print
+   \param fp passed FILE
+*/
+
+static void conf_print_brul_model(cfg_opt_t *opt, unsigned int index, FILE *fp)
+{
+	switch (cfg_opt_getnint(opt, index)) {
+	case BRUL_MODEL_GEM:
+		fprintf(fp, "gem");
+		break;
+	case BRUL_MODEL_ECM1240:
+		fprintf(fp, "ecm1240");
+		break;
+	default:
+		fprintf(fp, "UNKNOWN-FIXME");
+		break;
+	}
+}
+
+/**
    \brief parse brultech connection type
+   \param cfg the config base
+   \param opt the option we are parsing
+   \param the value of the option
+   \param result result of option parsing will be stored here
+   \return success
 */
 
 static int conf_parse_brul_conn(cfg_t *cfg, cfg_opt_t *opt, const char *value,
-			      void *result)
+				void *result)
 {
 	if (strcasecmp(value, "net") == 0)
 		*(int *)result = BRUL_COMM_NET;
@@ -206,6 +239,26 @@ static int conf_parse_brul_conn(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		return -1;
 	}
 	return 0;
+}
+
+/**
+   \brief Used to print brultech connection type
+   \param opt option structure
+   \param index number of option to print
+   \param fp passed FILE
+*/
+
+static void conf_print_brul_conn(cfg_opt_t *opt, unsigned int index, FILE *fp)
+{
+	switch (cfg_opt_getnint(opt, index)) {
+	case BRUL_COMM_SERIAL:
+		fprintf(fp, "serial");
+		break;
+	case BRUL_COMM_NET:
+	default:
+		fprintf(fp, "net");
+		break;
+	}
 }
 
 /**
@@ -924,39 +977,6 @@ void brul_netconnect_event_cb(struct bufferevent *ev, short what, void *arg)
 *****/
 
 /**
-   \brief A write callback, if we need to tell server something
-   \param out The bufferevent that fired
-   \param arg optional argument
-*/
-
-void buf_write_cb(struct bufferevent *out, void *arg)
-{
-	struct evbuffer *send;
-
-	send = evbuffer_new();
-	evbuffer_add_printf(send, "test\n");
-	bufferevent_write_buffer(out, send);
-	evbuffer_free(send);
-}
-
-/**
-   \brief Error callback, close down connection
-   \param ev The bufferevent that fired
-   \param what why did it fire?
-   \param arg set to the client structure, so we can free it out and close fd
-*/
-
-void buf_error_cb(struct bufferevent *ev, short what, void *arg)
-{
-	client_t *client = (client_t *)arg;
-
-	bufferevent_free(client->ev);
-	close(client->fd);
-	free(client);
-	exit(2);
-}
-
-/**
    \brief A timer callback that initiates a new connection
    \param nada used for file descriptor
    \param what why did we fire?
@@ -1061,6 +1081,7 @@ void parse_devices(cfg_t *cfg)
 {
 	device_t *dev;
 	cfg_t *devconf;
+	cfg_opt_t *opt;
 	int i;
 
 	for (i=0; i < cfg_size(cfg, "device"); i++) {
@@ -1072,6 +1093,17 @@ void parse_devices(cfg_t *cfg)
 		if (dumpconf == NULL && dev->name != NULL)
 			gn_register_device(dev, gnhastd_conn->bev);
 	}
+	/* setup the print functions */
+	opt = cfg_getopt(brultech_c, "model");
+	if (opt)
+		cfg_opt_set_print_func(opt, conf_print_brul_model);
+	opt = cfg_getopt(brultech_c, "connection");
+	if (opt)
+		cfg_opt_set_print_func(opt, conf_print_brul_conn);
+	opt = cfg_getopt(brulcoll_c, "tscale");
+	if (opt)
+		cfg_opt_set_print_func(opt, conf_print_tscale);
+
 }
 
 /**
@@ -1378,6 +1410,8 @@ int main(int argc, char **argv)
 
 	/* Initialize the argtable */
 	init_argcomm();
+	/* Initialize the command table */
+	init_commands();
 	/* Initialize the device table */
 	init_devtable(cfg, 0);
 	loopnr = 0;
@@ -1394,7 +1428,8 @@ int main(int argc, char **argv)
 	if (cfg) {
 		brulcoll_c = cfg_getsec(cfg, "brulcoll");
 		if (!brulcoll_c)
-			LOG(LOG_FATAL, "Error reading config file, brulcoll section");
+			LOG(LOG_FATAL, "Error reading config file, "
+			    "brulcoll section");
 	}
 
 	/* Now, parse the details of connecting to the gnhastd server */
@@ -1402,7 +1437,8 @@ int main(int argc, char **argv)
 	if (cfg) {
 		gnhastd_c = cfg_getsec(cfg, "gnhastd");
 		if (!gnhastd_c)
-			LOG(LOG_FATAL, "Error reading config file, gnhastd section");
+			LOG(LOG_FATAL, "Error reading config file, "
+			    "gnhastd section");
 	}
 	gnhastd_conn = smalloc(connection_t);
 	gnhastd_conn->port = cfg_getint(gnhastd_c, "port");
@@ -1418,17 +1454,17 @@ int main(int argc, char **argv)
 	if (cfg) {
 		brultech_c = cfg_getsec(cfg, "brultech");
 		if (!brultech_c)
-			LOG(LOG_FATAL, "Error reading config file, brultech section");
+			LOG(LOG_FATAL, "Error reading config file, "
+			    "brultech section");
 	}
 	brulnet_conn = smalloc(connection_t);
-	buf = cfg_getstr(brulcoll_c, "tscale");
-	switch (*buf) {
-	case 'C':
+	switch (cfg_getint(brulcoll_c, "tscale")) {
+	case TSCALE_C:
 		tempscale = TSCALE_C;
 		brulnet_conn->tempbase = BRUL_TEMP_C;
 		break;
 	default:
-	case 'F':
+	case TSCALE_F:
 		tempscale = TSCALE_F;
 		brulnet_conn->tempbase = BRUL_TEMP_F;
 		break;

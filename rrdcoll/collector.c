@@ -675,6 +675,7 @@ void parse_devices(cfg_t *cfg)
 {
 	device_t *dev;
 	cfg_t *devconf;
+	cfg_opt_t *opt;
 	int i;
 
 	for (i=0; i < cfg_size(cfg, "device"); i++) {
@@ -686,6 +687,10 @@ void parse_devices(cfg_t *cfg)
 		if (dumpconf == NULL && dev->name != NULL)
 			gn_register_device(dev, gnhastd_conn->bev);
 	}
+	/* setup print functions */
+	opt = cfg_getopt(rrdcoll_c, "userrdcached");
+	if (opt)
+		cfg_opt_set_print_func(opt, conf_print_bool);
 }
 
 /**

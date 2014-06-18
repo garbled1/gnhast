@@ -230,7 +230,8 @@ int cmd_register(pargs_t *args, void *arg)
 	dev->name = strdup(name);
 	if (dev->rrdname != NULL)
 		free(dev->rrdname);
-	dev->rrdname = strndup(rrdname, 19);
+	if (rrdname != NULL)
+		dev->rrdname = strndup(rrdname, 19);
 	dev->type = devtype;
 	dev->proto = proto;
 	dev->subtype = subtype;

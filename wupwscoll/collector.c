@@ -153,7 +153,13 @@ void coll_upd_cb(device_t *dev, void *arg)
 
 /**
    \brief parse a pws weather server type
+   \param cfg the config base
+   \param opt the option we are parsing
+   \param the value of the option
+   \param result result of option parsing will be stored here
+   \return success
 */
+
 int conf_parse_pwstype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		       void *result)
 {
@@ -532,6 +538,8 @@ void parse_devices(cfg_t *cfg)
 	device_t *dev;
 	cfg_t *devconf;
 	int i;
+	cfg_opt_t *opt;
+	cfg_t *section;
 
 	for (i=0; i < cfg_size(cfg, "device"); i++) {
 		devconf = cfg_getnsec(cfg, "device", i);
@@ -542,6 +550,21 @@ void parse_devices(cfg_t *cfg)
 		//if (dumpconf == NULL && dev->name != NULL)
 		//	gn_register_device(dev, gnhastd_conn->bev);
 	}
+
+	/* need to set print type on all the pwsdev devices */
+	for (i=0; i < cfg_size(cfg, "pwsdev"); i++) {
+		section = cfg_getnsec(cfg, "pwsdev", i);
+		opt = cfg_getopt(section, "subtype");
+		cfg_opt_set_print_func(opt, conf_print_subtype);
+	}
+
+	/* setup the general print functions */
+	opt = cfg_getopt(wupws_c, "pwstype");
+	if (opt)
+		cfg_opt_set_print_func(opt, conf_print_pwstype);
+	opt = cfg_getopt(wupws_c, "rapidfire");
+	if (opt)
+		cfg_opt_set_print_func(opt, conf_print_bool);
 }
 
 /**

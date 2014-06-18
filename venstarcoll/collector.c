@@ -115,7 +115,7 @@ char *conntype[3] = {
 
 void connect_event_cb(struct bufferevent *ev, short what, void *arg);
 void cb_shutdown(int fd, short what, void *arg);
-int conf_parse_ttype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
+static int conf_parse_ttype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		     void *result);
 void update_mode(device_t *dev, uint8_t mode);
 void request_cb(struct evhttp_request *req, void *arg);
@@ -247,31 +247,15 @@ void coll_chg_cb(device_t *dev, void *arg)
 }
 
 /**
-   \brief Parse the config file for devices and load them
-   \param cfg config base
-*/
-void parse_devices(cfg_t *cfg)
-{
-	device_t *dev;
-	cfg_t *devconf;
-	int i;
-
-	for (i=0; i < cfg_size(cfg, "device"); i++) {
-		devconf = cfg_getnsec(cfg, "device", i);
-		dev = new_dev_from_conf(cfg, (char *)cfg_title(devconf));
-		insert_device(dev);
-		LOG(LOG_DEBUG, "Loaded device %s location %s from config file",
-		    dev->uid, dev->loc);
-		if (dumpconf == NULL && dev->name != NULL)
-			gn_register_device(dev, gnhastd_conn->bev);
-	}
-	return;
-}
-
-/**
    \brief parse a thermostat type
+   \param cfg the config base
+   \param opt the option we are parsing
+   \param the value of the option
+   \param result result of option parsing will be stored here
+   \return success
 */
-int conf_parse_ttype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
+
+static int conf_parse_ttype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		     void *result)
 {
 	if (strcasecmp(value, "residential") == 0)
@@ -288,6 +272,53 @@ int conf_parse_ttype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		return -1;
 	}
 	return 0;
+}
+
+/**
+   \brief Used to print pwstype values
+   \param opt option structure
+   \param index number of option to print
+   \param fp passed FILE
+*/
+
+static void conf_print_ttype(cfg_opt_t *opt, unsigned int index, FILE *fp)
+{
+	switch (cfg_opt_getnint(opt, index)) {
+	case TTYPE_RES:
+		fprintf(fp, "residential");
+		break;
+	case TTYPE_COM:
+		fprintf(fp, "commercial");
+		break;
+	}
+}
+
+/**
+   \brief Parse the config file for devices and load them
+   \param cfg config base
+*/
+void parse_devices(cfg_t *cfg)
+{
+	device_t *dev;
+	cfg_t *devconf;
+	cfg_opt_t *opt;
+	int i;
+
+	for (i=0; i < cfg_size(cfg, "device"); i++) {
+		devconf = cfg_getnsec(cfg, "device", i);
+		dev = new_dev_from_conf(cfg, (char *)cfg_title(devconf));
+		insert_device(dev);
+		LOG(LOG_DEBUG, "Loaded device %s location %s from config file",
+		    dev->uid, dev->loc);
+		if (dumpconf == NULL && dev->name != NULL)
+			gn_register_device(dev, gnhastd_conn->bev);
+	}
+	/* setup print functions */
+	opt = cfg_getopt(venstar_c, "ttype");
+	if (opt)
+		cfg_opt_set_print_func(opt, conf_print_ttype);
+
+	return;
 }
 
 /*****
@@ -1078,6 +1109,8 @@ int main(int argc, char **argv)
 
 	/* Initialize the argtable */
 	init_argcomm();
+	/* Initialize the command table */
+	init_commands();
 	/* Initialize the device table */
 	init_devtable(cfg, 0);
 
