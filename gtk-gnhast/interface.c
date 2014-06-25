@@ -1203,11 +1203,17 @@ GtkWidget *create_insert_group_dialog(void)
 	GLADE_HOOKUP_OBJECT(ig_dialog, new_group_name_entry, "groupname");
 	gtk_box_pack_start(GTK_BOX(vbox2), new_group_name_entry, FALSE,
 			   FALSE, 5);
+	gtk_entry_set_activates_default(GTK_ENTRY(new_group_name_entry), TRUE);
+
 	new_group_uid_entry = gtk_entry_new();
 	gtk_widget_show(new_group_uid_entry);
 	GLADE_HOOKUP_OBJECT(ig_dialog, new_group_uid_entry, "groupuid");
 	gtk_box_pack_end(GTK_BOX(vbox2), new_group_uid_entry, FALSE,
 			   FALSE, 5);
+	gtk_entry_set_activates_default(GTK_ENTRY(new_group_uid_entry), TRUE);
+
+	gtk_dialog_set_default_response(GTK_DIALOG(ig_dialog),
+					GTK_RESPONSE_ACCEPT);
 
 	return ig_dialog;
 }
@@ -1271,12 +1277,14 @@ GtkWidget* create_dialog1(void)
 	gtk_widget_show(dialog_server_entry);
 	gtk_fixed_put(GTK_FIXED(fixed1), dialog_server_entry, 128, 16);
 	gtk_widget_set_size_request(dialog_server_entry, 272, 24);
+	gtk_entry_set_activates_default(GTK_ENTRY(dialog_server_entry), TRUE);
 
 	dialog_port_entry = gtk_entry_new();
 	gtk_widget_show(dialog_port_entry);
 	gtk_entry_set_text(GTK_ENTRY(dialog_port_entry), "2920");
 	gtk_fixed_put(GTK_FIXED(fixed1), dialog_port_entry, 128, 48);
 	gtk_widget_set_size_request(dialog_port_entry, 272, 24);
+	gtk_entry_set_activates_default(GTK_ENTRY(dialog_port_entry), TRUE);
 
 	label9 = gtk_label_new(_("gnhastd server"));
 	gtk_widget_show(label9);
@@ -1292,6 +1300,9 @@ GtkWidget* create_dialog1(void)
 	GLADE_HOOKUP_OBJECT_NO_REF(dialog1, dialog1, "dialog1");
 	GLADE_HOOKUP_OBJECT(dialog1, dialog_server_entry, "dialog_server_entry");
 	GLADE_HOOKUP_OBJECT(dialog1, dialog_port_entry, "dialog_port_entry");
+
+	gtk_dialog_set_default_response(GTK_DIALOG(dialog1),
+					GTK_RESPONSE_OK);
 
 	return dialog1;
 }
