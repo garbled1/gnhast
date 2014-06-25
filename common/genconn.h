@@ -10,6 +10,7 @@ typedef struct _connection_t {
 	device_t *current_dev;
 	time_t lastdata;
 	int shutdown;
+	int connected;
 } connection_t;
 
 void generic_connect_server_cb(int nada, short what, void *arg);

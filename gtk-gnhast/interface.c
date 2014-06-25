@@ -979,6 +979,8 @@ GtkWidget *create_window1(void)
 			 G_CALLBACK(treeview_on_drag_rec), NULL);
 	g_signal_connect(devicetree, "key-press-event",
 			 G_CALLBACK(treeview_keypress_cb), NULL);
+	g_signal_connect(devicetree, "button-press-event",
+			 G_CALLBACK(treeview_buttonpress_cb), NULL);
 	GLADE_HOOKUP_OBJECT(window1, devicetree, "devicetree");
 	gtk_container_add(GTK_CONTAINER(scrolledwindow1), devicetree);
 

@@ -29,3 +29,5 @@ void treeview_on_drag_rec(GtkWidget *widget, GdkDragContext *ctx, int x, int y,
 			  gpointer user_data);
 gboolean treeview_keypress_cb(GtkWidget *widget, GdkEvent *event,
 			      gpointer user_data);
+gboolean treeview_buttonpress_cb(GtkWidget *widget, GdkEvent *event,
+				 gpointer user_data);

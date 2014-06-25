@@ -243,6 +243,7 @@ enum DATATYPE_TYPES {
 #define WRAPONQ_NEXT	(1<<1)
 #define GROUPONQ_NEXT	(1<<1)
 #define GROUPONQ_ALL	(1<<2)
+#define GROUPONQ_REG	(1<<3)	/**< \brief temp flag to record registration */
 
 /* device flags */
 

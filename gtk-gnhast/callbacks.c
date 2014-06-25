@@ -70,11 +70,19 @@ extern connection_t *gnhastd_conn;
 extern TAILQ_HEAD(, _device_group_t) allgroups;
 extern char *conffile;
 
+static void register_child_groups(device_group_t *devgrp);
+
+
 void on_new1_activate(GtkMenuItem *menuitem, gpointer user_data)
 {
 
 }
 
+/**
+   \brief Open new connection menu item selected
+   \param menuitem menuitem widget
+   \param user_data unused
+*/
 
 void on_open1_activate(GtkMenuItem *menuitem, gpointer user_data)
 {
@@ -106,6 +114,26 @@ void on_open1_activate(GtkMenuItem *menuitem, gpointer user_data)
 }
 
 /**
+   \brief register a child group
+   \param devgrp group to look for children of
+*/
+
+static void register_child_groups(device_group_t *devgrp)
+{
+	wrap_group_t *wrapg;
+
+	TAILQ_FOREACH(wrapg, &devgrp->children, nextg) {
+		if (!(wrapg->group->onq & GROUPONQ_REG)) {
+			register_child_groups(wrapg->group);
+			LOG(LOG_DEBUG, "Registering group %s",
+			    wrapg->group->uid);
+			gn_register_devgroup(wrapg->group, gnhastd_conn->bev);
+			wrapg->group->onq |= GROUPONQ_REG;
+		}
+	}
+}
+
+/**
    \brief Send the complete device group tree to gnhastd
    \param menuitem the menuitem selected
    \param user_data unused
@@ -115,9 +143,20 @@ void on_save1_activate(GtkMenuItem *menuitem, gpointer user_data)
 {
 	device_group_t *devgrp;
 
+	/* We have to do leaf nodes first, otherwise, chaos. */
 	TAILQ_FOREACH(devgrp, &allgroups, next_all) {
-		gn_register_devgroup(devgrp, gnhastd_conn->bev);
+		register_child_groups(devgrp);
+		/* Now register the parent */
+		if (!(devgrp->onq & GROUPONQ_REG)) {
+			LOG(LOG_DEBUG, "Registering group %s", devgrp->uid);
+			gn_register_devgroup(devgrp, gnhastd_conn->bev);
+			devgrp->onq |= GROUPONQ_REG;
+		}
 	}
+
+	/* now clear all the registered flags */
+	TAILQ_FOREACH(devgrp, &allgroups, next_all)
+		devgrp->onq &= ~GROUPONQ_REG;
 }
 
 /**
@@ -539,6 +578,130 @@ out:
 }
 
 /**
+   \brief Delete a group or device
+   \param model the tree model
+   \param iter the iter from the tree model
+   \param uid the UID of the current device
+*/
+
+static gboolean delete_item_func(GtkTreeModel *model, GtkTreeIter *iter,
+				 char *uid)
+{
+	GtkTreeIter parent;
+	char *parentuid = NULL;
+	device_t *dev;
+	device_group_t *group, *pgroup;
+
+	/* don't muck with all devices */
+	if (strcmp(uid, INVALID_UID) == 0)
+		return FALSE;
+
+	if (gtk_tree_model_iter_parent(model, &parent, iter)) {
+		gtk_tree_model_get(model, &parent, UID_COLUMN,
+				   &parentuid, -1);
+	}
+
+	/* don't muck with the all devices list */
+	if (parentuid != NULL && strcmp(parentuid, INVALID_UID) == 0)
+		return FALSE;
+
+	gtk_tree_store_remove(GTK_TREE_STORE(model), iter);
+	if (parentuid != NULL)
+		pgroup = find_devgroup_byuid(parentuid);
+	if (pgroup != NULL && parentuid != NULL) {
+		switch (what_is_uid(uid)) {
+		case UID_IS_DEV:
+			dev = find_device_byuid(uid);
+			remove_dev_group(dev, pgroup);
+			break;
+		case UID_IS_GROUP:
+			group = find_devgroup_byuid(uid);
+			remove_group_group(group, pgroup);
+			break;
+		}
+		free(parentuid);
+	}
+	return TRUE;
+}
+
+/**
+   \brief Insert a group
+   \param model the tree model
+   \param iter the iter from the tree model
+   \param uid the UID of the current device
+   \note FREES uid !!
+*/
+
+static gboolean insert_item_func(GtkTreeModel *model, GtkTreeIter *iter,
+				 char *uid)
+{
+	GtkTreeIter parent;
+	device_group_t *group, *pgroup;
+	GtkWidget *dialog, *gname, *guid;
+	gint result;
+	const char *newuid, *newname;
+
+	/* don't muck with all devices */
+	if (strcmp(uid, INVALID_UID) == 0)
+		return FALSE;
+	if (what_is_uid(uid) == UID_IS_DEV) {
+		if (gtk_tree_model_iter_parent(model, &parent,
+					       iter)) {
+			free(uid);
+			gtk_tree_model_get(model, &parent, UID_COLUMN,
+					   &uid, -1);
+			iter = &parent;
+		}
+	}
+	/* now iter and uid should point to a group */
+	dialog = create_insert_group_dialog();
+	result = gtk_dialog_run(GTK_DIALOG(dialog));
+	switch (result) {
+	case GTK_RESPONSE_ACCEPT:
+		gname = lookup_widget(dialog, "groupname");
+		guid = lookup_widget(dialog, "groupuid");
+		if (gname == NULL || guid == NULL)
+			goto insert_fail;
+
+		newuid = gtk_entry_get_text(GTK_ENTRY(guid));
+		newname = gtk_entry_get_text(GTK_ENTRY(gname));
+		if (strlen(newname) < 1 || strlen(newuid) < 1) {
+			error_dialog(main_window,
+				     "Require a name and UID");
+			goto insert_fail;
+		}
+
+		if (what_is_uid((char *)newuid) != UID_IS_NULL) {
+			error_dialog(main_window,
+				     "UID %s is not unique",
+				     newuid);
+			goto insert_fail;
+		}
+
+		/* ok, we passed all the tests, create a group */
+		pgroup = find_devgroup_byuid(uid);
+		group = new_devgroup((char *)newuid);
+		group->name = strdup((char *)newname);
+		if (pgroup != NULL)
+			add_group_group(group, pgroup);
+		update_devicetree_model(devicetree_model);
+		update_devicelist_model(devicelist_model);
+		update_iconview(uid);
+		gtk_widget_destroy(dialog);
+		free(uid);
+		return TRUE;
+		break;
+	case GTK_RESPONSE_REJECT:
+	default:
+		break;
+	}
+insert_fail:
+	gtk_widget_destroy(dialog);
+	free(uid);
+	return FALSE;
+}
+
+/**
    \brief A key was pressed in the treeview
    \param widget treeview widget
    \param event what event?
@@ -549,16 +712,11 @@ gboolean treeview_keypress_cb(GtkWidget *widget, GdkEvent *event,
 			      gpointer user_data)
 {
 	GdkEventKey key = event->key;
-	GtkTreeIter iter, parent;
+	GtkTreeIter iter;
 	GtkTreeModel *model;
 	GtkTreeSelection *select;
-	char *uid = NULL, *parentuid = NULL;
-	device_t *dev;
-	device_group_t *group, *pgroup;
-	/* for the insert dialog */
-	GtkWidget *dialog, *gname, *guid;
-	gint result;
-	const char *newuid, *newname;
+	char *uid = NULL;
+	gboolean ret;
 
 	select = gtk_tree_view_get_selection(GTK_TREE_VIEW(widget));
 	if (gtk_tree_selection_get_selected(select, &model, &iter))
@@ -569,97 +727,116 @@ gboolean treeview_keypress_cb(GtkWidget *widget, GdkEvent *event,
 
 	switch (key.keyval) {
 	case GDK_KEY_Delete:
-		/* don't muck with all devices */
-		if (strcmp(uid, INVALID_UID) == 0)
-			return FALSE;
-
-		if (gtk_tree_model_iter_parent(model, &parent, &iter)) {
-			gtk_tree_model_get(model, &parent, UID_COLUMN,
-					   &parentuid, -1);
-		}
-
-		/* don't muck with the all devices list */
-		if (parentuid != NULL && strcmp(parentuid, INVALID_UID) == 0)
-			return FALSE;
-
-		gtk_tree_store_remove(GTK_TREE_STORE(model), &iter);
-		if (parentuid != NULL)
-			pgroup = find_devgroup_byuid(parentuid);
-		if (pgroup != NULL && parentuid != NULL) {
-			switch (what_is_uid(uid)) {
-			case UID_IS_DEV:
-				dev = find_device_byuid(uid);
-				remove_dev_group(dev, pgroup);
-				break;
-			case UID_IS_GROUP:
-				group = find_devgroup_byuid(uid);
-				remove_group_group(group, pgroup);
-				break;
-			}
-			free(parentuid);
-		}
+		ret = delete_item_func(model, &iter, uid);
 		free(uid);
-		return TRUE;
+		return ret;
 		break;
 	case GDK_KEY_Insert:
-		/* don't muck with all devices */
-		if (strcmp(uid, INVALID_UID) == 0)
-			return FALSE;
-		if (what_is_uid(uid) == UID_IS_DEV) {
-			if (gtk_tree_model_iter_parent(model, &parent,
-						       &iter)) {
-				free(uid);
-				gtk_tree_model_get(model, &parent, UID_COLUMN,
-						   &uid, -1);
-				iter = parent;
-			}
-		}
-		/* now iter and uid should point to a group */
-		dialog = create_insert_group_dialog();
-		result = gtk_dialog_run(GTK_DIALOG(dialog));
-		switch (result) {
-		case GTK_RESPONSE_ACCEPT:
-			gname = lookup_widget(dialog, "groupname");
-			guid = lookup_widget(dialog, "groupuid");
-			if (gname == NULL || guid == NULL)
-				goto insert_fail;
-
-			newuid = gtk_entry_get_text(GTK_ENTRY(guid));
-			newname = gtk_entry_get_text(GTK_ENTRY(gname));
-			if (strlen(newname) < 1 || strlen(newuid) < 1) {
-				error_dialog(main_window,
-					     "Require a name and UID");
-				goto insert_fail;
-			}
-
-			if (what_is_uid((char *)newuid) != UID_IS_NULL) {
-				error_dialog(main_window,
-					     "UID %s is not unique",
-					     newuid);
-				goto insert_fail;
-			}
-
-			/* ok, we passed all the tests, create a group */
-			pgroup = find_devgroup_byuid(uid);
-			group = new_devgroup((char *)newuid);
-			group->name = strdup((char *)newname);
-			if (pgroup != NULL)
-				add_group_group(group, pgroup);
-			update_devicetree_model(devicetree_model);
-			update_devicelist_model(devicelist_model);
-			update_iconview(uid);
-			gtk_widget_destroy(dialog);
-			free(uid);
-			return TRUE;
-			break;
-		case GTK_RESPONSE_REJECT:
-		default:
-			break;
-		}
-	insert_fail:
-		gtk_widget_destroy(dialog);
-		free(uid);
-		return FALSE;
+		return insert_item_func(model, &iter, uid);
+		break;
 	}
 	return FALSE;
+}
+
+/**
+   \brief Insert a new group menu item selected
+   \param menuitem the menuitem that was selected
+   \param user_data pointer to the treeview widget
+*/
+
+static void on_insert_activate(GtkMenuItem *menuitem, gpointer user_data)
+{
+	GtkWidget *widget = GTK_WIDGET(user_data);
+	GtkTreeIter iter;
+	GtkTreeModel *model;
+	GtkTreeSelection *select;
+	char *uid = NULL;
+
+	select = gtk_tree_view_get_selection(GTK_TREE_VIEW(widget));
+	if (gtk_tree_selection_get_selected(select, &model, &iter))
+		gtk_tree_model_get(model, &iter, UID_COLUMN, &uid, -1);
+
+	if (uid == NULL)
+		return;
+
+	(void)insert_item_func(model, &iter, uid);
+	return;
+}
+
+/**
+   \brief delete a group or device menu item selected
+   \param menuitem the menuitem that was selected
+   \param user_data pointer to the treeview widget
+*/
+
+static void on_delete_activate(GtkMenuItem *menuitem, gpointer user_data)
+{
+	GtkWidget *widget = GTK_WIDGET(user_data);
+	GtkTreeIter iter;
+	GtkTreeModel *model;
+	GtkTreeSelection *select;
+	char *uid = NULL;
+
+	select = gtk_tree_view_get_selection(GTK_TREE_VIEW(widget));
+	if (gtk_tree_selection_get_selected(select, &model, &iter))
+		gtk_tree_model_get(model, &iter, UID_COLUMN, &uid, -1);
+
+	if (uid == NULL)
+		return;
+
+	(void)delete_item_func(model, &iter, uid);
+	free(uid);
+	return;
+}
+
+/**
+   \brief A mouse button was clicked in the treeview
+   \param widget treeview widget
+   \param event what event?
+   \param user_data some user data
+*/
+
+gboolean treeview_buttonpress_cb(GtkWidget *widget, GdkEvent *event,
+			      gpointer user_data)
+{
+	GtkWidget *menu;
+	GtkWidget *delete, *insert;
+	GdkEventButton *event_button;
+	GtkTreeIter iter;
+	GtkTreeModel *model;
+	GtkTreeSelection *select;
+	char *uid = NULL;
+
+	/* Did the user hit button 3?  Otherwise, pass it on */
+	if (event->type == GDK_BUTTON_PRESS) {
+		event_button = (GdkEventButton *)event;
+		if (event_button->button != 3)
+			return FALSE;
+	}
+
+	select = gtk_tree_view_get_selection(GTK_TREE_VIEW(widget));
+	if (gtk_tree_selection_get_selected(select, &model, &iter))
+		gtk_tree_model_get(model, &iter, UID_COLUMN, &uid, -1);
+
+	if (uid == NULL)
+		return FALSE;
+
+	menu = gtk_menu_new();
+	insert = gtk_menu_item_new_with_label("Insert Group");
+	g_signal_connect((gpointer)insert, "activate",
+			 G_CALLBACK(on_insert_activate), (gpointer)widget);
+
+	delete = gtk_menu_item_new_with_label("Delete Device/Group");
+	g_signal_connect((gpointer)delete, "activate",
+			 G_CALLBACK(on_delete_activate), (gpointer)widget);
+
+	gtk_menu_shell_append(GTK_MENU_SHELL(menu), insert);
+	gtk_menu_shell_append(GTK_MENU_SHELL(menu), delete);
+
+	gtk_widget_show_all(menu);
+
+	gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL,
+		       event_button->button, event_button->time);
+	free(uid);
+	return TRUE;
 }

@@ -103,8 +103,6 @@ name_map_t devsubtype_map[] = {
 	{SUBTYPE_OUTLET, "outlet"},
 	{SUBTYPE_TEMP, "temp"},
 	{SUBTYPE_HUMID, "humid"},
-	{SUBTYPE_LUX, "lux"},
-	{SUBTYPE_BOOL, "bool"},
 	{SUBTYPE_COUNTER, "counter"},
 	{SUBTYPE_PRESSURE, "pressure"},
 	{SUBTYPE_SPEED, "windspeed"},
@@ -112,6 +110,7 @@ name_map_t devsubtype_map[] = {
 	{SUBTYPE_MOISTURE, "moisture"},
 	{SUBTYPE_WETNESS, "wetness"},
 	{SUBTYPE_HUB, "hub"},
+	{SUBTYPE_LUX, "lux"},
 	{SUBTYPE_VOLTAGE, "voltage"},
 	{SUBTYPE_WATTSEC, "wattsec"},
 	{SUBTYPE_WATT, "watt"},
@@ -128,6 +127,7 @@ name_map_t devsubtype_map[] = {
 	{SUBTYPE_THMODE, "thmode"},
 	{SUBTYPE_THSTATE, "thstate"},
 	{SUBTYPE_SMNUMBER, "smnumber"},
+	{SUBTYPE_BOOL, "bool"},
 };
 
 

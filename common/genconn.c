@@ -106,6 +106,7 @@ void generic_connect_event_cb(struct bufferevent *ev, short what, void *arg)
 
 	if (what & BEV_EVENT_CONNECTED) {
 		LOG(LOG_NOTICE, "Connected to %s", conntype[conn->type]);
+		conn->connected = 1;
 	} else if (what & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
 		if (what & BEV_EVENT_ERROR) {
 			err = bufferevent_socket_get_dns_error(ev);
@@ -117,6 +118,7 @@ void generic_connect_event_cb(struct bufferevent *ev, short what, void *arg)
 		LOG(LOG_NOTICE, "Lost connection to %s, closing",
 		     conntype[conn->type]);
 		bufferevent_free(ev);
+		conn->connected = 0;
 
 		if (!conn->shutdown) {
 			/* we need to reconnect! */
@@ -159,7 +161,8 @@ void generic_cb_sigterm(int fd, short what, void *arg)
 
 	LOG(LOG_NOTICE, "Recieved SIGTERM, shutting down");
 	gnhastd_conn->shutdown = 1;
-	gn_disconnect(gnhastd_conn->bev);
+	if (gnhastd_conn->connected)
+		gn_disconnect(gnhastd_conn->bev);
 	ev = evtimer_new(base, generic_cb_shutdown, NULL);
 	evtimer_add(ev, &secs);
 }
