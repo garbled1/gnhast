@@ -499,7 +499,7 @@ int cmd_register_group(pargs_t *args, void *arg)
 		free(tmpbuf);
 		TAILQ_FOREACH(wrap, &devgrp->members, next) {
 			found = 0;
-			tmpbuf = devlist;
+			tmpbuf = strdup(devlist);
 			for (p = strtok(tmpbuf, ","); p;
 			     p = strtok(NULL, ",")) {
 				if ((strlen(p) == strlen(wrap->dev->uid)) &&

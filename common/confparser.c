@@ -846,7 +846,14 @@ cfg_t *dump_conf(cfg_t *cfg, int flags, const char *filename)
 	time_t t;
 	device_t *dev;
 
-	LOG(LOG_NOTICE, "Rewriting configuration file");
+	/* A bit of a hack because these are flags */
+	if (flags == CONF_DUMP_DEVONLY)
+		LOG(LOG_NOTICE, "Rewriting device configuration file");
+	else if (flags == CONF_DUMP_GROUPONLY)
+		LOG(LOG_NOTICE, "Rewriting group configuration file");
+	else
+		LOG(LOG_NOTICE, "Rewriting configuration file");
+
 	t = time(NULL);
 	fp = fopen(filename, "w");
 	if (fp == NULL) {
