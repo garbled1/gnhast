@@ -1517,6 +1517,8 @@ int main(int argc, char **argv)
 	event_add(ev, NULL);
 	ev = evsignal_new(base, SIGQUIT, cb_sigterm, NULL);
 	event_add(ev, NULL);
+	ev = evsignal_new(base, SIGUSR1, cb_sigusr1, NULL);
+	event_add(ev, NULL);
 
 	/* go forth and destroy */
 	event_base_dispatch(base);

@@ -1058,6 +1058,8 @@ int main(int argc, char **argv)
 	event_add(ev, NULL);
 	ev = evsignal_new(base, SIGQUIT, generic_cb_sigterm, NULL);
 	event_add(ev, NULL);
+	ev = evsignal_new(base, SIGUSR1, cb_sigusr1, NULL);
+	event_add(ev, NULL);
 
 	/* update timer devices */
 	secs.tv_sec = 1;
