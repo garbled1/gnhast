@@ -63,6 +63,22 @@ extern char *conntype[];
 extern int need_rereg;
 extern connection_t *gnhastd_conn;
 
+/*** Callbacks ***/
+extern void genconn_connect_cb(int cevent, connection_t *conn);
+
+/*** Weak Reference Stubs ***/
+
+/**
+   \brief Called when a connection event occurs (stub)
+   \param cevent CEVENT saying what happened
+   \param conn connection_t that something occurred on
+*/
+
+void __attribute__((weak)) genconn_connect_cb(int cevent, connection_t *conn)
+{
+	return;
+}
+
 /**
    \brief A timer callback that initiates a new connection
    \param nada used for file descriptor
@@ -107,6 +123,7 @@ void generic_connect_event_cb(struct bufferevent *ev, short what, void *arg)
 	if (what & BEV_EVENT_CONNECTED) {
 		LOG(LOG_NOTICE, "Connected to %s", conntype[conn->type]);
 		conn->connected = 1;
+		genconn_connect_cb(CEVENT_CONNECTED, conn);
 	} else if (what & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
 		if (what & BEV_EVENT_ERROR) {
 			err = bufferevent_socket_get_dns_error(ev);
@@ -119,6 +136,7 @@ void generic_connect_event_cb(struct bufferevent *ev, short what, void *arg)
 		     conntype[conn->type]);
 		bufferevent_free(ev);
 		conn->connected = 0;
+		genconn_connect_cb(CEVENT_DISCONNECTED, conn);
 
 		if (!conn->shutdown) {
 			/* we need to reconnect! */
@@ -130,6 +148,7 @@ void generic_connect_event_cb(struct bufferevent *ev, short what, void *arg)
 			    "conn->server @ %s:%d in %d seconds",
 			    conn->host, conn->port, secs.tv_sec);
 		} else if (conn->shutdown == 1)
+			genconn_connect_cb(CEVENT_SHUTDOWN, conn);
 			event_base_loopexit(base, NULL);
 	}
 }

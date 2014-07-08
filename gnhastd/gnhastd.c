@@ -319,7 +319,7 @@ int main(int argc, char **argv)
 	ev = evsignal_new(base, SIGINFO, cb_siginfo, NULL);
 	event_add(ev, NULL);
 #endif
-	ev = evsignal_new(base, SIGUSR1, cb_siginfo, NULL);
+	ev = evsignal_new(base, SIGUSR1, cb_sigusr1, NULL);
 	event_add(ev, NULL);
 
 	pid = getpid();

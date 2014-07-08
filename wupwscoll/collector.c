@@ -92,6 +92,8 @@ char *conntype[] = {
 	"gnhastd",
 };
 
+void wupws_establish_feeds(void);
+
 /* Configuration file setup */
 
 extern cfg_opt_t device_opts[];
@@ -130,8 +132,21 @@ cfg_opt_t options[] = {
 };
 
 /*****
-      Stubs
+      Callbacks
 *****/
+
+/**
+   \brief Called when a connection event occurs (stub)
+   \param cevent CEVENT saying what happened
+   \param conn connection_t that something occurred on
+*/
+
+void genconn_connect_cb(int cevent, connection_t *conn)
+{
+	if (cevent == CEVENT_CONNECTED)
+		wupws_establish_feeds();
+}
+
 
 /**
    \brief Called when an upd command occurs
@@ -661,6 +676,8 @@ int main(int argc, char **argv)
 	ev = evsignal_new(base, SIGINT, generic_cb_sigterm, NULL);
 	event_add(ev, NULL);
 	ev = evsignal_new(base, SIGQUIT, generic_cb_sigterm, NULL);
+	event_add(ev, NULL);
+	ev = evsignal_new(base, SIGUSR1, cb_sigusr1, NULL);
 	event_add(ev, NULL);
 
 	/* cheat, and directly call the timer callback

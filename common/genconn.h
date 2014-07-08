@@ -1,6 +1,12 @@
 #ifndef _GENCONN_H_
 #define _GENCONN_H_
 
+enum CEVENTS {
+	CEVENT_DISCONNECTED,
+	CEVENT_CONNECTED,
+	CEVENT_SHUTDOWN,
+};
+
 typedef struct _connection_t {
 	int port;
 	int type;
