@@ -1,3 +1,7 @@
+0.3 - Release Version
+	Add SIGUSR1 handling to all collectors (flip debug mode switch)
+	Add rpm spec file	
+
 0.2.4 - Development Version
 	Added Collectors:
 		ad2usbcoll
