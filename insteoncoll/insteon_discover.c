@@ -474,6 +474,8 @@ main(int argc, char *argv[])
 	SIMPLEQ_INIT(&cmdfifo);
 
 	cfg = parse_conf(conffile);
+	if (cfg == NULL)
+		cfg = cfg_init(options, CFGF_NONE);
 
 	parse_devlist();
 	if (nrofdevslist == 0)
