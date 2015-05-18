@@ -4,6 +4,7 @@ model "2477D" {
 	subcat = 0x20
 	type = "dimmer"
 	subtype = "switch"
+	defgroups = {1}
 }
 model "2475DA1" {
 	name = "In-LineLinc Dimmer"
@@ -11,6 +12,7 @@ model "2475DA1" {
 	subcat = 0x1A
 	type = "dimmer"
 	subtype = "switch"
+	defgroups = {1}
 }
 model "2486DWH6" {
 	name = "KeypadLinc Dimmer, 6-button"
@@ -18,6 +20,7 @@ model "2486DWH6" {
 	subcat = 0x1B
 	type = "dimmer"
 	subtype = "switch"
+	defgroups = {1, 3, 4, 5, 6}
 }
 model "2334-232" {
 	name = "KeypadLinc Dimmer, 6-button, Dual-Band"
@@ -25,6 +28,7 @@ model "2334-232" {
 	subcat = 0x42
 	type = "dimmer"
 	subtype = "switch"
+	defgroups = {1, 3, 4, 5, 6}
 }
 model "2634-222" {
 	name = "On/Off Outdoor Module"
@@ -32,6 +36,7 @@ model "2634-222" {
 	subcat = 0x38
 	type = "switch"
 	subtype = "switch"
+	defgroups = {1}
 }
 model "2477S" {
 	name = "SwitchLinc Switch, On/Off, Dual-Band"
@@ -39,6 +44,7 @@ model "2477S" {
 	subcat = 0x2a
 	type = "switch"
 	subtype = "switch"
+	defgroups = {1}
 }
 model "2443-222" { 
 	name = "Micro On/Off Module"
@@ -46,4 +52,5 @@ model "2443-222" {
 	subcat = 0x2f
 	type = "switch"
 	subtype = "switch"
+	defgroups = {1}
 }

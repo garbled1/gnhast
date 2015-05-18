@@ -134,6 +134,8 @@ typedef struct _insteon_devdata_t {
 	uint8_t hopflag;	/**< \brief ideal nrof hops */
 	aldb_t aldb[ALDB_MAXSIZE];	/**< \brief aldb records */
 	int aldblen;		/**< \brief length of aldb */
+	uint8_t devcat;		/**< \brief store devcat here if needed */
+	uint8_t subcat;		/**< \brief store subcat here if needed */
 } insteon_devdata_t;
 
 #define ALDBLINK_USED	(1<<1)

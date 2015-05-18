@@ -79,6 +79,7 @@ cfg_opt_t insteonrec[] = {
 	CFG_INT("subcat", 0, CFGF_NONE),
 	CFG_INT_CB("subtype", 0, CFGF_NODEFAULT, conf_parse_subtype),
 	CFG_INT_CB("type", 0, CFGF_NODEFAULT, conf_parse_type),
+	CFG_INT_LIST("defgroups", "{1}", CFGF_NONE),
 	CFG_END(),
 };
 
@@ -220,7 +221,9 @@ void plm_queue_empty_cb(void *arg)
 {
 	connection_t *conn = (connection_t *)arg;
 	device_t *dev;
-	int done = 0;
+	int done = 0, i, grpn;
+	cfg_t *db;
+	insteon_devdata_t *dd;
 
 	switch (mode) {
 	case MODE_GET_DEV_VERS:
@@ -228,10 +231,12 @@ void plm_queue_empty_cb(void *arg)
 			if (dev->proto != PROTO_NONE)
 				done++;
 		if (done == nrofdevs) {
+			/* set it to link as resp next */
 			mode = MODE_LINK_ALL_C;
 			TAILQ_FOREACH(dev, &alldevs, next_all) {
 				plm_enq_std(dev, STDCMD_LINKMODE, 0x01,
 					    CMDQ_WAITACK|CMDQ_WAITDATA);
+				/* Link the PLM to the device as a master */
 				plm_all_link(0x01, 0x75);
 				//plm_all_link(0xFF, 0x75);
 			}
@@ -239,10 +244,24 @@ void plm_queue_empty_cb(void *arg)
 		break;
 	case MODE_LINK_ALL_C:
 		TAILQ_FOREACH(dev, &alldevs, next_all) {
+			/* Now link the PLM as a responder on group 1 */
 			plm_all_link(0x00, 0x01);
-			//plm_all_link(0xFF, 0x76);
 			plm_enq_std(dev, STDCMD_LINKMODE, 0x01,
 				    CMDQ_WAITACK|CMDQ_WAITDATA);
+			dd = (insteon_devdata_t *)dev->localdata;
+			db = find_db_entry(dd->devcat, dd->subcat);
+			if (db == NULL)
+				continue;
+			/* assign ourselves to all the default groups */
+			for (i=0; i < cfg_size(db, "defgroups"); i++) {
+				grpn = cfg_getnint(db, "defgroups", i);
+				LOG(LOG_NOTICE,
+				    "Linking as responder to group %d", grpn);
+				plm_enq_std(dev, STDCMD_LINKMODE, grpn,
+					    CMDQ_WAITACK|CMDQ_WAITDATA);
+				plm_enq_std(dev, GRPCMD_ASSIGN_GROUP, grpn,
+					    CMDQ_WAITACK|CMDQ_WAITDATA);
+			}
 		}
 		mode = MODE_LINK_ALL_R;
 		break;
@@ -292,6 +311,7 @@ void plm_handle_alink_complete(uint8_t *data)
 	device_t *dev;
 	cmdq_t *cmd;
 	cfg_t *db, *devconf;
+	insteon_devdata_t *dd;
 
 	cmd = SIMPLEQ_FIRST(&cmdfifo);
 
@@ -321,6 +341,10 @@ void plm_handle_alink_complete(uint8_t *data)
 	dev->name = strdup(cfg_getstr(db, "name"));
 	dev->type = cfg_getint(db, "type");
 	dev->subtype = cfg_getint(db, "subtype");
+	/* get the devdata and store the subcat/cat */
+	dd = (insteon_devdata_t *)dev->localdata;
+	dd->devcat = data[7];
+	dd->subcat = data[8];
 	devconf = new_conf_from_dev(cfg, dev);
 }
 

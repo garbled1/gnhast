@@ -71,6 +71,7 @@ extern commands_t commands[];
 
 void plm_query_all_devices(void);
 void plm_query_grouped_devices(device_t *dev, uint group);
+void verify_aldb_group_links(device_t *dev);
 
 /* Configuration file details */
 
@@ -467,8 +468,11 @@ void plm_handle_extrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 
 	switch (com1) {
 	case EXTCMD_RWALDB:
-		if (plm_handle_aldb(dev, ext))
+		if (plm_handle_aldb(dev, ext)) {
 			plmcmdq_got_data(CMDQ_WAITALDB);
+			/* Check the aldb for missing links! */
+			verify_aldb_group_links(dev);
+		}
 		break;
 	}
 }
@@ -534,6 +538,49 @@ void plm_query_grouped_devices(device_t *dev, uint group)
 /*****
       General routines/gnhastd connection stuff
 *****/
+
+
+/**
+   \brief Look for aldb backlinks to PLM for all groups, add if needed
+   \param dev device to investigate
+*/
+
+void verify_aldb_group_links(device_t *dev)
+{
+	insteon_devdata_t *dd;
+	int i, j, foundrec;
+
+	if (dev == NULL || dev->localdata == NULL)
+		return;
+
+	dd = (insteon_devdata_t *)dev->localdata;
+
+	for (i=0; i < dd->aldblen; i++) {
+		foundrec = 0;
+		for (j=0; j < dd->aldblen; j++) {
+			/* check if the group has a backlink to us */
+			if (dd->aldb[i].group == dd->aldb[j].group &&
+			    dd->aldb[j].devaddr[0] == plm_addr[0] &&
+			    dd->aldb[j].devaddr[1] == plm_addr[1] &&
+			    dd->aldb[j].devaddr[2] == plm_addr[2])
+				foundrec++;
+		}
+		if (!foundrec) {
+			/* we are not linked to this group! add one as
+			   a responder */
+			LOG(LOG_NOTICE, "Found unlinked group %X on %s, "
+			    "linking", dd->aldb[i].group, dev->uid);
+			plm_enq_std(dev, STDCMD_LINKMODE, dd->aldb[i].group,
+				    CMDQ_WAITACK|CMDQ_WAITDATA);
+			plm_enq_std(dev, GRPCMD_ASSIGN_GROUP,
+				    dd->aldb[i].group,
+				    CMDQ_WAITACK|CMDQ_WAITDATA);
+			//plm_all_link(0x00, dd->aldb[i].group);
+
+		}
+	}
+}
+
 
 /**
    \brief Parse the config file for devices and load them

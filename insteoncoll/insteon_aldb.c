@@ -80,6 +80,7 @@ cfg_opt_t insteonrec[] = {
 	CFG_INT("subcat", 0, CFGF_NONE),
 	CFG_INT_CB("subtype", 0, CFGF_NODEFAULT, conf_parse_subtype),
 	CFG_INT_CB("type", 0, CFGF_NODEFAULT, conf_parse_type),
+	CFG_INT_LIST("defgroups", "{1}", CFGF_NONE),
 	CFG_END(),
 };
 

@@ -360,6 +360,7 @@ void plm_runq(int fd, short what, void *arg)
 	struct timespec tp, chk, qsec = { 3 , 500000000L };
 	struct timespec alink = { 5, 0 };
 	struct timespec aldb = { 10, 0 };
+	char dsend[256];
 
 	//LOG(LOG_DEBUG, "Queue runner entered");
 	plm_condense_runq();
@@ -403,11 +404,13 @@ again:
 		    "cmd:%0.2x/%0.2x state/w:%0.2x/%0.2x",
 		    cmd->cmd[2], cmd->cmd[3], cmd->cmd[4],
 		    cmd->cmd[6], cmd->cmd[7], cmd->state, cmd->wait);
-#if 0
-		printf("SENDING: ");
+#if 1
+		int i;
+
+		sprintf(dsend, "DATA:");
 		for (i=0; i < cmd->msglen; i++)
-			printf("%0.2x ", cmd->cmd[i]);
-		printf("\n");
+			sprintf(dsend, "%s%0.2x ", dsend, cmd->cmd[i]);
+		LOG(LOG_DEBUG, dsend);
 #endif
 		return;
 	}
@@ -831,8 +834,11 @@ moredata:
 	LOG(LOG_DEBUG, "Pullup: 0x%0.2X 0x%0.2X", plmhead[0], plmhead[1]);
 
 	if (plmhead[0] != PLM_START) {
-		LOG(LOG_ERROR, "Got funny data from PLM: 0x%0.2X 0x%0.2X",
-		    plmhead[0], plmhead[1]);
+		if (plmhead[0] == PLMCMD_NAK)
+			LOG(LOG_ERROR, "Previous cmd got NAK'd");
+		else
+			LOG(LOG_ERROR, "Got funny data from PLM: "
+			    "0x%0.2X 0x%0.2X", plmhead[0], plmhead[1]);
 		evbuffer_drain(evbuf, 1); /* XXX */
 		goto moredata; /* ? I guess. */
 	}
@@ -947,6 +953,8 @@ moredata:
 		if (data == NULL)
 			return;
 		plmcmdq_check_ack(data);
+		LOG(LOG_NOTICE, "Starting all link code:%X group:%X",
+		    data[2], data[3]);
 		evbuffer_remove(evbuf, data, 5);
 		break;
 	case PLM_ALINK_CANCEL:
