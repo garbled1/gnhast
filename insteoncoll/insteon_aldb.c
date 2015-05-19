@@ -66,6 +66,11 @@ extern cfg_opt_t device_opts[];
 
 cfg_opt_t insteoncoll_opts[] = {
 	CFG_STR("device", 0, CFGF_NODEFAULT),
+	CFG_INT("rescan", 60, CFGF_NONE),
+	CFG_INT_CB("plmtype", PLM_TYPE_SERIAL, CFGF_NONE, conf_parse_plmtype),
+	CFG_STR("hostname", "insteon-hub", CFGF_NONE),
+	CFG_INT("plmport", 9761, CFGF_NONE),
+	CFG_INT("httpport", 25105, CFGF_NONE),
 	CFG_END(),
 };
 

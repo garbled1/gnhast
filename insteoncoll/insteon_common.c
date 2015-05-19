@@ -65,7 +65,7 @@ extern int nrofdevs;
 extern FILE *logfile;
 extern struct event_base *base;
 extern struct evdns_base *dns_base;
-extern connection_t *plm_conn;
+extern connection_t *plm_conn, *hubplm_conn, *hubhttp_conn;
 extern connection_t *gnhastd_conn;
 extern uint8_t plm_addr[3];
 extern int need_rereg;
@@ -237,6 +237,55 @@ void connect_event_cb(struct bufferevent *ev, short what, void *arg)
 	}
 }
 
+/**
+   \brief Connect to a plm of given type
+   \param plmtype type to connect to PLM_TYPE_*
+   \param device serial device name
+   \param host hostname
+   \param port portnum
+   \return fd
+*/
+
+int plmtype_connect(int plmtype, char *device, char *host, int portnum)
+{
+	int fd = -1;
+	struct ev_token_bucket_cfg *ratelim;
+	struct timeval rate = { 1, 0 };
+
+	switch (plmtype) {
+	case PLM_TYPE_SERIAL:
+		if (device == NULL)
+		    LOG(LOG_FATAL, "No serial device set.");
+		fd = serial_connect(device, B19200,
+				    CS8|CREAD|CLOCAL);
+
+		plm_conn = smalloc(connection_t);
+		plm_conn->bev = bufferevent_socket_new(base, fd,
+						       BEV_OPT_CLOSE_ON_FREE);
+		plm_conn->type = CONN_TYPE_PLM;
+		bufferevent_setcb(plm_conn->bev, plm_readcb, NULL,
+				  serial_eventcb, plm_conn);
+		bufferevent_enable(plm_conn->bev, EV_READ|EV_WRITE);
+
+		ratelim = ev_token_bucket_cfg_new(2400, 100, 25, 256, &rate);
+		bufferevent_set_rate_limit(plm_conn->bev, ratelim);
+		break;
+	case PLM_TYPE_HUBPLM:
+		if (host == NULL)
+		    LOG(LOG_FATAL, "No hostname given");
+		/* Warning, totally untested */
+		hubplm_conn = smalloc(connection_t);
+		hubplm_conn->port = portnum;
+		hubplm_conn->type = CONN_TYPE_HUBPLM;
+		hubplm_conn->host = host;
+		connect_server_cb(0, 0, hubplm_conn);
+		break;
+	case PLM_TYPE_HUBHTTP:
+		LOG(LOG_FATAL, "HTTP Not supported (yet)");
+		break;
+	}
+	return fd;
+}
 
 /******************************************************
 	Command Queue Routines

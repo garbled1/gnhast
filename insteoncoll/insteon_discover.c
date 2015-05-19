@@ -127,9 +127,12 @@ extern SIMPLEQ_HEAD(fifohead, _cmdq_t) cmdfifo;
 
 usage(void)
 {
-	(void)fprintf(stderr, "Usage %s: [-m <dumpconffile>]"
+	(void)fprintf(stderr, "Usage:\n");
+	(void)fprintf(stderr, "%s: [-m <dumpconffile>]"
 		      " -f <listfile> -s <device>\n",
 	    getprogname());
+	(void)fprintf(stderr, "%s: [-m <dumpconffile>] -f <listfile>"
+		      " -h <hostname of hub> -n <portnum>\n");
 	exit(1);
 }
 
@@ -475,8 +478,6 @@ main(int argc, char *argv[])
 	char *idbfile = SYSCONFDIR "/" INSTEON_DB_FILE;
 	char *conffile = SYSCONFDIR "/" INSTEONCOLL_CONF_FILE;
 	struct termios tio;
-	struct ev_token_bucket_cfg *ratelim;
-	struct timeval rate = { 1, 0 };
 	struct timeval runq = { 0, 500 };
 	struct event *ev;
 	cfg_t *icoll;
@@ -527,25 +528,27 @@ main(int argc, char *argv[])
 	if (cfg_idb == NULL)
 		LOG(LOG_ERROR, "No Insteon DB file, cannot build usable conf");
 
-	/* write the serial device name to the conf file */
+	/* Connect to the PLM and save that in the conf */
+
 	icoll = cfg_getsec(cfg, "insteoncoll");
-	if (cfg_getstr(icoll, "device") == NULL)
+	if (device != NULL) {
+		fd = plmtype_connect(PLM_TYPE_SERIAL, device, NULL, -1);
 		cfg_setstr(icoll, "device", device);
+		cfg_setint(icoll, "plmtype", PLM_TYPE_SERIAL);
+	} else if (port == 9761) {
+		fd = plmtype_connect(PLM_TYPE_HUBPLM, NULL, host, port);
+		cfg_setstr(icoll, "hostname", host);
+		cfg_setint(icoll, "plmport", port);
+		cfg_setint(icoll, "plmtype", PLM_TYPE_HUBPLM);
+	} else {
+		fd = plmtype_connect(PLM_TYPE_HUBHTTP, NULL, host, port);
+		cfg_setstr(icoll, "hostname", host);
+		cfg_setint(icoll, "httpport", port);
+		cfg_setint(icoll, "plmtype", PLM_TYPE_HUBHTTP);
+	}
+
 	a = cfg_getopt(icoll, "plmtype");
 	cfg_opt_set_print_func(a, conf_print_plmtype);
-
-	fd = serial_connect(device, B19200, CS8|CREAD|CLOCAL);
-
-	base = event_base_new();
-	plm_conn = smalloc(connection_t);
-	plm_conn->bev = bufferevent_socket_new(base, fd, BEV_OPT_CLOSE_ON_FREE);
-	plm_conn->type = CONN_TYPE_PLM;
-	bufferevent_setcb(plm_conn->bev, plm_readcb, NULL, serial_eventcb,
-			  plm_conn);
-	bufferevent_enable(plm_conn->bev, EV_READ|EV_WRITE);
-
-	ratelim = ev_token_bucket_cfg_new(2400, 100, 25, 256, &rate);
-	bufferevent_set_rate_limit(plm_conn->bev, ratelim);
 
 	plm_getinfo();
 	plm_get_engine_versions(plm_conn);

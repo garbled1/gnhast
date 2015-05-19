@@ -177,7 +177,7 @@ typedef struct _insteon_devdata_t {
 void connect_server_cb(int nada, short what, void *arg);
 void connect_event_cb(struct bufferevent *ev, short what, void *arg);
 void hubplm_connect_event_cb(struct bufferevent *ev, short what, void *arg);
-
+int plmtype_connect(int plmtype, char *device, char *host, int portnum);
 int conf_parse_plmtype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		       void *result);
 void conf_print_plmtype(cfg_opt_t *opt, unsigned int index, FILE *fp);

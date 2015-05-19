@@ -650,8 +650,6 @@ int
 main(int argc, char *argv[])
 {
 	int c, fd;
-	struct ev_token_bucket_cfg *ratelim;
-	struct timeval rate = { 1, 0 };
 	struct timeval runq = { 0, 500 };
 	struct timeval rescan = { 60, 0 };
 	struct event *ev;
@@ -711,38 +709,11 @@ main(int argc, char *argv[])
 	}
 
 	/* Connect to the PLM */
-	switch (cfg_getint(icoll_c, "plmtype")) {
-	case PLM_TYPE_SERIAL:
-		/* read the serial device name from the conf file */
-		if (cfg_getstr(icoll_c, "device") == NULL)
-			LOG(LOG_FATAL, "Serial device not set in conf file");
+	fd = plmtype_connect(cfg_getint(icoll_c, "plmtype"),
+			     cfg_getstr(icoll_c, "device"),
+			     cfg_getstr(icoll_c, "hostname"),
+			     cfg_getint(icoll_c, "plmport"));
 
-		fd = serial_connect(cfg_getstr(icoll_c, "device"), B19200,
-				    CS8|CREAD|CLOCAL);
-
-		plm_conn = smalloc(connection_t);
-		plm_conn->bev = bufferevent_socket_new(base, fd,
-						       BEV_OPT_CLOSE_ON_FREE);
-		plm_conn->type = CONN_TYPE_PLM;
-		bufferevent_setcb(plm_conn->bev, plm_readcb, NULL,
-				  serial_eventcb, plm_conn);
-		bufferevent_enable(plm_conn->bev, EV_READ|EV_WRITE);
-
-		ratelim = ev_token_bucket_cfg_new(2400, 100, 25, 256, &rate);
-		bufferevent_set_rate_limit(plm_conn->bev, ratelim);
-		break;
-	case PLM_TYPE_HUBPLM:
-		/* Warning, totally untested */
-		hubplm_conn = smalloc(connection_t);
-		hubplm_conn->port = cfg_getint(icoll_c, "plmport");
-		hubplm_conn->type = CONN_TYPE_HUBPLM;
-		hubplm_conn->host = cfg_getstr(icoll_c, "hostname");
-		connect_server_cb(0, 0, hubplm_conn);
-		break;
-	case PLM_TYPE_HUBHTTP:
-		LOG(LOG_FATAL, "HTTP Not supported (yet)");
-		break;
-	}
 	plm_getinfo();
 
 	/* setup runq */
@@ -782,7 +753,8 @@ main(int argc, char *argv[])
 	/* loopit */
 	event_base_dispatch(base);
 
-	(void)close(fd);
+	if (fd != -1)
+	    (void)close(fd);
 	closelog();
 	delete_pidfile();
 	return 0;
