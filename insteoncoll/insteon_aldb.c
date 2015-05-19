@@ -59,6 +59,7 @@ extern char *conntype[];
 
 /* Configuration file details */
 
+char *conffile; /* placeholder */
 char *dumpconf = NULL;
 cfg_t *cfg, *cfg_idb;
 extern cfg_opt_t device_opts[];
@@ -101,7 +102,10 @@ cfg_opt_t options[] = {
 FILE *logfile;
 
 struct event_base *base;
-connection_t *plm_conn;
+struct evdns_base *dns_base;
+int need_rereg = 0;
+connection_t *plm_conn, *hubplm_conn, *hubhttp_conn;
+connection_t *gnhastd_conn;
 uint8_t plm_addr[3];
 char *aldbfile = NULL;
 int writealdb = 0;
@@ -498,8 +502,9 @@ cfg_t *parse_insteondb(const char *filename)
 int
 main(int argc, char *argv[])
 {
-	int c, fd, x;
+	int c, fd, x, port = 9761;
 	char *device = NULL, *devaddr;
+	char *host = NULL;
 	char *idbfile = SYSCONFDIR "/" INSTEON_DB_FILE;
 	char *conffile = SYSCONFDIR "/" INSTEONCOLL_CONF_FILE;
 	struct ev_token_bucket_cfg *ratelim;
@@ -510,7 +515,7 @@ main(int argc, char *argv[])
 	insteon_devdata_t *dd;
 
 	devaddr = NULL;
-	while ((c = getopt(argc, argv, "a:df:ps:w")) != -1)
+	while ((c = getopt(argc, argv, "a:df:h:n:ps:w")) != -1)
 		switch (c) {
 		case 'a':
 			devaddr = strdup(optarg);
@@ -524,6 +529,12 @@ main(int argc, char *argv[])
 		case 'f':
 			aldbfile = strdup(optarg);
 			break;
+		case 'h':
+			host = strdup(optarg);
+			break;
+		case 'n':
+			port = atoi(optarg);
+			break;
 		case 's':
 			device = optarg;
 			break;
@@ -534,7 +545,8 @@ main(int argc, char *argv[])
 			usage();
 		}
 
-	if (device == NULL || (devaddr == NULL && plmaldbdump == 0))
+	if ((device == NULL && host == NULL) ||
+	    (devaddr == NULL && plmaldbdump == 0))
 		usage();
 
 	if (writealdb && aldbfile == NULL)

@@ -10,6 +10,10 @@
 
 /* PLM defines */
 
+#define PLM_TYPE_SERIAL		1
+#define PLM_TYPE_HUBPLM		2
+#define PLM_TYPE_HUBHTTP	3
+
 /* send/recv */
 #define PLM_START	0x02
 #define PLM_RECV_STD	0x50
@@ -143,6 +147,9 @@ typedef struct _insteon_devdata_t {
 #define ALDBLINK_MASTER	(1<<6)
 #define ALDBLINK_INUSE	(1<<7)
 
+#define ALINK_IS_USED(flg)	(flg & ALDBLINK_USED)
+#define ALINK_IS_MASTER(flg)	(flg & ALDBLINK_MASTER)
+
 #define CMDQ_MAX_SEND	2
 
 #define CMDQ_NOPWAIT	0xFF
@@ -161,10 +168,19 @@ typedef struct _insteon_devdata_t {
 
 #define CONN_TYPE_PLM		1
 #define CONN_TYPE_GNHASTD	2
+#define CONN_TYPE_HUBPLM	3
+#define CONN_TYPE_HUBHTTP	4
 
 /****************
 	Funtions from insteon_common.c
 ****************/
+void connect_server_cb(int nada, short what, void *arg);
+void connect_event_cb(struct bufferevent *ev, short what, void *arg);
+void hubplm_connect_event_cb(struct bufferevent *ev, short what, void *arg);
+
+int conf_parse_plmtype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
+		       void *result);
+void conf_print_plmtype(cfg_opt_t *opt, unsigned int index, FILE *fp);
 
 void plm_enq_std(device_t *dev, uint8_t com1, uint8_t com2, uint8_t waitflags);
 void plm_enq_ext(device_t *dev, uint8_t com1, uint8_t com2, uint8_t *data,

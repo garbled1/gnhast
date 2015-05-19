@@ -53,6 +53,9 @@
 #include "confparser.h"
 #include "confuse.h"
 #include "genconn.h"
+#include "confparser.h"
+#include "gncoll.h"
+#include "collcmd.h"
 #include "insteon.h"
 
 extern int errno;
@@ -61,17 +64,179 @@ extern TAILQ_HEAD(, _device_t) alldevs;
 extern int nrofdevs;
 extern FILE *logfile;
 extern struct event_base *base;
+extern struct evdns_base *dns_base;
 extern connection_t *plm_conn;
+extern connection_t *gnhastd_conn;
 extern uint8_t plm_addr[3];
+extern int need_rereg;
+extern char *dumpconf;
 
 int plmaldbmorerecords = 0;
 
 SIMPLEQ_HEAD(fifohead, _cmdq_t) cmdfifo;
-char *conntype[3] = {
+char *conntype[5] = {
 	"none",
 	"plm",
 	"gnhastd",
+	"hubplm",
+	"hubhttp",
 };
+
+/**
+   \brief parse insteon connection type
+*/
+
+int conf_parse_plmtype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
+		       void *result)
+{
+	if (strcasecmp(value, "serial") == 0)
+		*(int *)result = CONN_TYPE_PLM;
+	else if (strcasecmp(value, "plm") == 0)
+		*(int *)result = CONN_TYPE_PLM;
+	else if (strcmp(value, "hubplm") == 0)
+		*(int *)result = CONN_TYPE_HUBPLM;
+	else if (strcmp(value, "hubhttp") == 0)
+		*(int *)result = CONN_TYPE_HUBHTTP;
+	else if (strcmp(value, "http") == 0)
+		*(int *)result = CONN_TYPE_HUBHTTP;
+	else {
+		cfg_error(cfg, "invalid value for option '%s': %s",
+		    cfg_opt_name(opt), value);
+		return -1;
+	}
+	return 0;
+}
+
+
+/**
+   \brief print insteon connection type
+*/
+
+void conf_print_plmtype(cfg_opt_t *opt, unsigned int index, FILE *fp)
+{
+	switch (cfg_opt_getnint(opt, index)) {
+	case CONN_TYPE_PLM:
+		fprintf(fp, "serial");
+		break;
+	case CONN_TYPE_HUBPLM:
+		fprintf(fp, "hubplm");
+		break;
+	case CONN_TYPE_HUBHTTP:
+		fprintf(fp, "hubhttp");
+		break;
+	default:
+		fprintf(fp, "serial");
+		break;
+	}
+}
+
+/**
+   \brief Event callback used with insteon hub-as-plm network connections
+   \param ev The bufferevent that fired
+   \param what why did it fire?
+   \param arg pointer to connection_t;
+*/
+
+void hubplm_connect_event_cb(struct bufferevent *ev, short what, void *arg)
+{
+	int err;
+	connection_t *conn = (connection_t *)arg;
+
+	if (what & BEV_EVENT_CONNECTED)
+		LOG(LOG_DEBUG, "Connected to %s", conntype[conn->type]);
+	else if (what & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
+		if (what & BEV_EVENT_ERROR) {
+			err = bufferevent_socket_get_dns_error(ev);
+			if (err)
+				LOG(LOG_FATAL, "DNS Failure connecting to %s: %s",
+				    conntype[conn->type], strerror(err));
+		}
+		LOG(LOG_DEBUG, "Lost connection to %s, closing",
+		    conntype[conn->type]);
+		bufferevent_free(ev);
+		/* Retry immediately */
+		connect_server_cb(0, 0, conn);
+	}
+}
+
+/**
+   \brief A timer callback that initiates a new connection
+   \param nada used for file descriptor
+   \param what why did we fire?
+   \param arg pointer to connection_t
+   \note also used to manually initiate a connection
+*/
+
+void connect_server_cb(int nada, short what, void *arg)
+{
+	connection_t *conn = (connection_t *)arg;
+	device_t *dev;
+
+	conn->bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
+	if (conn->type == CONN_TYPE_GNHASTD)
+		bufferevent_setcb(conn->bev, gnhastd_read_cb, NULL,
+				  connect_event_cb, conn);
+	else if (conn->type == CONN_TYPE_HUBPLM)
+		bufferevent_setcb(conn->bev, plm_readcb, NULL,
+				  hubplm_connect_event_cb, conn);
+	bufferevent_enable(conn->bev, EV_READ|EV_WRITE);
+	bufferevent_socket_connect_hostname(conn->bev, dns_base, AF_UNSPEC,
+					    conn->host, conn->port);
+	if (conn->type == CONN_TYPE_GNHASTD) {
+		LOG(LOG_NOTICE, "Attempting to connect to %s @ %s:%d",
+		    conntype[conn->type], conn->host, conn->port);
+		if (need_rereg) {
+			TAILQ_FOREACH(dev, &alldevs, next_all)
+				if (dumpconf == NULL && dev->name != NULL)
+					gn_register_device(dev, conn->bev);
+			gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
+		}
+		need_rereg = 0;
+	}
+}
+
+/**
+   \brief Event callback used with connections
+   \param ev The bufferevent that fired
+   \param what why did it fire?
+   \param arg pointer to connection_t;
+*/
+
+void connect_event_cb(struct bufferevent *ev, short what, void *arg)
+{
+	int err;
+	connection_t *conn = (connection_t *)arg;
+	struct event *tev; /* timer event */
+	struct timeval secs = { 30, 0 }; /* retry in 30 seconds */
+
+	if (what & BEV_EVENT_CONNECTED) {
+		LOG(LOG_NOTICE, "Connected to %s", conntype[conn->type]);
+	} else if (what & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
+		if (what & BEV_EVENT_ERROR) {
+			err = bufferevent_socket_get_dns_error(ev);
+			if (err)
+				LOG(LOG_FATAL,
+				    "DNS Failure connecting to %s: %s",
+				    conntype[conn->type], strerror(err));
+		}
+		LOG(LOG_NOTICE, "Lost connection to %s, closing",
+		    conntype[conn->type]);
+		bufferevent_free(ev);
+
+		if (!conn->shutdown) {
+			/* we need to reconnect! */
+			need_rereg = 1;
+			tev = evtimer_new(base, connect_server_cb, conn);
+			evtimer_add(tev, &secs); /* XXX leak? */
+			LOG(LOG_NOTICE, "Attempting reconnection to "
+			    "%s @ %s:%d in %d seconds",
+			    conntype[conn->type], conn->host, conn->port,
+			    secs.tv_sec);
+		} else 
+			event_base_loopexit(base, NULL);
+	}
+}
+
 
 /******************************************************
 	Command Queue Routines

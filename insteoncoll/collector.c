@@ -83,6 +83,10 @@ extern cfg_opt_t device_opts[];
 cfg_opt_t insteoncoll_opts[] = {
 	CFG_STR("device", 0, CFGF_NODEFAULT),
 	CFG_INT("rescan", 60, CFGF_NONE),
+	CFG_INT_CB("plmtype", PLM_TYPE_SERIAL, CFGF_NONE, conf_parse_plmtype),
+	CFG_STR("hostname", "insteon-hub", CFGF_NONE),
+	CFG_INT("plmport", 9761, CFGF_NONE),
+	CFG_INT("httpport", 25105, CFGF_NONE),
 	CFG_END(),
 };
 
@@ -105,7 +109,7 @@ FILE *logfile;
 
 struct event_base *base;
 struct evdns_base *dns_base;
-connection_t *plm_conn;
+connection_t *plm_conn, *hubplm_conn, *hubhttp_conn;
 connection_t *gnhastd_conn;
 uint8_t plm_addr[3];
 int need_rereg = 0;
@@ -558,11 +562,12 @@ void verify_aldb_group_links(device_t *dev)
 	for (i=0; i < dd->aldblen; i++) {
 		foundrec = 0;
 		for (j=0; j < dd->aldblen; j++) {
-			/* check if the group has a backlink to us */
+			/* check if the group has a backlink as a resp to us */
 			if (dd->aldb[i].group == dd->aldb[j].group &&
 			    dd->aldb[j].devaddr[0] == plm_addr[0] &&
 			    dd->aldb[j].devaddr[1] == plm_addr[1] &&
-			    dd->aldb[j].devaddr[2] == plm_addr[2])
+			    dd->aldb[j].devaddr[2] == plm_addr[2] &&
+			    !ALINK_IS_MASTER(dd->aldb[j].lflags))
 				foundrec++;
 		}
 		if (!foundrec) {
@@ -570,13 +575,12 @@ void verify_aldb_group_links(device_t *dev)
 			   a responder */
 			LOG(LOG_NOTICE, "Found unlinked group %X on %s, "
 			    "linking", dd->aldb[i].group, dev->uid);
+			plm_all_link(0x00, dd->aldb[i].group);
 			plm_enq_std(dev, STDCMD_LINKMODE, dd->aldb[i].group,
 				    CMDQ_WAITACK|CMDQ_WAITDATA);
 			plm_enq_std(dev, GRPCMD_ASSIGN_GROUP,
 				    dd->aldb[i].group,
 				    CMDQ_WAITACK|CMDQ_WAITDATA);
-			//plm_all_link(0x00, dd->aldb[i].group);
-
 		}
 	}
 }
@@ -706,26 +710,39 @@ main(int argc, char *argv[])
 			    "section");
 	}
 
-	/* read the serial device name from the conf file */
-	if (cfg_getstr(icoll_c, "device") == NULL)
-		LOG(LOG_FATAL, "Serial device not set in conf file");
-
 	/* Connect to the PLM */
+	switch (cfg_getint(icoll_c, "plmtype")) {
+	case PLM_TYPE_SERIAL:
+		/* read the serial device name from the conf file */
+		if (cfg_getstr(icoll_c, "device") == NULL)
+			LOG(LOG_FATAL, "Serial device not set in conf file");
 
-	fd = serial_connect(cfg_getstr(icoll_c, "device"), B19200,
-			    CS8|CREAD|CLOCAL);
+		fd = serial_connect(cfg_getstr(icoll_c, "device"), B19200,
+				    CS8|CREAD|CLOCAL);
 
-	plm_conn = smalloc(connection_t);
-	plm_conn->bev = bufferevent_socket_new(base, fd,
-					       BEV_OPT_CLOSE_ON_FREE);
-	plm_conn->type = CONN_TYPE_PLM;
-	bufferevent_setcb(plm_conn->bev, plm_readcb, NULL, serial_eventcb,
-			  plm_conn);
-	bufferevent_enable(plm_conn->bev, EV_READ|EV_WRITE);
+		plm_conn = smalloc(connection_t);
+		plm_conn->bev = bufferevent_socket_new(base, fd,
+						       BEV_OPT_CLOSE_ON_FREE);
+		plm_conn->type = CONN_TYPE_PLM;
+		bufferevent_setcb(plm_conn->bev, plm_readcb, NULL,
+				  serial_eventcb, plm_conn);
+		bufferevent_enable(plm_conn->bev, EV_READ|EV_WRITE);
 
-	ratelim = ev_token_bucket_cfg_new(2400, 100, 25, 256, &rate);
-	bufferevent_set_rate_limit(plm_conn->bev, ratelim);
-
+		ratelim = ev_token_bucket_cfg_new(2400, 100, 25, 256, &rate);
+		bufferevent_set_rate_limit(plm_conn->bev, ratelim);
+		break;
+	case PLM_TYPE_HUBPLM:
+		/* Warning, totally untested */
+		hubplm_conn = smalloc(connection_t);
+		hubplm_conn->port = cfg_getint(icoll_c, "plmport");
+		hubplm_conn->type = CONN_TYPE_HUBPLM;
+		hubplm_conn->host = cfg_getstr(icoll_c, "hostname");
+		connect_server_cb(0, 0, hubplm_conn);
+		break;
+	case PLM_TYPE_HUBHTTP:
+		LOG(LOG_FATAL, "HTTP Not supported (yet)");
+		break;
+	}
 	plm_getinfo();
 
 	/* setup runq */
@@ -744,7 +761,7 @@ main(int argc, char *argv[])
 	gnhastd_conn->host = cfg_getstr(gnhastd_c, "hostname");
 	/* cheat, and directly call the timer callback
 	   This sets up a connection to the server. */
-	generic_connect_server_cb(0, 0, gnhastd_conn);
+	connect_server_cb(0, 0, gnhastd_conn);
 	gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
 
 	/* setup signal handlers */

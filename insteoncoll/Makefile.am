@@ -14,6 +14,11 @@ insteon_discover_SOURCES = \
 	$(top_srcdir)/common/gnhast.h \
 	$(top_srcdir)/common/confuse.h \
 	$(top_srcdir)/common/genconn.h \
+	$(top_srcdir)/common/netparser.c \
+	$(top_srcdir)/common/gncoll.c \
+	$(top_srcdir)/common/gncoll.h \
+	$(top_srcdir)/common/collcmd.c \
+	$(top_srcdir)/common/collcmd.h \
 	insteon.h collector.h \
 	insteon_common.c \
 	insteon_discover.c
@@ -72,6 +77,11 @@ insteon_aldb_SOURCES = \
 	$(top_srcdir)/common/confparser.h \
 	$(top_srcdir)/common/confuse.h \
 	$(top_srcdir)/common/genconn.h \
+	$(top_srcdir)/common/netparser.c \
+	$(top_srcdir)/common/gncoll.c \
+	$(top_srcdir)/common/gncoll.h \
+	$(top_srcdir)/common/collcmd.c \
+	$(top_srcdir)/common/collcmd.h \
 	insteon.h collector.h \
 	insteon_common.c \
 	insteon_aldb.c

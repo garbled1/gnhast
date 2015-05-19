@@ -58,12 +58,18 @@ extern char *conntype[];
 
 /* Configuration file details */
 
+char *conffile; /* placeholder */
 char *dumpconf = NULL;
 cfg_t *cfg, *cfg_idb;
 extern cfg_opt_t device_opts[];
 
 cfg_opt_t insteoncoll_opts[] = {
 	CFG_STR("device", 0, CFGF_NODEFAULT),
+	CFG_INT("rescan", 60, CFGF_NONE),
+	CFG_INT_CB("plmtype", PLM_TYPE_SERIAL, CFGF_NONE, conf_parse_plmtype),
+	CFG_STR("hostname", "insteon-hub", CFGF_NONE),
+	CFG_INT("plmport", 9761, CFGF_NONE),
+	CFG_INT("httpport", 25105, CFGF_NONE),
 	CFG_END(),
 };
 
@@ -100,7 +106,10 @@ cfg_opt_t options[] = {
 FILE *logfile;
 
 struct event_base *base;
-connection_t *plm_conn;
+struct evdns_base *dns_base;
+int need_rereg = 0;
+connection_t *plm_conn, *hubplm_conn, *hubhttp_conn;
+connection_t *gnhastd_conn;
 uint8_t plm_addr[3];
 
 /* our state of operation */
@@ -257,6 +266,7 @@ void plm_queue_empty_cb(void *arg)
 				grpn = cfg_getnint(db, "defgroups", i);
 				LOG(LOG_NOTICE,
 				    "Linking as responder to group %d", grpn);
+				plm_all_link(0x00, grpn);
 				plm_enq_std(dev, STDCMD_LINKMODE, grpn,
 					    CMDQ_WAITACK|CMDQ_WAITDATA);
 				plm_enq_std(dev, GRPCMD_ASSIGN_GROUP, grpn,
@@ -459,7 +469,8 @@ cfg_t *parse_insteondb(const char *filename)
 int
 main(int argc, char *argv[])
 {
-	int timeout = 1, c, error, fd, groupnum = 1, i, nr;
+	int timeout = 1, c, error, fd, groupnum = 1, i, nr, port = 9761;
+	char *host = NULL;
 	char *device = NULL, buf[256], head[5];
 	char *idbfile = SYSCONFDIR "/" INSTEON_DB_FILE;
 	char *conffile = SYSCONFDIR "/" INSTEONCOLL_CONF_FILE;
@@ -469,14 +480,21 @@ main(int argc, char *argv[])
 	struct timeval runq = { 0, 500 };
 	struct event *ev;
 	cfg_t *icoll;
+	cfg_opt_t *a;
 
-	while ((c = getopt(argc, argv, "df:m:s:")) != -1)
+	while ((c = getopt(argc, argv, "df:h:m:n:s:")) != -1)
 		switch (c) {
 		case 'd':
 			debugmode = 1;
 			break;
 		case 'f':
 			listfile = strdup(optarg);
+			break;
+		case 'h':
+			host = strdup(optarg);
+			break;
+		case 'n':
+			port = atoi(optarg);
 			break;
 		case 'm':
 			dumpconf = strdup(optarg);
@@ -488,7 +506,7 @@ main(int argc, char *argv[])
 			usage();
 		}
 
-	if (device == NULL || listfile == NULL)
+	if ((device == NULL && host == NULL) || listfile == NULL)
 		usage();
 
 	/* Initialize the device table */
@@ -513,6 +531,8 @@ main(int argc, char *argv[])
 	icoll = cfg_getsec(cfg, "insteoncoll");
 	if (cfg_getstr(icoll, "device") == NULL)
 		cfg_setstr(icoll, "device", device);
+	a = cfg_getopt(icoll, "plmtype");
+	cfg_opt_set_print_func(a, conf_print_plmtype);
 
 	fd = serial_connect(device, B19200, CS8|CREAD|CLOCAL);
 
