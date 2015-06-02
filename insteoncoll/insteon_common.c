@@ -47,6 +47,8 @@
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
 #include <event2/event.h>
+#include <event2/http.h>
+#include <event2/http_struct.h>
 
 #include "gnhast.h"
 #include "common.h"
@@ -57,6 +59,7 @@
 #include "gncoll.h"
 #include "collcmd.h"
 #include "insteon.h"
+#include "http_func.h"
 
 extern int errno;
 extern int debugmode;
@@ -65,13 +68,27 @@ extern int nrofdevs;
 extern FILE *logfile;
 extern struct event_base *base;
 extern struct evdns_base *dns_base;
-extern connection_t *plm_conn, *hubplm_conn, *hubhttp_conn;
+extern connection_t *plm_conn;
 extern connection_t *gnhastd_conn;
 extern uint8_t plm_addr[3];
 extern int need_rereg;
 extern char *dumpconf;
 
+struct evhttp_connection *http_cn = NULL;
+struct event *hubhtml_ev;
+struct event *hubhtml_bufget_ev;
+
 int plmaldbmorerecords = 0;
+int plmtype = PLM_TYPE_SERIAL;
+int hubtype;
+
+/* the bufstatus.xml buffers */
+struct evbuffer *hubhtml_workbuf;
+char *hubhtml_url;
+char *hubhtml_username;
+char *hubhtml_password;
+int hubhtml_portnum;
+http_get_t *buffstatus_get;
 
 SIMPLEQ_HEAD(fifohead, _cmdq_t) cmdfifo;
 char *conntype[5] = {
@@ -82,6 +99,9 @@ char *conntype[5] = {
 	"hubhttp",
 };
 
+void hubhtml_startfeed(char *url_prefix, int portnum);
+void hubhtml_readcb(evutil_socket_t fd, short what, void *arg);
+
 /**
    \brief parse insteon connection type
 */
@@ -90,15 +110,15 @@ int conf_parse_plmtype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		       void *result)
 {
 	if (strcasecmp(value, "serial") == 0)
-		*(int *)result = CONN_TYPE_PLM;
+		*(int *)result = PLM_TYPE_SERIAL;
 	else if (strcasecmp(value, "plm") == 0)
-		*(int *)result = CONN_TYPE_PLM;
+		*(int *)result = PLM_TYPE_SERIAL;
 	else if (strcmp(value, "hubplm") == 0)
-		*(int *)result = CONN_TYPE_HUBPLM;
+		*(int *)result = PLM_TYPE_HUBPLM;
 	else if (strcmp(value, "hubhttp") == 0)
-		*(int *)result = CONN_TYPE_HUBHTTP;
+		*(int *)result = PLM_TYPE_HUBHTTP;
 	else if (strcmp(value, "http") == 0)
-		*(int *)result = CONN_TYPE_HUBHTTP;
+		*(int *)result = PLM_TYPE_HUBHTTP;
 	else {
 		cfg_error(cfg, "invalid value for option '%s': %s",
 		    cfg_opt_name(opt), value);
@@ -115,13 +135,13 @@ int conf_parse_plmtype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 void conf_print_plmtype(cfg_opt_t *opt, unsigned int index, FILE *fp)
 {
 	switch (cfg_opt_getnint(opt, index)) {
-	case CONN_TYPE_PLM:
+	case PLM_TYPE_SERIAL:
 		fprintf(fp, "serial");
 		break;
-	case CONN_TYPE_HUBPLM:
+	case PLM_TYPE_HUBPLM:
 		fprintf(fp, "hubplm");
 		break;
-	case CONN_TYPE_HUBHTTP:
+	case PLM_TYPE_HUBHTTP:
 		fprintf(fp, "hubhttp");
 		break;
 	default:
@@ -251,9 +271,11 @@ int plmtype_connect(int plmtype, char *device, char *host, int portnum)
 	int fd = -1;
 	struct ev_token_bucket_cfg *ratelim;
 	struct timeval rate = { 1, 0 };
+	char url[256];
 
 	switch (plmtype) {
 	case PLM_TYPE_SERIAL:
+		LOG(LOG_NOTICE, "Connecting to PLM serial device");
 		if (device == NULL)
 		    LOG(LOG_FATAL, "No serial device set.");
 		fd = serial_connect(device, B19200,
@@ -271,25 +293,264 @@ int plmtype_connect(int plmtype, char *device, char *host, int portnum)
 		bufferevent_set_rate_limit(plm_conn->bev, ratelim);
 		break;
 	case PLM_TYPE_HUBPLM:
+		LOG(LOG_NOTICE, "Connecting to hub PLM");
 		if (host == NULL)
 		    LOG(LOG_FATAL, "No hostname given");
 		/* Warning, totally untested */
-		hubplm_conn = smalloc(connection_t);
-		hubplm_conn->port = portnum;
-		hubplm_conn->type = CONN_TYPE_HUBPLM;
-		hubplm_conn->host = host;
-		connect_server_cb(0, 0, hubplm_conn);
+		plm_conn = smalloc(connection_t);
+		plm_conn->port = portnum;
+		plm_conn->type = CONN_TYPE_HUBPLM;
+		plm_conn->host = host;
+		connect_server_cb(0, 0, plm_conn);
 		break;
 	case PLM_TYPE_HUBHTTP:
-		LOG(LOG_FATAL, "HTTP Not supported (yet)");
+		LOG(LOG_NOTICE, "Connecting to hub HTTP port");
+		if (host == NULL)
+		    LOG(LOG_FATAL, "No hostname given");
+		sprintf(url, "http://%s", host);
+		hubhtml_url = strdup(url);
+		hubhtml_portnum = portnum;
+		hubhtml_startfeed(hubhtml_url, hubhtml_portnum);
 		break;
 	}
 	return fd;
 }
 
 /******************************************************
+	HTTP Stuff
+******************************************************/
+
+/**
+   \brief Callback for command send request
+   \param req request structure
+   \param arg unused
+   \note The response is not useful, so just nuke it
+*/
+
+void hubhtml_plmc_request_cb(struct evhttp_request *req, void *arg)
+{
+	struct evbuffer *data;
+	size_t len;
+
+	if (req == NULL) {
+		LOG(LOG_ERROR, "Got NULL req in hubhtml_send_request_cb() ??");
+		return;
+	}
+
+	switch (req->response_code) {
+	case HTTP_OK: break;
+	case 401:
+		LOG(LOG_FATAL, "Http Authentication failed, check password");
+		break;
+	default:
+		LOG(LOG_ERROR, "Http send request failure: %d",
+		    req->response_code);
+		return;
+		break;
+	}
+	data = evhttp_request_get_input_buffer(req);
+	len = evbuffer_get_length(data);
+	/*LOG(LOG_DEBUG, "input buf len= %d", len);*/
+	if (len == 0)
+		return;
+	evbuffer_drain(data, len); /* toss the data on the buffer */
+}
+
+/**
+   \brief Callback for http buffstatus request
+   \param req request structure
+   \param arg unused
+*/
+
+void hubhtml_buf_request_cb(struct evhttp_request *req, void *arg)
+{
+	struct evbuffer *data;
+	size_t len, blen, prevlen, usable_len;
+	int new_pos;
+	char *buf, *str, dbuf[256], debugbuffer[4096];
+	char *bstart, *bend, *new_start;
+	char size[2], tmp[2];
+	static int buf_empty;
+
+	if (req == NULL) {
+		LOG(LOG_ERROR, "Got NULL req in hubhtml_buf_request_cb() ??");
+		return;
+	}
+
+	switch (req->response_code) {
+	case HTTP_OK: break;
+	case 401:
+		LOG(LOG_FATAL, "Http Authentication failed, check password");
+		break;
+	default:
+		LOG(LOG_ERROR, "Http buffstatus request failure: %d",
+		    req->response_code);
+		return;
+		break;
+	}
+
+	data = evhttp_request_get_input_buffer(req);
+	len = evbuffer_get_length(data);
+	LOG(LOG_DEBUG, "input buf len= %d", len);
+	if (len == 0)
+		return;
+
+	buf = safer_malloc(len+1);
+	if (evbuffer_copyout(data, buf, len) != len) {
+		LOG(LOG_ERROR, "Failed to copyout %d bytes", len);
+		goto request_cb_out;
+	}
+	buf[len] = '\0'; /* just in case of stupid */
+	LOG(LOG_DEBUG, "input buf: %s", buf);
+	evbuffer_drain(data, len); /* toss the data on the buffer */
+
+	/* look for the <BS> and </BS> tokens */
+	bstart = strstr(buf, "<BS>");
+	if (bstart == NULL) {
+		LOG(LOG_ERROR, "Malformed buffstatus.xml response (<BS>)");
+		goto request_cb_out;
+	}
+	bstart += 4; /* <BS> */
+
+	bend = strstr(buf, "</BS>");
+	if (bend == NULL) {
+		LOG(LOG_ERROR, "Malformed buffstatus.xml response (</BS>)");
+		goto request_cb_out;
+	}
+	*bend = '\0';
+	bend += 1; /* catch the nul we put in */
+
+	blen = (size_t)(bend - bstart);
+	memcpy(dbuf, bstart, blen);
+
+	if (blen > BUFFSTATUS_BUFSIZ) {
+		LOG(LOG_ERROR, "Data larger than BUFFSTATUS_BUFSIZ, abort!");
+		goto request_cb_out;
+	}
+
+	/* determine if we have a new hub, or an old hub */
+
+	if (blen >= 202)
+		hubtype = HUB_TYPE_NEW;
+	else
+		hubtype = HUB_TYPE_OLD;
+
+	if (hubtype == HUB_TYPE_NEW) {
+		size[0] = dbuf[blen-3];
+		size[1] = dbuf[blen-2];
+		(void)hex_decode(size, 2, tmp);
+		usable_len = (int)tmp[0];
+		LOG(LOG_DEBUG, "Buffer size says 0x%c%c or %d",
+		    size[0], size[1], usable_len);
+		if (usable_len > 0) {
+			dbuf[usable_len] = '\0';
+			evbuffer_add(hubhtml_workbuf, dbuf, usable_len);
+		}
+	} else {
+		/* we have no idea how much of this is useable, so, sigh,
+		   we just have to load the whole thing in, and let the tool
+		   discard zeros like mad */
+		if (blen > 0)
+			evbuffer_add(hubhtml_workbuf, dbuf, blen);
+		usable_len = blen;
+	}
+
+	/* Now, immediately clear the buffer! */
+	if (usable_len > 0)
+		http_POST(hubhtml_url, "/" CLEARIMBUFF, hubhtml_portnum, NULL,
+			  hubhtml_plmc_request_cb);
+
+	usable_len = evbuffer_get_length(hubhtml_workbuf);
+	LOG(LOG_DEBUG, "Current work buffer is %d bytes long", usable_len);
+	evbuffer_copyout(hubhtml_workbuf, &debugbuffer, 4096);
+	debugbuffer[usable_len] = '\0';
+	LOG(LOG_DEBUG, "Workbuf: %s", debugbuffer);
+
+request_cb_out:
+	free(buf);
+	return;
+}
+
+/**
+   \brief Start up the buffstatus reader event
+   \param url_prefix http://insteon.hub
+   \param portnum port number
+*/
+
+void hubhtml_startfeed(char *url_prefix, int portnum)
+{
+	struct timeval secs = { 0, 0 };
+
+	/* setup the buffer */
+	hubhtml_workbuf = evbuffer_new();
+
+	/* prep authentication */
+	http_setup_auth(hubhtml_username, hubhtml_password, HTTP_AUTH_BASIC);
+
+	/* built the GET request */
+	buffstatus_get = smalloc(http_get_t);
+	buffstatus_get->url_prefix = url_prefix;
+	buffstatus_get->url_suffix = BUFFSTATUS_SUFX;
+	buffstatus_get->cb = hubhtml_buf_request_cb;
+	buffstatus_get->http_port = portnum;
+	buffstatus_get->precheck = NULL;
+
+	secs.tv_sec = 2; /* ? */
+	hubhtml_bufget_ev = event_new(base, -1, EV_PERSIST,
+				      cb_http_GET, buffstatus_get);
+	event_add(hubhtml_bufget_ev, &secs);
+	LOG(LOG_NOTICE, "Starting feed timer updates every %d seconds",
+	    secs.tv_sec);
+
+	/* Setup an event for the runq */
+	hubhtml_ev = event_new(base, -1, EV_PERSIST, hubhtml_readcb, NULL);
+	secs.tv_sec = 0;
+	secs.tv_usec = 500;
+	event_add(hubhtml_ev, &secs);
+
+	/* Clear the IM buffer before we start */
+	http_POST(hubhtml_url, "/" CLEARIMBUFF, hubhtml_portnum, NULL,
+		  hubhtml_plmc_request_cb);
+
+	/* do one right now */
+	cb_http_GET(0, 0, buffstatus_get);
+}
+
+
+/******************************************************
 	Command Queue Routines
 ******************************************************/
+
+/**
+   \brief Send a command to the PLM, regardless of type
+   \param conn connection (NULL if hubhttp type)
+   \param cmd cmdq_t command to send
+*/
+void plm_send_cmd(connection_t *conn, cmdq_t *cmd)
+{
+	char buf[256], add[8];
+	int i;
+
+	/* handle the easy case first */
+	if (conn != NULL) {
+		bufferevent_write(conn->bev, cmd->cmd, cmd->msglen);
+		return;
+	}
+
+	/* we have an htmlhub, yay. */
+	sprintf(buf, "/3?");
+	for (i=0; i < cmd->msglen && i < 25; i++) {
+		sprintf(add, "%0.2X", cmd->cmd[i]);
+		strcat(buf, add);
+	}
+	sprintf(add, "=I=3");
+	strcat(buf, add);
+	LOG(LOG_DEBUG, "Sending via http: %s", buf);
+	http_POST(hubhtml_url, buf, hubhtml_portnum, NULL,
+		  hubhtml_plmc_request_cb);
+	/* get the buffer right away! */
+	//cb_http_GET(0, 0, buffstatus_get);
+}
 
 /**
    \brief get number of hops for message
@@ -576,6 +837,7 @@ void plm_runq(int fd, short what, void *arg)
 	struct timespec aldb = { 10, 0 };
 	char dsend[256];
 
+
 	//LOG(LOG_DEBUG, "Queue runner entered");
 	plm_condense_runq();
 again:
@@ -613,7 +875,7 @@ again:
 		cmd->sendcount++;
 		cmd->state &= ~CMDQ_WAITSEND;
 		clock_gettime(CLOCK_MONOTONIC, &cmd->tp);
-		bufferevent_write(conn->bev, cmd->cmd, cmd->msglen);
+		plm_send_cmd(conn, cmd);
 		LOG(LOG_DEBUG, "Running a qevent to:%0.2X.%0.2X.%0.2X "
 		    "cmd:%0.2x/%0.2x state/w:%0.2x/%0.2x",
 		    cmd->cmd[2], cmd->cmd[3], cmd->cmd[4],
@@ -1025,6 +1287,333 @@ int plm_handle_aldb(device_t *dev, char *data)
 	Event Stuff
 *********************************************************/
 
+#define P_PULLUP 1
+#define P_REMOVE 2
+
+/**
+   \brief Do an evbuffer_pullup or remove, but autoconvert if htmlhub
+   \param buf evbuffer
+   \param count how many bytes of actual data (auto-adjusted)
+   \param data pointer to buffer to hold data
+   \param what P_REMOVE or P_PULLUP
+   \return 1 on failure, 0 on success
+*/
+
+int plmbuf_get(struct evbuffer *buf, int count, char *data, int what)
+{
+	char *tmp;
+
+	if (plmtype == PLM_TYPE_HUBHTTP) {
+		if (what == P_PULLUP)
+			tmp = evbuffer_pullup(buf, count * 2);
+		else
+			evbuffer_remove(buf, tmp, count * 2);
+		if (tmp == NULL)
+			return 1;
+		if (hex_decode(tmp, count * 2, data) == NULL)
+			return 1;
+	} else {
+		if (what == P_PULLUP)
+			data = evbuffer_pullup(buf, count);
+		else
+			evbuffer_remove(buf, data, count);
+		if (data == NULL)
+			return 1;
+	}
+	return 0;
+}
+
+/**
+   \brief Generic handler for commands used by both callbacks
+   \param evbuf our buffer
+   \param plmcmd plmhead[1]
+*/
+
+/*** Need to rewrite all buffer pulls to do hex convert maybe ***/
+
+void handle_command(struct evbuffer *evbuf, char plmcmd)
+{
+	char *data;
+	uint8_t toaddr[3], fromaddr[3], extdata[14], ackbit;
+	cmdq_t *cmd;
+	int dmult = 1;
+
+	if (plmtype == PLM_TYPE_HUBHTTP)
+		dmult = 2;
+
+	cmd = SIMPLEQ_FIRST(&cmdfifo);
+
+	/* Look at the command, and figure out what to do about it */
+	switch (plmcmd) {
+	case PLM_SEND: /* confirmation of send */
+		if (plmbuf_get(evbuf, 9, data, P_PULLUP))
+			return;
+		if (data[5] & PLMFLAG_EXT) {
+			if (plmbuf_get(evbuf, 23, data, P_PULLUP))
+				return;
+			ackbit = data[22];
+		} else
+			ackbit = data[8];
+		if (ackbit == PLMCMD_ACK)
+			LOG(LOG_DEBUG, "PLM Command Success: %0.2X", data[1]);
+		else { /* we got a bad retcode? */
+			LOG(LOG_ERROR, "PLM Command failed, 0x%0.2X "
+			    "ACK=0x%0.2X", data[1], ackbit);
+			LOG(LOG_DEBUG, "Data: %0.2X %0.2X %0.2X %0.2X "
+			    "%0.2X %0.2X %0.2X %0.2X %0.2X",
+			    data[0], data[1], data[2], data[3], data[4],
+			    data[5], data[6], data[7], data[8], data[9]);
+			if (data[5] & PLMFLAG_EXT)
+				LOG(LOG_DEBUG, "EXT: "
+				    "%0.2X %0.2X %0.2X %0.2X %0.2X "
+				    "%0.2X %0.2X %0.2X %0.2X %0.2X "
+				    "%0.2X %0.2X %0.2X",
+				    data[10], data[11], data[12], data[13],
+				    data[14], data[15], data[16], data[17],
+				    data[18], data[19], data[20], data[21],
+				    data[22]);
+		}
+		plmcmdq_check_ack(data);
+		if (data[5] & PLMFLAG_EXT)
+			evbuffer_drain(evbuf, 23*dmult);
+		else
+			evbuffer_drain(evbuf, 9*dmult); /* discard echo */
+		break;
+	case PLM_RECV_STD: /* we have a std msg */
+		if (plmbuf_get(evbuf, 11, data, P_PULLUP))
+			return;
+		plmbuf_get(evbuf, 11, data, P_REMOVE);
+		memcpy(fromaddr, data+2, 3);
+		memcpy(toaddr, data+5, 3);
+		plm_handle_stdrecv(fromaddr, toaddr, data[8], data[9],
+				   data[10]);
+		break;
+	case PLM_RECV_EXT:
+		if (plmbuf_get(evbuf, 25, data, P_PULLUP))
+			return;
+		plmbuf_get(evbuf, 25, data, P_REMOVE);
+		memcpy(fromaddr, data+2, 3);
+		memcpy(toaddr, data+5, 3);
+		memcpy(extdata, data+11, 14);
+		plm_handle_extrecv(fromaddr, toaddr, data[8], data[9],
+				   data[10], extdata);
+		break;
+	case PLM_RECV_X10:
+		if (plmbuf_get(evbuf, 4, data, P_PULLUP))
+			return;
+		LOG(LOG_DEBUG, "Got X10 mesage: %0.2X %0.2X", data[2],
+		    data[3]);
+		plmbuf_get(evbuf, 4, data, P_REMOVE);
+		break;
+	case PLM_SEND_X10: /* not supported yet, but, umm, maybe? */
+		if (plmbuf_get(evbuf, 5, data, P_PULLUP))
+			return;
+		LOG(LOG_DEBUG, "Sent X10 mesage: %0.2X %0.2X", data[2],
+		    data[3]);
+		plmbuf_get(evbuf, 5, data, P_REMOVE);
+		break;
+	case PLM_GETINFO:
+		if (plmbuf_get(evbuf, 9, data, P_PULLUP))
+			return;
+		plmbuf_get(evbuf, 9, data, P_REMOVE);
+		plm_handle_getinfo(data);
+		break;
+	case PLM_ALINK_COMPLETE:
+		if (plmbuf_get(evbuf, 10, data, P_PULLUP))
+			return;
+		plmbuf_get(evbuf, 10, data, P_REMOVE);
+		plm_handle_alink_complete(data);
+		break;
+	case PLM_ALINK_CFAILREP:
+		if (plmbuf_get(evbuf, 7, data, P_PULLUP))
+			return;
+		LOG(LOG_WARNING, "Got all-link failure for device %X.%X.%X"
+		    " group %X", data[4], data[5], data[6], data[3]);
+		plmbuf_get(evbuf, 7, data, P_REMOVE);
+		break;
+	case PLM_ALINK_CSTATUSREP:
+		if (plmbuf_get(evbuf, 3, data, P_PULLUP))
+			return;
+		LOG(LOG_NOTICE, "All link cleanup status: %X", data[2]);
+		plmbuf_get(evbuf, 3, data, P_REMOVE);
+		break;
+	case PLM_ALINK_START:
+		if (plmbuf_get(evbuf, 5, data, P_PULLUP))
+			return;
+		plmcmdq_check_ack(data);
+		LOG(LOG_NOTICE, "Starting all link code:%X group:%X",
+		    data[2], data[3]);
+		plmbuf_get(evbuf, 5, data, P_REMOVE);
+		break;
+	case PLM_ALINK_CANCEL:
+		if (plmbuf_get(evbuf, 3, data, P_PULLUP))
+			return;
+		LOG(LOG_NOTICE, "All link cancelled");
+		plmbuf_get(evbuf, 3, data, P_REMOVE);
+		break;
+	case PLM_ALINK_SEND:
+		if (plmbuf_get(evbuf, 6, data, P_PULLUP))
+			return;
+		LOG(LOG_NOTICE, "Sent all-link command %X/%X to group %X"
+		    " Status: %X", data[3], data[4], data[2], data[5]);
+		plmbuf_get(evbuf, 6, data, P_REMOVE);
+		break;
+	case PLM_ALINK_GETLASTRECORD:
+		if (plmbuf_get(evbuf, 3, data, P_PULLUP))
+			return;
+		LOG(LOG_DEBUG, "Sent get last ALINK record");
+		plmbuf_get(evbuf, 3, data, P_REMOVE);
+		break;
+	case PLM_ALINK_GETFIRST:
+	case PLM_ALINK_GETNEXT:
+		if (plmbuf_get(evbuf, 3, data, P_PULLUP))
+			return;
+		if (data[1] == cmd->cmd[1])
+			plmcmdq_dequeue(); /* dequeue */
+		if (data[2] == PLMCMD_ACK) /* more records in db */
+			plm_getplm_aldb(1); /* get next record */
+		else if (data[2] == PLMCMD_NAK) { /* last one */
+			plmaldbmorerecords = 0;
+			LOG(LOG_NOTICE, "Last PLM ALDB record");
+		}
+		plmbuf_get(evbuf, 3, data, P_REMOVE);
+		break;
+	case PLM_ALINK_RECORD:
+		if (plmbuf_get(evbuf, 10, data, P_PULLUP))
+			return;
+		plmbuf_get(evbuf, 10, data, P_REMOVE);
+		plm_handle_aldb_record_resp(data);
+		break;
+	case PLM_BUTTONEVENT:
+		if (plmbuf_get(evbuf, 3, data, P_PULLUP))
+			return;
+		LOG(LOG_DEBUG, "Got button press event 0x%X", data[2]);
+		plmbuf_get(evbuf, 3, data, P_REMOVE);
+		break;
+	case PLM_RESET: /* seriously??! */
+		if (plmbuf_get(evbuf, 2, data, P_PULLUP))
+			return;
+		LOG(LOG_ERROR, "PLM Has been manually reset!!");
+		plmbuf_get(evbuf, 2, data, P_REMOVE);
+		break;
+	case PLM_SETHOST: /* ?? */
+		if (plmbuf_get(evbuf, 6, data, P_PULLUP))
+			return;
+		LOG(LOG_ERROR, "PLM Sent Set Host Device Category?");
+		plmbuf_get(evbuf, 6, data, P_REMOVE);
+		break;
+	case PLM_FULL_RESET:
+		if (plmbuf_get(evbuf, 3, data, P_PULLUP))
+			return;
+		LOG(LOG_ERROR, "PLM Has been full reset!!");
+		plmbuf_get(evbuf, 3, data, P_REMOVE);
+		break;
+	case PLM_SET_ACK1:
+		if (plmbuf_get(evbuf, 4, data, P_PULLUP))
+			return;
+		LOG(LOG_NOTICE, "Set Ack1 bit?");
+		plmbuf_get(evbuf, 4, data, P_REMOVE);
+		break;
+	case PLM_SET_NAK1:
+		if (plmbuf_get(evbuf, 4, data, P_PULLUP))
+			return;
+		LOG(LOG_NOTICE, "Set NAK1 bit?");
+		plmbuf_get(evbuf, 4, data, P_REMOVE);
+		break;
+	case PLM_SET_ACK2:
+		if (plmbuf_get(evbuf, 5, data, P_PULLUP))
+			return;
+		LOG(LOG_NOTICE, "Set Ack2 bit?");
+		plmbuf_get(evbuf, 5, data, P_REMOVE);
+		break;
+	case PLM_SETCONF:
+		if (plmbuf_get(evbuf, 4, data, P_PULLUP))
+			return;
+		LOG(LOG_NOTICE, "Set PLM Config bits to %X", data[2]);
+		plmbuf_get(evbuf, 4, data, P_REMOVE);
+		break;
+	case PLM_LEDON:
+		if (plmbuf_get(evbuf, 3, data, P_PULLUP))
+			return;
+		LOG(LOG_ERROR, "Set PLM LED On");
+		plmbuf_get(evbuf, 3, data, P_REMOVE);
+		break;
+	case PLM_LEDOFF:
+		if (plmbuf_get(evbuf, 3, data, P_PULLUP))
+			return;
+		LOG(LOG_ERROR, "Set PLM LED Off");
+		plmbuf_get(evbuf, 3, data, P_REMOVE);
+		break;
+	case PLM_ALINK_MODIFY: /* unhandled */
+		if (plmbuf_get(evbuf, 12, data, P_PULLUP))
+			return;
+		LOG(LOG_ERROR, "Sent modify all-link record (ignored)");
+		plmbuf_get(evbuf, 12, data, P_REMOVE);
+		break;
+	case PLM_SLEEP:
+		if (plmbuf_get(evbuf, 5, data, P_PULLUP))
+			return;
+		LOG(LOG_WARNING, "PLM set to SLEEP mode");
+		plmbuf_get(evbuf, 5, data, P_REMOVE);
+		break;
+	default:
+		if (plmbuf_get(evbuf, 2, data, P_PULLUP))
+			return;
+		LOG(LOG_ERROR, "PLM Sending unknown response: %X %X",
+		    data[0], data[1]);
+		LOG(LOG_ERROR, "Draining buffer and ignoring");
+		plmbuf_get(evbuf, 2, data, P_REMOVE);
+		break;
+	}
+}
+
+
+/**
+   \brief A callback for the hubhtml workbuffer
+   \param fd unused
+   \param what unused
+   \param arg nothing useful yet
+*/
+
+void hubhtml_readcb(evutil_socket_t fd, short what, void *arg)
+{
+	char data[25]; /* max size of a extended read */
+	char *plmhead, oplmhead[4];
+	uint8_t toaddr[3], fromaddr[3], extdata[14], ackbit;
+	cmdq_t *cmd;
+	int loopcount = 0;
+
+moredata:
+	plmhead = evbuffer_pullup(hubhtml_workbuf, 4);
+	if (plmhead == NULL)
+		return; /* need more data, so wait */
+	if (hex_decode(plmhead, 4, data) == NULL)
+		return; /* really? */
+
+	if (data[0] != 0x00 && data[1] != 0x00)
+		LOG(LOG_DEBUG, "Pullup: %c%c%c%c / 0x%0.2X 0x%0.2X",
+		    plmhead[0], plmhead[1], plmhead[2], plmhead[3],
+		    data[0], data[1]);
+	if (data[0] != PLM_START) {
+		if (data[0] == PLMCMD_NAK)
+			LOG(LOG_ERROR, "Previous cmd got NAK'd");
+		else if (data[0] != 0x00 && data[1] != 0x00) /*ignore blanks*/
+			LOG(LOG_ERROR, "Got funny data from PLM: "
+			    "0x%0.2X 0x%0.2X", data[0], data[1]);
+		evbuffer_drain(hubhtml_workbuf, 2); /* XXX */
+		loopcount++;
+		if (loopcount > 10)
+			return;
+		if (oplmhead[0] == plmhead[0] && oplmhead[1] == plmhead[1] &&
+		    oplmhead[2] == plmhead[2] && oplmhead[3] == plmhead[3])
+			return;
+		memcpy(oplmhead, plmhead, 4);
+		goto moredata; /* ? I guess. */
+	}
+
+	handle_command(hubhtml_workbuf, data[1]);
+}
+
 /**
    \brief A general callback for PLM reads
    \param bev bufferevent
@@ -1035,9 +1624,7 @@ void plm_readcb(struct bufferevent *bev, void *arg)
 {
 	connection_t *conn = (connection_t *)arg;
 	struct evbuffer *evbuf;
-	char *plmhead, *data;
-	uint8_t toaddr[3], fromaddr[3], extdata[14], ackbit;
-	cmdq_t *cmd;
+	char *plmhead;
 
 	evbuf = bufferevent_get_input(bev);
 
@@ -1057,256 +1644,5 @@ moredata:
 		goto moredata; /* ? I guess. */
 	}
 
-	cmd = SIMPLEQ_FIRST(&cmdfifo);
-
-	/* Look at the command, and figure out what to do about it */
-	switch (plmhead[1]) {
-	case PLM_SEND: /* confirmation of send */
-		data = evbuffer_pullup(evbuf, 9);
-		if (data == NULL)
-			return;
-		if (data[5] & PLMFLAG_EXT) {
-			ackbit = data[22];
-			data = evbuffer_pullup(evbuf, 23);
-			if (data == NULL)
-				return;
-		} else
-			ackbit = data[8];
-		if (ackbit == PLMCMD_ACK)
-			LOG(LOG_DEBUG, "PLM Command Success: %0.2X", data[1]);
-		else { /* we got a bad retcode? */
-			LOG(LOG_ERROR, "PLM Command failed, 0x%0.2X", data[1]);
-			LOG(LOG_DEBUG, "Data: %0.2X %0.2X %0.2X %0.2X "
-			    "%0.2X %0.2X %0.2X %0.2X %0.2X",
-			    data[0], data[1], data[2], data[3], data[4],
-			    data[5], data[6], data[7], data[8], data[9]);
-			if (data[5] & PLMFLAG_EXT)
-				LOG(LOG_DEBUG, "EXT: "
-				    "%0.2X %0.2X %0.2X %0.2X %0.2X "
-				    "%0.2X %0.2X %0.2X %0.2X %0.2X "
-				    "%0.2X %0.2X %0.2X",
-				    data[10], data[11], data[12], data[13],
-				    data[14], data[15], data[16], data[17],
-				    data[18], data[19], data[20], data[21],
-				    data[22]);
-		}
-		plmcmdq_check_ack(data);
-		if (data[5] & PLMFLAG_EXT)
-			evbuffer_drain(evbuf, 23);
-		else
-			evbuffer_drain(evbuf, 9); /* discard echo */
-		break;
-	case PLM_RECV_STD: /* we have a std msg */
-		data = evbuffer_pullup(evbuf, 11);
-		if (data == NULL)
-			return;
-		evbuffer_remove(evbuf, data, 11);
-		memcpy(fromaddr, data+2, 3);
-		memcpy(toaddr, data+5, 3);
-		plm_handle_stdrecv(fromaddr, toaddr, data[8], data[9],
-				   data[10], conn);
-		break;
-	case PLM_RECV_EXT:
-		data = evbuffer_pullup(evbuf, 25);
-		if (data == NULL)
-			return;
-		evbuffer_remove(evbuf, data, 25);
-		memcpy(fromaddr, data+2, 3);
-		memcpy(toaddr, data+5, 3);
-		memcpy(extdata, data+11, 14);
-		plm_handle_extrecv(fromaddr, toaddr, data[8], data[9],
-				   data[10], extdata, conn);
-		break;
-	case PLM_RECV_X10:
-		data = evbuffer_pullup(evbuf, 4);
-		if (data == NULL)
-			return;
-		LOG(LOG_DEBUG, "Got X10 mesage: %0.2X %0.2X", data[2],
-		    data[3]);
-		evbuffer_remove(evbuf, data, 4);
-		break;
-	case PLM_SEND_X10: /* not supported yet, but, umm, maybe? */
-		data = evbuffer_pullup(evbuf, 5);
-		if (data == NULL)
-			return;
-		LOG(LOG_DEBUG, "Sent X10 mesage: %0.2X %0.2X", data[2],
-		    data[3]);
-		evbuffer_remove(evbuf, data, 5);
-		break;
-	case PLM_GETINFO:
-		data = evbuffer_pullup(evbuf, 9);
-		if (data == NULL)
-			return;
-		evbuffer_remove(evbuf, data, 9);
-		plm_handle_getinfo(data);
-		break;
-	case PLM_ALINK_COMPLETE:
-		data = evbuffer_pullup(evbuf, 10);
-		if (data == NULL)
-			return;
-		evbuffer_remove(evbuf, data, 10);
-		plm_handle_alink_complete(data);
-		break;
-	case PLM_ALINK_CFAILREP:
-		data = evbuffer_pullup(evbuf, 7);
-		if (data == NULL)
-			return;
-		LOG(LOG_WARNING, "Got all-link failure for device %X.%X.%X"
-		    " group %X", data[4], data[5], data[6], data[3]);
-		evbuffer_remove(evbuf, data, 7);
-		break;
-	case PLM_ALINK_CSTATUSREP:
-		data = evbuffer_pullup(evbuf, 3);
-		if (data == NULL)
-			return;
-		LOG(LOG_NOTICE, "All link cleanup status: %X", data[2]);
-		evbuffer_remove(evbuf, data, 3);
-		break;
-	case PLM_ALINK_START:
-		data = evbuffer_pullup(evbuf, 5);
-		if (data == NULL)
-			return;
-		plmcmdq_check_ack(data);
-		LOG(LOG_NOTICE, "Starting all link code:%X group:%X",
-		    data[2], data[3]);
-		evbuffer_remove(evbuf, data, 5);
-		break;
-	case PLM_ALINK_CANCEL:
-		data = evbuffer_pullup(evbuf, 3);
-		if (data == NULL)
-			return;
-		LOG(LOG_NOTICE, "All link cancelled");
-		evbuffer_remove(evbuf, data, 3);
-		break;
-	case PLM_ALINK_SEND:
-		data = evbuffer_pullup(evbuf, 6);
-		if (data == NULL)
-			return;
-		LOG(LOG_NOTICE, "Sent all-link command %X/%X to group %X"
-		    " Status: %X", data[3], data[4], data[2], data[5]);
-		evbuffer_remove(evbuf, data, 6);
-		break;
-	case PLM_ALINK_GETLASTRECORD:
-		data = evbuffer_pullup(evbuf, 3);
-		if (data == NULL)
-			return;
-		LOG(LOG_DEBUG, "Sent get last record");
-		evbuffer_remove(evbuf, data, 3);
-		break;
-	case PLM_ALINK_GETFIRST:
-	case PLM_ALINK_GETNEXT:
-		data = evbuffer_pullup(evbuf, 3);
-		if (data == NULL)
-			return;
-		if (data[1] == cmd->cmd[1])
-			plmcmdq_dequeue(); /* dequeue */
-		if (data[2] == PLMCMD_ACK) /* more records in db */
-			plm_getplm_aldb(1); /* get next record */
-		else if (data[2] == PLMCMD_NAK) { /* last one */
-			plmaldbmorerecords = 0;
-			LOG(LOG_NOTICE, "Last PLM ALDB record");
-		}
-		evbuffer_remove(evbuf, data, 3);
-		break;
-	case PLM_ALINK_RECORD:
-		data = evbuffer_pullup(evbuf, 10);
-		if (data == NULL)
-			return;
-		evbuffer_remove(evbuf, data, 10);
-		plm_handle_aldb_record_resp(data);
-		break;
-	case PLM_BUTTONEVENT:
-		data = evbuffer_pullup(evbuf, 3);
-		if (data == NULL)
-			return;
-		LOG(LOG_DEBUG, "Got button press event 0x%X", data[2]);
-		evbuffer_remove(evbuf, data, 3);
-		break;
-	case PLM_RESET: /* seriously??! */
-		data = evbuffer_pullup(evbuf, 2);
-		if (data == NULL)
-			return;
-		LOG(LOG_ERROR, "PLM Has been manually reset!!");
-		evbuffer_remove(evbuf, data, 2);
-		break;
-	case PLM_SETHOST: /* ?? */
-		data = evbuffer_pullup(evbuf, 6);
-		if (data == NULL)
-			return;
-		LOG(LOG_ERROR, "PLM Sent Set Host Device Category?");
-		evbuffer_remove(evbuf, data, 6);
-		break;
-	case PLM_FULL_RESET:
-		data = evbuffer_pullup(evbuf, 3);
-		if (data == NULL)
-			return;
-		LOG(LOG_ERROR, "PLM Has been full reset!!");
-		evbuffer_remove(evbuf, data, 3);
-		break;
-	case PLM_SET_ACK1:
-		data = evbuffer_pullup(evbuf, 4);
-		if (data == NULL)
-			return;
-		LOG(LOG_NOTICE, "Set Ack1 bit?");
-		evbuffer_remove(evbuf, data, 4);
-		break;
-	case PLM_SET_NAK1:
-		data = evbuffer_pullup(evbuf, 4);
-		if (data == NULL)
-			return;
-		LOG(LOG_NOTICE, "Set NAK1 bit?");
-		evbuffer_remove(evbuf, data, 4);
-		break;
-	case PLM_SET_ACK2:
-		data = evbuffer_pullup(evbuf, 5);
-		if (data == NULL)
-			return;
-		LOG(LOG_NOTICE, "Set Ack2 bit?");
-		evbuffer_remove(evbuf, data, 5);
-		break;
-	case PLM_SETCONF:
-		data = evbuffer_pullup(evbuf, 4);
-		if (data == NULL)
-			return;
-		LOG(LOG_NOTICE, "Set PLM Config bits to %X", data[2]);
-		evbuffer_remove(evbuf, data, 4);
-		break;
-	case PLM_LEDON:
-		data = evbuffer_pullup(evbuf, 3);
-		if (data == NULL)
-			return;
-		LOG(LOG_ERROR, "Set PLM LED On");
-		evbuffer_remove(evbuf, data, 3);
-		break;
-	case PLM_LEDOFF:
-		data = evbuffer_pullup(evbuf, 3);
-		if (data == NULL)
-			return;
-		LOG(LOG_ERROR, "Set PLM LED Off");
-		evbuffer_remove(evbuf, data, 3);
-		break;
-	case PLM_ALINK_MODIFY: /* unhandled */
-		data = evbuffer_pullup(evbuf, 12);
-		if (data == NULL)
-			return;
-		LOG(LOG_ERROR, "Sent modify all-link record");
-		evbuffer_remove(evbuf, data, 12);
-		break;
-	case PLM_SLEEP:
-		data = evbuffer_pullup(evbuf, 5);
-		if (data == NULL)
-			return;
-		LOG(LOG_WARNING, "PLM set to SLEEP mode");
-		evbuffer_remove(evbuf, data, 5);
-		break;
-	default:
-		data = evbuffer_pullup(evbuf, 2);
-		if (data == NULL)
-			return;
-		LOG(LOG_ERROR, "PLM Sending unknown response: %X %X",
-		    data[0], data[1]);
-		LOG(LOG_ERROR, "Draining buffer and ignoring");
-		evbuffer_remove(evbuf, data, 2);
-		break;
-	}
+	handle_command(evbuf, plmhead[1]);
 }

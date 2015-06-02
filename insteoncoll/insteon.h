@@ -171,6 +171,16 @@ typedef struct _insteon_devdata_t {
 #define CONN_TYPE_HUBPLM	3
 #define CONN_TYPE_HUBHTTP	4
 
+/* HTTP Hub stuff */
+
+#define BUFFSTATUS_SUFX		"/buffstatus.xml"
+#define BUFFSTATUS_BUFSIZ	256
+#define WORKBUFSIZ		4096
+#define CLEARIMBUFF		"1?XB=M=1"
+#define HUB_TYPE_OLD		1
+#define HUB_TYPE_NEW		2
+
+
 /****************
 	Funtions from insteon_common.c
 ****************/
@@ -206,10 +216,9 @@ void plm_all_link(uint8_t linkcode, uint8_t group);
 void plm_handle_getinfo(uint8_t *data);
 int plm_handle_aldb(device_t *dev, char *data);
 void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
-			uint8_t com1, uint8_t com2, connection_t *conn);
+			uint8_t com1, uint8_t com2);
 void plm_handle_extrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
-			uint8_t com1, uint8_t com2, uint8_t *ext,
-			connection_t *conn);
+			uint8_t com1, uint8_t com2, uint8_t *ext);
 void plm_readcb(struct bufferevent *bev, void *arg);
 
 

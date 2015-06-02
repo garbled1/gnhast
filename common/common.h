@@ -63,6 +63,13 @@
 #define LIGHT_LUXTOWM2(x)	(x * 0.0079)
 #define LIGHT_WM2TOLUX(x)	(x / 0.0079)
 
+#ifndef MIN
+#define MIN(a,b)        ((/*CONSTCOND*/(a)<(b))?(a):(b))
+#endif
+#ifndef MAX
+#define MAX(a,b)        ((/*CONSTCOND*/(a)>(b))?(a):(b))
+#endif
+
 /* from common.c */
 FILE *openlog(char *logf);
 void closelog(void);
@@ -72,6 +79,7 @@ void *_safer_malloc(size_t size, char *file, int line);
 char *mk_rrdname(char *orig);
 int lcm(int a,int b);
 int gcd(int a, int b);
+char *hex_decode(char *in, size_t len, char *out);
 void writepidfile(char *filename);
 void delete_pidfile(void);
 void cb_sighup(int fd, short what, void *arg);

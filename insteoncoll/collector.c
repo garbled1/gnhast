@@ -68,6 +68,10 @@ extern TAILQ_HEAD(, _device_t) alldevs;
 extern int nrofdevs;
 extern char *conntype[];
 extern commands_t commands[];
+extern char *hubhtml_username;
+extern char *hubhtml_password;
+extern int plmtype;
+extern struct event *hubhtml_bufget_ev;
 
 void plm_query_all_devices(void);
 void plm_query_grouped_devices(device_t *dev, uint group);
@@ -85,8 +89,9 @@ cfg_opt_t insteoncoll_opts[] = {
 	CFG_INT("rescan", 60, CFGF_NONE),
 	CFG_INT_CB("plmtype", PLM_TYPE_SERIAL, CFGF_NONE, conf_parse_plmtype),
 	CFG_STR("hostname", "insteon-hub", CFGF_NONE),
-	CFG_INT("plmport", 9761, CFGF_NONE),
-	CFG_INT("httpport", 25105, CFGF_NONE),
+	CFG_INT("hubport", 9761, CFGF_NONE),
+	CFG_STR("httppass", "password", CFGF_NONE),
+	CFG_STR("httpuser", "admin", CFGF_NONE),
 	CFG_END(),
 };
 
@@ -109,7 +114,7 @@ FILE *logfile;
 
 struct event_base *base;
 struct evdns_base *dns_base;
-connection_t *plm_conn, *hubplm_conn, *hubhttp_conn;
+connection_t *plm_conn;
 connection_t *gnhastd_conn;
 uint8_t plm_addr[3];
 int need_rereg = 0;
@@ -315,7 +320,7 @@ void plm_handle_alink_complete(uint8_t *data)
 */
 
 void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
-			uint8_t com1, uint8_t com2, connection_t *conn)
+			uint8_t com1, uint8_t com2)
 {
 	char fa[16], ta[16];
 	device_t *dev;
@@ -445,8 +450,7 @@ void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 */
 
 void plm_handle_extrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
-			uint8_t com1, uint8_t com2, uint8_t *ext,
-			connection_t *conn)
+			uint8_t com1, uint8_t com2, uint8_t *ext)
 {
 	char fa[16], ta[16];
 	device_t *dev;
@@ -637,9 +641,13 @@ void cb_sigterm(int fd, short what, void *arg)
 	LOG(LOG_NOTICE, "Recieved SIGTERM, shutting down");
 	gnhastd_conn->shutdown = 1;
 	gn_disconnect(gnhastd_conn->bev);
-	bufferevent_free(plm_conn->bev);
+	if (plm_conn != NULL)
+		bufferevent_free(plm_conn->bev);
 	ev = evtimer_new(base, generic_cb_shutdown, NULL);
 	evtimer_add(ev, &secs);
+
+	if (plmtype == PLM_TYPE_HUBHTTP)
+		event_del(hubhtml_bufget_ev);
 }
 
 /**
@@ -708,11 +716,14 @@ main(int argc, char *argv[])
 			    "section");
 	}
 
+	hubhtml_username = cfg_getstr(icoll_c, "httpuser");
+	hubhtml_password = cfg_getstr(icoll_c, "httppass");
+	plmtype = cfg_getint(icoll_c, "plmtype");
+
 	/* Connect to the PLM */
-	fd = plmtype_connect(cfg_getint(icoll_c, "plmtype"),
-			     cfg_getstr(icoll_c, "device"),
+	fd = plmtype_connect(plmtype, cfg_getstr(icoll_c, "device"),
 			     cfg_getstr(icoll_c, "hostname"),
-			     cfg_getint(icoll_c, "plmport"));
+			     cfg_getint(icoll_c, "hubport"));
 
 	plm_getinfo();
 

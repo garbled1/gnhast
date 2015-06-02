@@ -288,6 +288,38 @@ int gcd(int a, int b)
 }
 
 /**
+   \brief Decode a hex ascii string into a char array
+   \param in input buffer
+   \param length of buffer to decode
+   \param out output buffer, must be preallocated
+   \return returns output buffer
+   \note does no sanity checking of output ability to hold or input end
+*/
+
+#define _base(x) ((x >= '0' && x <= '9') ? '0' : \
+		  (x >= 'a' && x <= 'f') ? 'a' - 10 :	\
+		  (x >= 'A' && x <= 'F') ? 'A' - 10 :	\
+		  '\255')
+#define HEXOF(x) (x - _base(x))
+
+char *hex_decode(char *in, size_t len, char *out)
+{
+	char *p;
+
+	if (out == NULL)
+		return NULL;
+	if (len % 2 == 1)
+		return NULL; /* odd, really? */
+
+	for (p = in; p && *p && (p-in)+2 <= len; p += 2)
+		out[(p - in) >> 1] = ((HEXOF(*p)) << 4) + HEXOF(*(p+1));
+
+	return(out);
+}
+
+
+
+/**
    \brief write out a pidfile
    \param filename filename to create
 */

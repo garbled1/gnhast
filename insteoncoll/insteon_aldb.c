@@ -109,7 +109,7 @@ FILE *logfile;
 struct event_base *base;
 struct evdns_base *dns_base;
 int need_rereg = 0;
-connection_t *plm_conn, *hubplm_conn, *hubhttp_conn;
+connection_t *plm_conn;
 connection_t *gnhastd_conn;
 uint8_t plm_addr[3];
 char *aldbfile = NULL;
@@ -388,7 +388,7 @@ void plm_handle_alink_complete(uint8_t *data)
 */
 
 void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
-			uint8_t com1, uint8_t com2, connection_t *conn)
+			uint8_t com1, uint8_t com2)
 {
 	char fa[16], ta[16];
 	device_t *dev;
@@ -440,8 +440,7 @@ void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 */
 
 void plm_handle_extrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
-			uint8_t com1, uint8_t com2, uint8_t *ext,
-			connection_t *conn)
+			uint8_t com1, uint8_t com2, uint8_t *ext)
 {
 	char fa[16], ta[16];
 	device_t *dev;
@@ -587,18 +586,13 @@ main(int argc, char *argv[])
 	if (cfg_idb == NULL)
 		LOG(LOG_ERROR, "No Insteon DB file, cannot build usable conf");
 
-	fd = serial_connect(device, B19200, CS8|CREAD|CLOCAL);
-
-	base = event_base_new();
-	plm_conn = smalloc(connection_t);
-	plm_conn->bev = bufferevent_socket_new(base, fd, BEV_OPT_CLOSE_ON_FREE);
-	plm_conn->type = CONN_TYPE_PLM;
-	bufferevent_setcb(plm_conn->bev, plm_readcb, NULL, serial_eventcb,
-			  plm_conn);
-	bufferevent_enable(plm_conn->bev, EV_READ|EV_WRITE);
-
-	ratelim = ev_token_bucket_cfg_new(2400, 100, 25, 256, &rate);
-	bufferevent_set_rate_limit(plm_conn->bev, ratelim);
+	if (device != NULL) {
+		fd = plmtype_connect(PLM_TYPE_SERIAL, device, NULL, -1);
+	} else if (port == 9761) {
+		fd = plmtype_connect(PLM_TYPE_HUBPLM, NULL, host, port);
+	} else {
+		fd = plmtype_connect(PLM_TYPE_HUBHTTP, NULL, host, port);
+	}
 
 	plm_getinfo();
 

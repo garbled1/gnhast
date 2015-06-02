@@ -39,6 +39,7 @@
 #include <errno.h>
 #include <time.h>
 #include <sys/queue.h>
+#include <event2/dns.h>
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
 #include <event2/event.h>
@@ -55,6 +56,9 @@ extern int debugmode;
 extern TAILQ_HEAD(, _device_t) alldevs;
 extern int nrofdevs;
 extern char *conntype[];
+extern char *hubhtml_username;
+extern char *hubhtml_password;
+extern int plmtype;
 
 /* Configuration file details */
 
@@ -68,8 +72,9 @@ cfg_opt_t insteoncoll_opts[] = {
 	CFG_INT("rescan", 60, CFGF_NONE),
 	CFG_INT_CB("plmtype", PLM_TYPE_SERIAL, CFGF_NONE, conf_parse_plmtype),
 	CFG_STR("hostname", "insteon-hub", CFGF_NONE),
-	CFG_INT("plmport", 9761, CFGF_NONE),
-	CFG_INT("httpport", 25105, CFGF_NONE),
+	CFG_INT("hubport", 9761, CFGF_NONE),
+	CFG_STR("httppass", "password", CFGF_NONE),
+	CFG_STR("httpuser", "admin", CFGF_NONE),
 	CFG_END(),
 };
 
@@ -108,7 +113,7 @@ FILE *logfile;
 struct event_base *base;
 struct evdns_base *dns_base;
 int need_rereg = 0;
-connection_t *plm_conn, *hubplm_conn, *hubhttp_conn;
+connection_t *plm_conn;
 connection_t *gnhastd_conn;
 uint8_t plm_addr[3];
 
@@ -127,12 +132,18 @@ extern SIMPLEQ_HEAD(fifohead, _cmdq_t) cmdfifo;
 
 usage(void)
 {
-	(void)fprintf(stderr, "Usage:\n");
+	(void)fprintf(stderr, "Usage:\n\n");
+	(void)fprintf(stderr, "For Serial device:\n");
 	(void)fprintf(stderr, "%s: [-m <dumpconffile>]"
 		      " -f <listfile> -s <device>\n",
 	    getprogname());
+	(void)fprintf(stderr, "For Hub as PLM (port should be 9761):\n");
 	(void)fprintf(stderr, "%s: [-m <dumpconffile>] -f <listfile>"
-		      " -h <hostname of hub> -n <portnum>\n");
+		      " -h <hostname of hub> -n <portnum>\n", getprogname());
+	(void)fprintf(stderr, "For Hub as HTTP (port 25105):\n");
+	(void)fprintf(stderr, "%s: [-m <dumpconffile>] -f <listfile>"
+		      " -h <hostname of hub> -n <portnum>"
+		      " -u <username> -P <password>\n", getprogname());
 	exit(1);
 }
 
@@ -371,7 +382,7 @@ void plm_handle_alink_complete(uint8_t *data)
 */
 
 void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
-			uint8_t com1, uint8_t com2, connection_t *conn)
+			uint8_t com1, uint8_t com2)
 {
 	char fa[16], ta[16];
 	device_t *dev;
@@ -424,8 +435,7 @@ void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 */
 
 void plm_handle_extrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
-			uint8_t com1, uint8_t com2, uint8_t *ext,
-			connection_t *conn)
+			uint8_t com1, uint8_t com2, uint8_t *ext)
 {
 	char fa[16], ta[16];
 
@@ -483,7 +493,7 @@ main(int argc, char *argv[])
 	cfg_t *icoll;
 	cfg_opt_t *a;
 
-	while ((c = getopt(argc, argv, "df:h:m:n:s:")) != -1)
+	while ((c = getopt(argc, argv, "df:h:m:n:s:u:P:")) != -1)
 		switch (c) {
 		case 'd':
 			debugmode = 1;
@@ -503,12 +513,22 @@ main(int argc, char *argv[])
 		case 's':
 			device = optarg;
 			break;
+		case 'u':
+			hubhtml_username = strdup(optarg);
+			break;
+		case 'P':
+			hubhtml_password = strdup(optarg);
+			break;
 		default:
 			usage();
 		}
 
 	if ((device == NULL && host == NULL) || listfile == NULL)
 		usage();
+
+	/* Initialize the event system */
+	base = event_base_new();
+	dns_base = evdns_base_new(base, 1);
 
 	/* Initialize the device table */
 	init_devtable(cfg, 0);
@@ -531,21 +551,27 @@ main(int argc, char *argv[])
 	/* Connect to the PLM and save that in the conf */
 
 	icoll = cfg_getsec(cfg, "insteoncoll");
+
 	if (device != NULL) {
+		plmtype = PLM_TYPE_SERIAL;
 		fd = plmtype_connect(PLM_TYPE_SERIAL, device, NULL, -1);
 		cfg_setstr(icoll, "device", device);
-		cfg_setint(icoll, "plmtype", PLM_TYPE_SERIAL);
 	} else if (port == 9761) {
+		plmtype = PLM_TYPE_HUBPLM;
 		fd = plmtype_connect(PLM_TYPE_HUBPLM, NULL, host, port);
 		cfg_setstr(icoll, "hostname", host);
-		cfg_setint(icoll, "plmport", port);
-		cfg_setint(icoll, "plmtype", PLM_TYPE_HUBPLM);
+		cfg_setint(icoll, "hubport", port);
 	} else {
+		plmtype = PLM_TYPE_HUBHTTP;
+		if (hubhtml_username == NULL || hubhtml_password == NULL)
+			usage();
 		fd = plmtype_connect(PLM_TYPE_HUBHTTP, NULL, host, port);
 		cfg_setstr(icoll, "hostname", host);
-		cfg_setint(icoll, "httpport", port);
-		cfg_setint(icoll, "plmtype", PLM_TYPE_HUBHTTP);
+		cfg_setint(icoll, "hubport", port);
+		cfg_setstr(icoll, "httpuser", hubhtml_username);
+		cfg_setstr(icoll, "httppass", hubhtml_password);
 	}
+	cfg_setint(icoll, "plmtype", plmtype);
 
 	a = cfg_getopt(icoll, "plmtype");
 	cfg_opt_set_print_func(a, conf_print_plmtype);

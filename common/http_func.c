@@ -41,6 +41,8 @@
 #include <event2/http.h>
 #include <event2/http_struct.h>
 #include <event2/util.h>
+#include <inttypes.h>
+#include <string.h>
 
 #include "gnhast.h"
 #include "common.h"
@@ -50,6 +52,137 @@
 extern struct event_base *base;
 extern struct evdns_base *dns_base;
 extern struct evhttp_connection *http_cn;
+
+static char *basic_authstring = NULL;
+static int http_use_auth = HTTP_AUTH_NONE;
+
+/**
+   \brief Base64 encode function
+   \param data_buf string to encode
+   \param dataLength length of string to be encoded
+   \param result provide a buffer here
+   \param resultSize size of result buffer
+   \note Stolen from:
+   http://en.wikibooks.org/wiki/Algorithm_Implementation/Miscellaneous/Base64#C
+*/
+
+int base64_encode(const void* data_buf, size_t dataLength, char* result,
+		  size_t resultSize)
+{
+	const char base64chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+	const uint8_t *data = (const uint8_t *)data_buf;
+	size_t resultIndex = 0;
+	size_t x;
+	uint32_t n = 0;
+	int padCount = dataLength % 3;
+	uint8_t n0, n1, n2, n3;
+ 
+	/* increment over the length of the string, three characters at a
+	   time */
+	for (x = 0; x < dataLength; x += 3) {
+		/* these three 8-bit (ASCII) characters
+		   become one 24-bit number */
+		n = ((uint32_t)data[x]) << 16; 
+		if ((x+1) < dataLength)
+			n += ((uint32_t)data[x+1]) << 8;
+ 
+		if ((x+2) < dataLength)
+			n += data[x+2];
+ 
+		/* this 24-bit number gets separated into four 6-bit numbers */
+		n0 = (uint8_t)(n >> 18) & 63;
+		n1 = (uint8_t)(n >> 12) & 63;
+		n2 = (uint8_t)(n >> 6) & 63;
+		n3 = (uint8_t)n & 63;
+ 
+		/*
+		 * if we have one byte available, then its encoding is spread
+		 * out over two characters
+		 */
+		if (resultIndex >= resultSize)
+			return 1;   /* indicate failure: buffer too small */
+		result[resultIndex++] = base64chars[n0];
+		if (resultIndex >= resultSize)
+			return 1;   /* indicate failure: buffer too small */
+		result[resultIndex++] = base64chars[n1];
+ 
+		/*
+		 * if we have only two bytes available, then their encoding is
+		 * spread out over three chars
+		 */
+		if ((x+1) < dataLength) {
+			if (resultIndex >= resultSize)
+				return 1; /* failure: buffer too small */
+			result[resultIndex++] = base64chars[n2];
+		}
+ 
+		/*
+		 * if we have all three bytes available, then their encoding is spread
+		 * out over four characters
+		 */
+		if ((x+2) < dataLength) {
+			if (resultIndex >= resultSize)
+				return 1;   /* failure: buffer too small */
+			result[resultIndex++] = base64chars[n3];
+		}
+	}
+ 
+	/*
+	 * create and add padding that is required if we did not have a multiple of 3
+	 * number of characters available
+	 */
+	if (padCount > 0) { 
+		for (; padCount < 3; padCount++) { 
+			if (resultIndex >= resultSize)
+				return 1;   /* failure: buffer too small */
+			result[resultIndex++] = '=';
+		} 
+	}
+	if (resultIndex >= resultSize)
+		return 1;   /* indicate failure: buffer too small */
+	result[resultIndex] = 0;
+	return 0;   /* indicate success */
+}
+
+
+/**
+   \brief Set the username/password/authentication type
+   \param username The username
+   \param password The password
+   \param authtype The authentication type
+*/
+
+void http_setup_auth(char *username, char *password, int authtype)
+{
+	char encoded_buf[1024];
+	char authbuf[1024];
+	char encoded_headerbuf[1024+7];
+
+	if (authtype == HTTP_AUTH_NONE) {
+		if (basic_authstring != NULL)
+			free(basic_authstring);
+		http_use_auth = authtype;
+		return;
+	}
+
+	if (username == NULL || password == NULL)
+		return; /* really? */
+
+	if ((strlen(username) + strlen(password)) > 1024) {
+		LOG(LOG_ERROR, "username/password combo too big!");
+		return;
+	}
+
+	sprintf(authbuf, "%s:%s", username, password);
+	if (base64_encode(authbuf, strlen(authbuf), encoded_buf, 1024)) {
+		LOG(LOG_ERROR, "unable to bas64_encode username/password");
+		return;
+	}
+	http_use_auth = authtype;
+	sprintf(encoded_headerbuf, "Basic %s", encoded_buf);
+	basic_authstring = strdup(encoded_headerbuf);
+	LOG(LOG_DEBUG, "Authstring encoded to: %s", encoded_headerbuf);
+}
 
 /**
    \brief Callback to perform a GET from an http server
@@ -98,6 +231,11 @@ void cb_http_GET(int fd, short what, void *arg)
 	evhttp_make_request(http_cn, req, EVHTTP_REQ_GET, getinfo->url_suffix);
 	evhttp_add_header(req->output_headers, "Host",
 			  evhttp_uri_get_host(uri));
+	if (http_use_auth == HTTP_AUTH_BASIC && basic_authstring != NULL) {
+		evhttp_add_header(req->output_headers, "Authorization",
+				  basic_authstring);
+		LOG(LOG_DEBUG, "Authstring: %s", basic_authstring);
+	}
 	evhttp_uri_free(uri);
 }
 
@@ -146,6 +284,9 @@ void http_POST(char *url_prefix, char *url_suffix, int http_port,
 			  evhttp_uri_get_host(uri));
 	evhttp_add_header(req->output_headers, "Content-Type",
 			  "application/x-www-form-urlencoded");
+	if (http_use_auth == HTTP_AUTH_BASIC && basic_authstring != NULL)
+		evhttp_add_header(req->output_headers, "Authorization",
+				  basic_authstring);
 
 	LOG(LOG_DEBUG, "POSTing to %s%s", url_prefix,
 	    url_suffix ? url_suffix : "");
