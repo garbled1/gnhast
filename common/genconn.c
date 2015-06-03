@@ -65,6 +65,8 @@ extern connection_t *gnhastd_conn;
 
 /*** Callbacks ***/
 extern void genconn_connect_cb(int cevent, connection_t *conn);
+extern int collector_is_ok();
+
 
 /*** Weak Reference Stubs ***/
 
@@ -77,6 +79,36 @@ extern void genconn_connect_cb(int cevent, connection_t *conn);
 void __attribute__((weak)) genconn_connect_cb(int cevent, connection_t *conn)
 {
 	return;
+}
+
+/**
+   \brief Check if a collector is functioning properly
+   \param conn connection_t of collector's gnhastd connection
+   \return 1 if OK, 0 if broken
+
+   Each client can supply it's own OK check, and by overriding the one below,
+   can perform a self-sanity check.  The generic gnhastd connection routine
+   will auto-schedule it.
+*/
+
+int __attribute__((weak)) collector_is_ok(void)
+{
+	return(0); /* lie */
+}
+
+/**
+   \brief A timer callback to send gnhastd imalive statements
+   \param nada used for file descriptor
+   \param what why did we fire?
+   \param arg pointer to connection_t of gnhastd connection
+*/
+
+void generic_collector_health_cb(int nada, short what, void *arg)
+{
+	connection_t *conn = (connection_t *)arg;
+
+	if (collector_is_ok())
+		gn_imalive(conn->bev);
 }
 
 /**
@@ -124,6 +156,15 @@ void generic_connect_event_cb(struct bufferevent *ev, short what, void *arg)
 		LOG(LOG_NOTICE, "Connected to %s", conntype[conn->type]);
 		conn->connected = 1;
 		genconn_connect_cb(CEVENT_CONNECTED, conn);
+		/* if it's a gnhastd connection, setup a health check */
+		if (strcmp(conntype[conn->type], "gnhastd") == 0) {
+			tev = evtimer_new(base, generic_collector_health_cb,
+					  conn);
+			secs.tv_sec = HEALTH_CHECK_RATE;
+			evtimer_add(tev, &secs);
+			LOG(LOG_NOTICE, "Setting up self-health checks every"
+			    "%d seconds", secs.tv_sec);
+		}
 	} else if (what & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
 		if (what & BEV_EVENT_ERROR) {
 			err = bufferevent_socket_get_dns_error(ev);

@@ -119,6 +119,7 @@ connection_t *gnhastd_conn;
 uint8_t plm_addr[3];
 int need_rereg = 0;
 char *dumpconf = NULL;
+time_t plm_lastupd;
 
 extern SIMPLEQ_HEAD(fifohead, _cmdq_t) cmdfifo;
 
@@ -170,6 +171,20 @@ void storelog_dimmer(device_t *dev, double d)
 /**********************************************
 	gnhastd handlers
 **********************************************/
+
+/**
+   \brief Check if a collector is functioning properly
+   \param conn connection_t of collector's gnhastd connection
+   \return 1 if OK, 0 if broken
+*/
+
+int collector_is_ok(void)
+{
+	if ((time(NULL) - plm_lastupd) < (cfg_getint(icoll_c, "rescan") * 5))
+		return(1);
+	return(0);
+}
+
 
 /**
    \brief Called when a switch chg command occurs
@@ -335,6 +350,9 @@ void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 	LOG(LOG_DEBUG, "StdMesg from:%s to %s cmd1,2:0x%0.2X,0x%0.2X "
 	    "flags:0x%0.2X", fa, ta, com1, com2, flags);
 	plmcmdq_check_recv(fromaddr, toaddr, com1, CMDQ_WAITDATA);
+
+	/* we got a response from the plm, so update the last time */
+	plm_lastupd = time(NULL);
 
 	dev = find_device_byuid(fa);
 	if (dev == NULL) {

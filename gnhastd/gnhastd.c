@@ -88,6 +88,42 @@ cfg_opt_t options[] = {
 };
 
 /**
+   \brief Timer callback to ping all collectors with associated devices
+   \param nada used for file descriptor
+   \param what why did we fire?
+   \param arg unused
+*/
+
+void ping_clients_cb(int nada, short what, void *arg)
+{
+	client_t *client;
+
+	TAILQ_FOREACH(client, &clients, next) {
+		if (client->coll_dev != NULL)
+			gn_ping(client->ev);
+	}
+}
+
+/**
+   \brief Timer callback to mark clients bad if they don't respond to pings
+   \param nada used for file descriptor
+   \param what why did we fire?
+   \param arg unused
+*/
+
+void health_update_clients_cb(int nada, short what, void *arg)
+{
+	client_t *client;
+	int i = COLLECTOR_BAD;
+
+	TAILQ_FOREACH(client, &clients, next) {
+		if (client->coll_dev != NULL &&
+		    ((time(NULL) - client->lastupd) < HEALTH_CHECK_RATE * 3))
+			store_data_dev(client->coll_dev, DATALOC_DATA, &i);
+	}
+}
+
+/**
    \brief Timer callback to update the device conf file
    \param nada used for file descriptor
    \param what why did we fire?
@@ -211,10 +247,12 @@ void cb_siginfo(int fd, short what, void *arg)
 		TAILQ_FOREACH(wrap, &client->wdevices, next)
 			w++;
 		LOG(LOG_NOTICE, "Client %s %s %s devices:%d wrapdevs:%d "
-		    "updates:%d", client->provider ? "provider" : "reciever",
+		    "updates:%d lastupd (seconds):%d",
+		    client->provider ? "provider" : "reciever",
 		    client->name ? client->name : "generic",
 		    client->addr ? client->addr : "unknown",
-		    d, w, client->updates);
+		    d, w, client->updates,
+		    (int)(time(NULL) - client->lastupd));
 	}
 	i = 0;
 	TAILQ_FOREACH(dev, &alldevs, next_all)
@@ -304,6 +342,16 @@ int main(int argc, char **argv)
 	/* update timer devices */
 	secs.tv_sec = 1;
 	ev = event_new(base, -1, EV_PERSIST, cb_timerdev_update, NULL);
+	event_add(ev, &secs);
+
+	/* setup ping for all collectors */
+	secs.tv_sec = HEALTH_CHECK_RATE;
+	ev = event_new(base, -1, EV_PERSIST, ping_clients_cb, NULL);
+	event_add(ev, &secs);
+
+	/* setup collector health updates */
+	secs.tv_sec = 3; /* 3 seconds should be fine */
+	ev = event_new(base, -1, EV_PERSIST, health_update_clients_cb, NULL);
 	event_add(ev, &secs);
 
 	/* setup signal handlers */

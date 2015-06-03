@@ -57,6 +57,8 @@
 extern argtable_t argtable[];
 extern char *dumpconf;
 
+int collector_instance = 0;
+
 /**
    \brief convert a temperature
    \param temp current temp value
@@ -602,13 +604,50 @@ void gn_client_name(struct bufferevent *bev, char *name)
 
 	if (name == NULL)
 		return;
-	LOG(LOG_NOTICE, "Registering client name %s with gnhastd", name);
+	LOG(LOG_NOTICE, "Registering client name %s-%0.3d with gnhastd",
+	    name, collector_instance);
 	send = evbuffer_new();
-	evbuffer_add_printf(send, "client client:%s\n", name);
+	evbuffer_add_printf(send, "client client:%s-%0.3d\n", name,
+		collector_instance);
 	bufferevent_write_buffer(bev, send);
 	evbuffer_free(send);
 }
 
+/**
+   \brief Send a ping
+   \param bev bufferevent connected to a gnhastd server
+   \note I can think of no sane reason to ever do this from a collector
+*/
+
+void gn_ping(struct bufferevent *bev)
+{
+	struct evbuffer *send;
+
+	send = evbuffer_new();
+	evbuffer_add_printf(send, "ping\n");
+	bufferevent_write_buffer(bev, send);
+	evbuffer_free(send);
+}
+
+/**
+   \brief Send an imalive
+   \param bev bufferevent connected to a gnhastd server
+*/
+
+void gn_imalive(struct bufferevent *bev)
+{
+	struct evbuffer *send;
+
+	send = evbuffer_new();
+	evbuffer_add_printf(send, "imalive\n");
+	bufferevent_write_buffer(bev, send);
+	evbuffer_free(send);
+}
+
+/* note, we have no client send die command.  There is no feasible scenario
+   where gnhastd is alive enough to process a death request, but broken enough
+   to need one.  Nor do we actually want gnhastd being bonked by collectors.
+*/
 
 /**
    \brief Generic routine to build a simple device

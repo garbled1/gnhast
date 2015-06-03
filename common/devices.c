@@ -81,6 +81,7 @@ name_map_t devtype_map[] = {
 	{DEVICE_DIMMER, "dimmer"},
 	{DEVICE_SENSOR, "sensor"},
 	{DEVICE_TIMER, "timer"},
+	{DEVICE_BLIND, "blind"},
 };
 
 name_map_t devproto_map[] = {
@@ -95,6 +96,7 @@ name_map_t devproto_map[] = {
 	{PROTO_SENSOR_AD2USB, "ad2usb"},
 	{PROTO_SENSOR_ICADDY, "icaddy"},
 	{PROTO_SENSOR_VENSTAR, "venstar"},
+	{PROTO_CONTROL_URSTII, "urstii"},
 };
 
 name_map_t devsubtype_map[] = {
@@ -127,6 +129,8 @@ name_map_t devsubtype_map[] = {
 	{SUBTYPE_THMODE, "thmode"},
 	{SUBTYPE_THSTATE, "thstate"},
 	{SUBTYPE_SMNUMBER, "smnumber"},
+	{SUBTYPE_COLLECTOR, "collector"},
+	{SUBTYPE_BLIND, "blind"},
 	{SUBTYPE_BOOL, "bool"},
 };
 
@@ -479,6 +483,8 @@ void get_data_dev(device_t *dev, int where, void *data)
 		case SUBTYPE_THMODE:
 		case SUBTYPE_THSTATE:
 		case SUBTYPE_SMNUMBER:
+		case SUBTYPE_COLLECTOR:
+		case SUBTYPE_BLIND:
 			*((uint8_t *)data) = store->state;
 			break;
 		case SUBTYPE_NUMBER:
@@ -548,6 +554,7 @@ void store_data_dev(device_t *dev, int where, void *data)
 		break;
 	case DEVICE_SENSOR:
 	case DEVICE_TIMER:
+	case DEVICE_BLIND:
 	{
 		switch (dev->subtype) {
 		case SUBTYPE_TEMP:
@@ -600,6 +607,8 @@ void store_data_dev(device_t *dev, int where, void *data)
 		case SUBTYPE_THMODE:
 		case SUBTYPE_THSTATE:
 		case SUBTYPE_SMNUMBER:
+		case SUBTYPE_COLLECTOR:
+		case SUBTYPE_BLIND:
 			store->state = *((uint8_t *)data);
 			break;
 		case SUBTYPE_NUMBER:
@@ -724,6 +733,8 @@ int datatype_dev(device_t *dev)
 	case SUBTYPE_THMODE:
 	case SUBTYPE_THSTATE:
 	case SUBTYPE_SMNUMBER:
+	case SUBTYPE_COLLECTOR:
+	case SUBTYPE_BLIND:
 		return DATATYPE_UINT;
 		break;
 	case SUBTYPE_WATTSEC:

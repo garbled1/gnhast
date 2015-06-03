@@ -92,6 +92,8 @@ argtable_t argtable[] = {
 	{"smnum", SC_SMNUMBER, PTINT},
 	{"glist", SC_GROUPLIST, PTCHAR},
 	{"dlist", SC_DEVLIST, PTCHAR},
+	{"collecor", SC_COLLECTOR, PTINT},
+	{"blind", SC_BLIND, PTINT},
 };
 
 /** \brief size of the args table */ 
@@ -178,6 +180,8 @@ int find_arg_bydev(device_t *dev)
 	case SUBTYPE_THMODE: return find_arg_byid(SC_THMODE); break;
 	case SUBTYPE_THSTATE: return find_arg_byid(SC_THSTATE); break;
 	case SUBTYPE_SMNUMBER: return find_arg_byid(SC_SMNUMBER); break;
+	case SUBTYPE_COLLECTOR: return find_arg_byid(SC_COLLECTOR); break;
+	case SUBTYPE_BLIND: return find_arg_byid(SC_BLIND); break;
 	}
 	return -1;
 }

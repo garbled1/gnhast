@@ -52,6 +52,8 @@
 
 /* General defines */
 
+#define HEALTH_CHECK_RATE	60
+
 /* Basic device types */
 enum DEV_TYPES {
 	DEVICE_NONE,
@@ -59,9 +61,11 @@ enum DEV_TYPES {
 	DEVICE_DIMMER,
 	DEVICE_SENSOR,
 	DEVICE_TIMER,
+	DEVICE_BLIND, /* can go up or down, but cannot be queried */
 	NROF_TYPES,
 };
 #define DEVICE_MAX DEVICE_TIMER
+/* a type blind should always return BLIND_STOP, for consistency */
 
 enum PROTO_TYPES {
 	PROTO_NONE,
@@ -75,9 +79,22 @@ enum PROTO_TYPES {
 	PROTO_SENSOR_AD2USB,
 	PROTO_SENSOR_ICADDY,
 	PROTO_SENSOR_VENSTAR,
+	PROTO_CONTROL_URSTII,
 	NROF_PROTOS,
 };
 #define PROTO_MAX PROTO_SENSOR_VENSTAR
+
+/***
+    The following files must be updated when adding a subtype:
+    common/netparser.c
+    common/devices.c
+    common/confparser.c (if scaled type, like pressure)
+    common/gncoll.c (if scaled type, like pressure)
+    gnhastd/cmdhandler.c
+    common/commands.h
+    common/collcmd.c
+    Note, you must also update the SC_ instances.
+***/
 
 enum SUBTYPE_TYPES {
 	SUBTYPE_NONE,
@@ -109,6 +126,8 @@ enum SUBTYPE_TYPES {
 	SUBTYPE_THMODE, /* stored in state */
 	SUBTYPE_THSTATE, /* stored in state */
 	SUBTYPE_SMNUMBER, /* 8bit number stored in state */
+	SUBTYPE_BLIND, /* stored in state, see BLIND_* */
+	SUBTYPE_COLLECTOR, /* stored in state */
 	SUBTYPE_BOOL,
 	NROF_SUBTYPES,
 };
@@ -117,6 +136,17 @@ enum SUBTYPE_TYPES {
    add new sensor types between these */
 #define SUBTYPE_OWSRV_SENSOR_MIN SUBTYPE_TEMP
 #define SUBTYPE_OWSRV_SENSOR_MAX SUBTYPE_LUX
+
+enum BLIND_TYPES {
+	BLIND_UP,
+	BLIND_DOWN,
+	BLIND_STOP,
+};
+
+enum COLLECTOR_TYPES {
+	COLLECTOR_BAD,
+	COLLECTOR_OK,
+};
 
 enum TSCALE_TYPES {
 	TSCALE_F,
@@ -214,6 +244,8 @@ typedef struct _client_t {
 	uint32_t updates;	/**< \brief updates recieved from this cli */
 	uint32_t feeds;		/**< \brief feeds for this cli */
 	uint32_t sentdata;	/**< \brief data sent to this cli */
+	time_t lastupd;		/**< \brief last time we were talked to */
+	struct _device_t *coll_dev;	/**< \brief the dev for the collector itself */
 	TAILQ_ENTRY(_client_t) next; /**< \brief next client on list */
 } client_t;
 

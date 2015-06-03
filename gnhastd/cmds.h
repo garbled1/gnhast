@@ -14,6 +14,8 @@ int cmd_cactiask_device(pargs_t *args, void *arg);
 int cmd_ask_device(pargs_t *args, void *arg);
 int cmd_ask_full_device(pargs_t *args, void *arg);
 int cmd_disconnect(pargs_t *args, void *arg);
+int cmd_ping(pargs_t *args, void *arg);
+int cmd_imalive(pargs_t *args, void *arg);
 
 int parsed_command(char *command, pargs_t *args, void *arg);
 

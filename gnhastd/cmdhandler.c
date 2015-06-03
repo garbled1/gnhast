@@ -67,6 +67,8 @@ commands_t commands[] = {
 	{"cactiask", cmd_cactiask_device, 0},
 	{"disconnect", cmd_disconnect, 0},
 	{"client", cmd_client, 0},
+	{"ping", cmd_ping, 0},
+	{"imalive", cmd_imalive, 0},
 };
 
 /** The size of the command table */
@@ -160,6 +162,8 @@ int cmd_update(pargs_t *args, void *arg)
 		case SC_THMODE:
 		case SC_THSTATE:
 		case SC_SMNUMBER:
+		case SC_COLLECTOR:
+		case SC_BLIND:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.i);
 			break;
 		case SC_LUX:
@@ -247,6 +251,8 @@ int cmd_change(pargs_t *args, void *arg)
 		case SC_THMODE:
 		case SC_THSTATE:
 		case SC_SMNUMBER:
+		case SC_COLLECTOR:
+		case SC_BLIND:
 			evbuffer_add_printf(send, " %s:%d",
 					    ARGNM(args[i].cword),
 					    args[i].arg.i);
@@ -716,13 +722,17 @@ int cmd_feed(pargs_t *args, void *arg)
    \brief Handle a client command
    \param args The list of arguments
    \param arg void pointer to client_t of provider
+
+   We setup a device to track each provider
 */
 
 int cmd_client(pargs_t *args, void *arg)
 {
 	int i;
 	char *cli=NULL;
+	char uid[512], buf[512], cliaddr[256];
 	client_t *client = (client_t *)arg;
+	device_t *dev;
 
 	for (i=0; args[i].cword != -1; i++) {
 		switch (args[i].cword) {
@@ -735,8 +745,37 @@ int cmd_client(pargs_t *args, void *arg)
 	if (cli == NULL)
 		return -1;
 	client->name = strdup(cli);
-	LOG(LOG_NOTICE, "Client %s registered as %s",
-	    client->addr ? client->addr : "unknown", cli);
+	sprintf(cliaddr, "%s", client->addr ? client->addr : "unknown");
+	LOG(LOG_NOTICE, "Client %s registered as %s", cliaddr, cli);
+
+	/* don't create tracking devices for handlers */
+	if (strcmp(cli, "handler") == 0)
+		return 0;
+
+	/* now, build a tracking device for it */
+	(void)sprintf(uid, "%s-%s", cli, cliaddr);
+	dev = find_device_byuid(uid);
+	if (dev == NULL) {
+		LOG(LOG_NOTICE, "Creating handling device for collector with"
+		    " uid:%s", uid);
+		dev = smalloc(device_t);
+		dev->uid = strdup(uid);
+		sprintf(buf, "Collector %s from host %s", cli, cliaddr);
+		dev->name = strdup(buf);
+		sprintf(buf, "coll_%s_%s", cli, cliaddr);
+		dev->rrdname = mk_rrdname(buf);
+		dev->type = DEVICE_SWITCH;
+		dev->proto = PROTO_NONE;
+		dev->subtype = SUBTYPE_COLLECTOR;
+		dev->collector = client; /* point to self */
+		client->coll_dev = dev; /* client_t points to this dev */
+		insert_device(dev);
+	}
+
+	/* mark this collector as functional */
+	i = COLLECTOR_OK;
+	store_data_dev(dev, DATALOC_DATA, &i);
+
 	return 0;
 }
 
@@ -950,4 +989,37 @@ int cmd_disconnect(pargs_t *args, void *arg)
 	LOG(LOG_NOTICE, "Client %s from %s requested disconnect",
 	    client->name ? client->name : "generic",
 	    client->addr ? client->addr : "unknown");
+}
+
+/**
+   \brief Got a ping. (WHY?!)
+   \param args The list of arguments (ignored)
+   \param arg void pointer to client_t of connection
+*/
+
+int cmd_ping(pargs_t *args, void *arg)
+{
+	client_t *client = (client_t *)arg;
+
+	LOG(LOG_NOTICE, "Client %s from %s pinged us",
+	    client->name ? client->name : "generic",
+	    client->addr ? client->addr : "unknown");
+}
+
+/**
+   \brief Got an imalive.  The lastupd is handled in netloop.c:buf_read_cb()
+   \param args The list of arguments (ignored)
+   \param arg void pointer to client_t of connection
+*/
+
+int cmd_imalive(pargs_t *args, void *arg)
+{
+	client_t *client = (client_t *)arg;
+	int i = COLLECTOR_OK;
+
+	LOG(LOG_DEBUG, "Client %s from %s is alive",
+	    client->name ? client->name : "generic",
+	    client->addr ? client->addr : "unknown");
+	if (client->coll_dev != NULL)
+		store_data_dev(client->coll_dev, DATALOC_DATA, &i);
 }

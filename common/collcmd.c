@@ -31,6 +31,10 @@
    \file collcmd.c
    \brief Common command handlers for collectors
    \author Tim Rightnour
+
+   These routines are called by collectors.  NEVER by gnhastd itself.
+   Therefore, arg is a pointer to the collector's internal connection_t type,
+   and is probably useless to us.
 */
 
 #include <stdio.h>
@@ -56,6 +60,9 @@
 
 extern int cmd_endldevs(pargs_t *args, void *arg);
 extern int cmd_endlgrps(pargs_t *args, void *arg);
+extern int cmd_ping(pargs_t *args, void *arg);
+extern int cmd_imalive(pargs_t *args, void *arg);
+extern int cmd_die(pargs_t *args, void *arg);
 extern void coll_upd_cb(device_t *dev, void *arg);
 extern void coll_chg_switch_cb(device_t *dev, int state, void *arg);
 extern void coll_chg_dimmer_cb(device_t *dev, double level, void *arg);
@@ -73,6 +80,9 @@ commands_t commands[] = {
 	{"regg", cmd_register_group, 0},
 	{"endldevs", cmd_endldevs, 0},
 	{"endlgrps", cmd_endlgrps, 0},
+	{"ping", cmd_ping, 0},
+	{"imalive", cmd_imalive, 0},
+	{"die", cmd_die, 0},
 	{"upd", cmd_update, 0},
 	{"mod", cmd_modify, 0},
 };
@@ -123,7 +133,7 @@ int parsed_command(char *command, pargs_t *args, void *arg)
 /**
    \brief Called when an upd command occurs (stub)
    \param dev device that got updated
-   \param arg pointer to client_t
+   \param arg pointer to connection_t
 */
 
 void __attribute__((weak)) coll_upd_cb(device_t *dev, void *arg)
@@ -134,7 +144,7 @@ void __attribute__((weak)) coll_upd_cb(device_t *dev, void *arg)
 /**
    \brief Called when an chg command occurs (stub)
    \param dev device that got updated
-   \param arg pointer to client_t
+   \param arg pointer to connection_t
 */
 
 void __attribute__((weak)) coll_chg_cb(device_t *dev, void *arg)
@@ -145,7 +155,7 @@ void __attribute__((weak)) coll_chg_cb(device_t *dev, void *arg)
 /**
    \brief Handle a enldevs device command (stub)
    \param args The list of arguments
-   \param arg void pointer to client_t of provider
+   \param arg void pointer to connection_t
 */
 
 int __attribute__((weak)) cmd_endldevs(pargs_t *args, void *arg)
@@ -156,13 +166,45 @@ int __attribute__((weak)) cmd_endldevs(pargs_t *args, void *arg)
 /**
    \brief Handle a endlgrps device command (stub)
    \param args The list of arguments
-   \param arg void pointer to client_t of provider
+   \param arg void pointer to connection_t
 */
 
 int __attribute__((weak)) cmd_endlgrps(pargs_t *args, void *arg)
 {
 	return;
 }
+
+/**
+   \brief Handle a ping request (stub)
+   \param arg void pointer to connection_t
+*/
+
+int __attribute__((weak)) cmd_ping(pargs_t *args, void *arg)
+{
+	return(0);
+}
+
+/**
+   \brief Handle an imalive request (stub)
+   \param arg void pointer to connection_t
+*/
+
+int __attribute__((weak)) cmd_imalive(pargs_t *args, void *arg)
+{
+	return(0);
+}
+
+/**
+   \brief Handle a die request (stub)
+   \param arg void pointer to connection_t
+*/
+
+int __attribute__((weak)) cmd_die(pargs_t *args, void *arg)
+{
+	return(0);
+}
+
+/***** Full blown commands *****/
 
 /**
 	\brief Handle a register device command
@@ -377,6 +419,8 @@ int cmd_update(pargs_t *args, void *arg)
 		case SC_THMODE:
 		case SC_THSTATE:
 		case SC_SMNUMBER:
+		case SC_COLLECTOR:
+		case SC_BLIND:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.i);
 			break;
 		case SC_LUX:
@@ -513,6 +557,8 @@ int cmd_change(pargs_t *args, void *arg)
 		case SC_THSTATE:
 		case SC_SMNUMBER:
 		case SC_ALARMSTATUS:
+		case SC_COLLECTOR:
+		case SC_BLIND:
 			store_data_dev(dev, DATALOC_CHANGE, &args[i].arg.i);
 			state = args[i].arg.i; /* XXX */
 			break;

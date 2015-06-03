@@ -69,12 +69,14 @@ int first_update = 0;
 int gotdata = 0;
 char *uidprefix = "ad2usb";
 int *zonefaults;
+time_t ad2usb_lastupd;
 
 /** Need the argtable in scope, so we can generate proper commands
     for the server */
 extern argtable_t argtable[];
 extern TAILQ_HEAD(, _device_t) alldevs;
 extern const char *alarmtext[];
+extern int collector_instance;
 
 /** The event base */
 struct event_base *base;
@@ -104,6 +106,7 @@ cfg_opt_t ad2usb_opts[] = {
 	CFG_INT("zones", 8, CFGF_NONE),
 	CFG_INT_CB("logfaults", 0, CFGF_NONE, conf_parse_bool),
 	CFG_INT("seccode", 0, CFGF_NONE),
+	CFG_INT("instance", 1, CFGF_NONE),
 	CFG_END(),
 };
 
@@ -126,6 +129,21 @@ cfg_opt_t options[] = {
 /**********************************************
 	gnhastd handlers
 **********************************************/
+
+/**
+   \brief Check if a collector is functioning properly
+   \param conn connection_t of collector's gnhastd connection
+   \return 1 if OK, 0 if broken
+   \note My alarm seems to send an "all ok" every 10 seconds, so, wait for 6
+*/
+
+int collector_is_ok(void)
+{
+	if ((time(NULL) - ad2usb_lastupd) < 60)
+		return(1);
+	return(0);
+}
+
 
 /**
    \brief Called when a switch chg command occurs
@@ -554,6 +572,8 @@ void ad2usb_buf_read_cb(struct bufferevent *in, void *arg)
 
 	LOG(LOG_DEBUG, "enter read_cb");
 
+	ad2usb_lastupd = time(NULL);
+
 	/* loop as long as we have data to read */
 	while (1) {
 		evbuf = bufferevent_get_input(in);
@@ -697,6 +717,7 @@ int main(int argc, char **argv)
 
 	/* set for first update */
 	first_update = 1;
+	ad2usb_lastupd = time(NULL);
 
 	cfg = parse_conf(conffile);
 
@@ -735,6 +756,7 @@ int main(int argc, char **argv)
 	/* cheat, and directly call the timer callback
 	   This sets up a connection to the server. */
 	generic_connect_server_cb(0, 0, gnhastd_conn);
+	collector_instance = cfg_getint(ad2usb_c, "instance");
 	gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
 
 	/* read the serial device name from the conf file */

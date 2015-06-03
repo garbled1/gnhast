@@ -87,12 +87,17 @@ static int setnonblock(int fd)
 
 void buf_read_cb(struct bufferevent *in, void *arg)
 {
+	client_t *client = (client_t *)arg;
 	char *data;
 	char **words, *cmdword;
 	int numwords, i, ret;
 	pargs_t *args=NULL;
 	struct evbuffer *evbuf;
 	size_t len;
+
+
+	/* we got data, so mark the client structure */
+	client->lastupd = time(NULL);
 
 	/* loop as long as we have data to read */
 	while (1) {
@@ -115,7 +120,8 @@ void buf_read_cb(struct bufferevent *in, void *arg)
 		args = parse_command(words, numwords);
 		ret = parsed_command(cmdword, args, arg);
 		if (ret != 0)
-			LOG(LOG_DEBUG, "Command failed or invalid: %s", cmdword);
+			LOG(LOG_DEBUG, "Command failed or invalid: %s",
+			    cmdword);
 		free(cmdword);
 		free(data);
 		if (args) {

@@ -99,6 +99,8 @@ enum SC_COMMANDS {
 	SC_SMNUMBER,	/**< \brief Small number */
 	SC_GROUPLIST,	/**< \brief group list */
 	SC_DEVLIST,	/**< \brief device list */
+	SC_COLLECTOR,	/**< \brief collector */
+	SC_BLIND,	/**< \brief blind */
 };
 
 /* commands */
