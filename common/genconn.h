@@ -19,6 +19,7 @@ typedef struct _connection_t {
 	int connected;
 } connection_t;
 
+void generic_collector_health_cb(int nada, short what, void *arg);
 void generic_connect_server_cb(int nada, short what, void *arg);
 void generic_connect_event_cb(struct bufferevent *ev, short what, void *arg);
 void generic_cb_shutdown(int fd, short what, void *arg);

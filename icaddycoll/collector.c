@@ -82,6 +82,7 @@ char *ichn;
 int hasrain = 0;
 icaddy_discovery_resp_t icaddy_list[MAX_ICADDY_DEVS];
 struct event *disc_ev; /* the discovery event */
+time_t icaddy_lastupd;
 
 http_get_t *status_get;
 http_get_t *settings_get;
@@ -96,6 +97,7 @@ extern TAILQ_HEAD(, _device_t) alldevs;
 extern commands_t commands[];
 extern int debugmode;
 extern int notimerupdate;
+extern int collector_instance;
 
 /** The event base */
 struct event_base *base;
@@ -127,6 +129,7 @@ cfg_opt_t gnhastd_opts[] = {
 cfg_opt_t icaddycoll_opts[] = {
 	CFG_STR("hostname", 0, CFGF_NODEFAULT),
 	CFG_INT("update", 60, CFGF_NONE),
+	CFG_INT("instance", 1, CFGF_NONE),
 	CFG_END(),
 };
 
@@ -289,6 +292,23 @@ void coll_chg_cb(device_t *dev, void *arg)
 		    dev->subtype);
 	}
 	return;
+}
+
+/**
+   \brief Check if a collector is functioning properly
+   \param conn connection_t of collector's gnhastd connection
+   \return 1 if OK, 0 if broken
+   \note if 5 updates pass with no data, bad bad.
+*/
+
+int collector_is_ok(void)
+{
+	int update;
+
+	update = cfg_getint(icaddy_c, "update");
+	if ((time(NULL) - icaddy_lastupd) < (update * 5))
+		return(1);
+	return(0);
 }
 
 /**
@@ -664,6 +684,8 @@ void request_cb(struct evhttp_request *req, void *arg)
 			exit(0);
 		}
 	}
+	/* if we got here, things are sane, so mark lastupd */
+	icaddy_lastupd = time(NULL);
 
 request_cb_out:
 	free(buf);
@@ -1011,6 +1033,7 @@ int main(int argc, char **argv)
 	init_commands();
 	/* Initialize the device table */
 	init_devtable(cfg, 0);
+	icaddy_lastupd = time(NULL);
 
 	cfg = parse_conf(conffile);
 
@@ -1045,6 +1068,7 @@ int main(int argc, char **argv)
 	/* cheat, and directly call the timer callback
 	   This sets up a connection to the server. */
 	generic_connect_server_cb(0, 0, gnhastd_conn);
+	collector_instance = cfg_getint(icaddy_c, "instance");
 	gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
 
 	parse_devices(cfg);

@@ -32,7 +32,7 @@
    \author Tim Rightnour
    \brief RRDtool collector
    This collector connects to gnhastd, and generates rrd data.
-   In addition, it relays min/max/avg to the gnhastd server.
+   In addition, it relays min/max/avg to the gnhastd server. (does it?)
 */
 
 #include <stdio.h>
@@ -72,7 +72,8 @@ char *dumpconf = NULL;
 int need_rereg = 0;
 int secure = 0;
 int usecache = 0;
- 
+time_t rrd_lastupd;
+
 #define RRDCOLL_CONFIG_FILE	"rrdcoll.conf"
 #define RRDCOLL_LOG_FILE	"rrdcoll.log"
 #define RRDCOLL_PID_FILE	"rrdcoll.pid"
@@ -88,6 +89,7 @@ char *conffile = SYSCONFDIR "/" RRDCOLL_CONFIG_FILE;
 extern argtable_t argtable[];
 extern TAILQ_HEAD(, _device_t) alldevs;
 extern commands_t commands[];
+extern int collector_instance;
 
 /** The event base */
 struct event_base *base;
@@ -127,6 +129,7 @@ cfg_opt_t rrdcoll_opts[] = {
 	CFG_INT_CB("userrdcached", 0, CFGF_NONE, conf_parse_bool),
 	CFG_STR("rrdc_hostname", "127.0.0.1", CFGF_NONE),
 	CFG_INT("rrdc_port", 42217, CFGF_NONE),
+	CFG_INT("instance", 1, CFGF_NONE),
 	CFG_END(),
 };
 
@@ -407,6 +410,8 @@ void rrd_update_dev(device_t *dev)
 		rrd_update(3, rrdparams);
 		if (rrd_test_error())
 			LOG(LOG_ERROR, "%s", rrd_get_error());
+		else
+			rrd_lastupd = time(NULL); /* no error is happytime */
 	}
 }
 
@@ -532,6 +537,7 @@ void rrdc_read_cb(struct bufferevent *in, void *arg)
 		if (data == NULL || len < 1)
 			return;
 
+		rrd_lastupd = time(NULL); /* mark as connection OK */
 		LOG(LOG_DEBUG, "Got data from %s: %s", conn->server, data);
 		free(data);
 	}
@@ -540,6 +546,39 @@ void rrdc_read_cb(struct bufferevent *in, void *arg)
 /*****
       General routines/gnhastd connection stuff
 *****/
+
+/**
+   \brief Check if a collector is functioning properly
+   \param conn connection_t of collector's gnhastd connection
+   \return 1 if OK, 0 if broken
+   \note There is no heartbeat in this collector, so lets say 5 minutes?
+*/
+
+int collector_is_ok(void)
+{
+	int update = 60;
+
+	if ((time(NULL) - rrd_lastupd) < (update * 5))
+		return(1);
+	return(0);
+}
+
+/**
+   \brief A timer callback to send gnhastd imalive statements
+   \param nada used for file descriptor
+   \param what why did we fire?
+   \param arg pointer to connection_t of gnhastd connection
+*/
+
+void health_cb(int nada, short what, void *arg)
+{
+	connection_t *conn = (connection_t *)arg;
+
+	if (collector_is_ok())
+		gn_imalive(conn->bev);
+	else
+		LOG(LOG_WARNING, "Collector is non functional");
+}
 
 /**
    \brief Error callback, close down connection
@@ -634,6 +673,13 @@ void connect_event_cb(struct bufferevent *ev, short what, void *arg)
 
 	if (what & BEV_EVENT_CONNECTED) {
 		LOG(LOG_NOTICE, "Connected to %s", conn->server);
+		if (strcmp(conn->server, "gnhastd") == 0) {
+			tev = evtimer_new(base, health_cb, conn);
+			secs.tv_sec = HEALTH_CHECK_RATE;
+			evtimer_add(tev, &secs);
+			LOG(LOG_NOTICE, "Setting up self-health checks every"
+			    "%d seconds", secs.tv_sec);
+		}
 	} else if (what & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
 		if (what & BEV_EVENT_ERROR) {
 			err = bufferevent_socket_get_dns_error(ev);
@@ -774,6 +820,7 @@ int main(int argc, char **argv)
 	/* Initialize the event system */
 	base = event_base_new();
 	dns_base = evdns_base_new(base, 1);
+	rrd_lastupd = time(NULL);
 
 	/* Initialize the argtable */
 	init_argcomm();
@@ -819,15 +866,19 @@ int main(int argc, char **argv)
 		gnhastd_conn->ssl = SSL_new(gnhastd_conn->ssl_ctx);
 	}
 
+	rrdcoll_c = cfg_getsec(cfg, "rrdcoll");
+	if (rrdcoll_c == NULL)
+		LOG(LOG_FATAL, "No rrdcoll section in config file");
+
 	/* cheat, and directly call the timer callback
 	   This sets up a connection to the server. */
 	if (secure)
 		ssl_connect_server_cb(0, 0, gnhastd_conn);
 	else
 		connect_server_cb(0, 0, gnhastd_conn);
+	collector_instance = cfg_getint(rrdcoll_c, "instance");
 	gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
 
-	rrdcoll_c = cfg_getsec(cfg, "rrdcoll");
 	if (cfg_getint(rrdcoll_c, "userrdcached")) {
 		usecache = 1;
 		rrdc_conn = smalloc(connection_t);

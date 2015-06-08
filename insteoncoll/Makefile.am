@@ -20,7 +20,10 @@ ALLCOMMON_SRC = \
 	$(top_srcdir)/common/collcmd.c \
 	$(top_srcdir)/common/collcmd.h \
 	$(top_srcdir)/common/http_func.c \
-	$(top_srcdir)/common/http_func.h
+	$(top_srcdir)/common/http_func.h \
+	$(top_srcdir)/common/genconn.c \
+	insteon.h collector.h \
+	insteon_common.c 
 
 RBTREE_SRCS = \
 	$(top_srcdir)/linux/bswap16.c \
@@ -34,8 +37,6 @@ RBTREE_SRCS = \
 
 insteon_discover_SOURCES = \
 	$(ALLCOMMON_SRC) \
-	insteon.h collector.h \
-	insteon_common.c \
 	insteon_discover.c
 
 if NEED_RBTREE
@@ -44,9 +45,6 @@ endif
 
 insteoncoll_SOURCES = \
 	$(ALLCOMMON_SRC) \
-	$(top_srcdir)/common/genconn.c \
-	insteon.h collector.h \
-	insteon_common.c \
 	collector.c
 
 if NEED_RBTREE
@@ -55,8 +53,6 @@ endif
 
 insteon_aldb_SOURCES = \
 	$(ALLCOMMON_SRC) \
-	insteon.h collector.h \
-	insteon_common.c \
 	insteon_aldb.c
 
 if NEED_RBTREE

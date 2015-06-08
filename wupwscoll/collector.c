@@ -68,7 +68,8 @@ char *dumpconf = NULL;
 int need_rereg = 0;
 struct calcdata *cdata;
 int dataslots = 0;
- 
+time_t wupws_lastupd;
+
 /* debugging */
 //_malloc_options = "AJ";
 
@@ -78,6 +79,7 @@ extern argtable_t argtable[];
 extern TAILQ_HEAD(, _device_t) alldevs;
 extern commands_t commands[];
 extern int debugmode;
+extern int collector_instance;
 
 /** The event base */
 struct event_base *base;
@@ -110,6 +112,7 @@ cfg_opt_t wupwscoll_opts[] = {
 	CFG_INT("update", 60, CFGF_NONE),
 	CFG_INT_CB("rapidfire", 0, CFGF_NONE, conf_parse_bool),
 	CFG_INT_CB("pwstype", PWS_WUNDERGROUND, CFGF_NONE, conf_parse_pwstype),
+	CFG_INT("instance", 1, CFGF_NONE),
 	CFG_END(),
 };
 
@@ -160,6 +163,23 @@ void coll_upd_cb(device_t *dev, void *arg)
 
 	get_data_dev(dev, DATALOC_DATA, &data);
 	upd_calcdata(dev->uid, data);
+}
+
+/**
+   \brief Check if a collector is functioning properly
+   \param conn connection_t of collector's gnhastd connection
+   \return 1 if OK, 0 if broken
+   \note if 5 updates pass with no data, bad bad.
+*/
+
+int collector_is_ok(void)
+{
+	int update;
+
+	update = cfg_getint(wupws_c, "update");
+	if ((time(NULL) - wupws_lastupd) < (update * 5))
+		return(1);
+	return(0);
 }
 
 /*****
@@ -405,7 +425,9 @@ void request_cb(struct evhttp_request *req, void *arg)
 		LOG(LOG_ERROR, "Data not sent! Check password/ID");
 		if (buf)
 			LOG(LOG_ERROR, "Message from server follows:\n%s", buf);
-	}
+	} else 
+		wupws_lastupd = time(NULL);
+
 	evbuffer_drain(data, len); /* toss it */
 }
 
@@ -627,6 +649,7 @@ int main(int argc, char **argv)
 	/* Initialize the event system */
 	base = event_base_new();
 	dns_base = evdns_base_new(base, 1);
+	wupws_lastupd = time(NULL);
 
 	/* Initialize the argtable */
 	init_argcomm();
@@ -683,6 +706,7 @@ int main(int argc, char **argv)
 	/* cheat, and directly call the timer callback
 	   This sets up a connection to the server. */
 	generic_connect_server_cb(0, 0, gnhastd_conn);
+	collector_instance = cfg_getint(wupws_c, "instance");
 	gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
 
 	ev = evtimer_new(base, wupws_startfeed, NULL);

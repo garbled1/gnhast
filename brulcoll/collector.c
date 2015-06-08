@@ -84,6 +84,8 @@ char *dumpconf = NULL;
 int need_rereg = 0;
 int indian = 1;
 int tempscale = TSCALE_F;
+time_t brul_lastupd;
+
 
 /* stuff for gem/wiznet reset */
 int gemconnattempts = 0;
@@ -101,6 +103,7 @@ brulconf_t brulconf;
     for the server */
 extern argtable_t argtable[];
 extern TAILQ_HEAD(, _device_t) alldevs;
+extern int collector_instance;
 
 /** The event base */
 struct event_base *base;
@@ -141,6 +144,7 @@ cfg_opt_t brultech_opts[] = {
 	CFG_INT_CB("connection", BRUL_COMM_NET, CFGF_NONE,
 		   conf_parse_brul_conn),
 	CFG_STR("serialdev", "/dev/dty01", CFGF_NONE),
+	CFG_INT("instance", 1, CFGF_NONE),
 	CFG_END(),
 };
 
@@ -925,6 +929,10 @@ rereadheader:
 		evbuffer_drain(evbuf, 1);
 		goto rereadheader;
 	}
+
+	/* if we got this far, we have reasonable data, mark it as a lastupd */
+	brul_lastupd = time(NULL);
+
 	switch (header->byte[2]) {
 	case BRUL_FMT_32POLAR:
 		brul_handle_type7(in, conn);
@@ -975,6 +983,41 @@ void brul_netconnect_event_cb(struct bufferevent *ev, short what, void *arg)
 /*****
       General routines/gnhastd connection stuff
 *****/
+
+
+/**
+   \brief Check if a collector is functioning properly
+   \param conn connection_t of collector's gnhastd connection
+   \return 1 if OK, 0 if broken
+   \note if 5 updates pass with no data, bad bad.
+*/
+
+int collector_is_ok(void)
+{
+	int update;
+
+	update = cfg_getint(brulcoll_c, "update");
+	if ((time(NULL) - brul_lastupd) < (update * 5))
+		return(1);
+	return(0);
+}
+
+/**
+   \brief A timer callback to send gnhastd imalive statements
+   \param nada used for file descriptor
+   \param what why did we fire?
+   \param arg pointer to connection_t of gnhastd connection
+*/
+
+void health_cb(int nada, short what, void *arg)
+{
+	connection_t *conn = (connection_t *)arg;
+
+	if (collector_is_ok())
+		gn_imalive(conn->bev);
+	else
+		LOG(LOG_WARNING, "Collector is non functional");
+}
 
 /**
    \brief A timer callback that initiates a new connection
@@ -1044,8 +1087,15 @@ void connect_event_cb(struct bufferevent *ev, short what, void *arg)
 
 	if (what & BEV_EVENT_CONNECTED) {
 		LOG(LOG_NOTICE, "Connected to %s", conntype[conn->type]);
-		if (conn->type == 1) /* gem */
+		if (conn->type == CONN_TYPE_BRUL) /* gem */
 			gemconnattempts = 0;
+		if (conn->type == CONN_TYPE_GNHASTD) {
+			tev = evtimer_new(base, health_cb, conn);
+			secs.tv_sec = HEALTH_CHECK_RATE;
+			evtimer_add(tev, &secs);
+			LOG(LOG_NOTICE, "Setting up self-health checks every"
+			    "%d seconds", secs.tv_sec);
+		}
 	} else if (what & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
 		if (what & BEV_EVENT_ERROR) {
 			err = bufferevent_socket_get_dns_error(ev);
@@ -1415,6 +1465,7 @@ int main(int argc, char **argv)
 	/* Initialize the device table */
 	init_devtable(cfg, 0);
 	loopnr = 0;
+	brul_lastupd = time(NULL);
 
 	cfg = parse_conf(conffile);
 
@@ -1440,14 +1491,6 @@ int main(int argc, char **argv)
 			LOG(LOG_FATAL, "Error reading config file, "
 			    "gnhastd section");
 	}
-	gnhastd_conn = smalloc(connection_t);
-	gnhastd_conn->port = cfg_getint(gnhastd_c, "port");
-	gnhastd_conn->type = CONN_TYPE_GNHASTD;
-	gnhastd_conn->host = cfg_getstr(gnhastd_c, "hostname");
-	/* cheat, and directly call the timer callback
-	   This sets up a connection to the server. */
-	connect_server_cb(0, 0, gnhastd_conn);
-	gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
 
 	/* Finally, parse how to connect to the brultech */
 
@@ -1457,6 +1500,16 @@ int main(int argc, char **argv)
 			LOG(LOG_FATAL, "Error reading config file, "
 			    "brultech section");
 	}
+	gnhastd_conn = smalloc(connection_t);
+	gnhastd_conn->port = cfg_getint(gnhastd_c, "port");
+	gnhastd_conn->type = CONN_TYPE_GNHASTD;
+	gnhastd_conn->host = cfg_getstr(gnhastd_c, "hostname");
+	/* cheat, and directly call the timer callback
+	   This sets up a connection to the server. */
+	connect_server_cb(0, 0, gnhastd_conn);
+	collector_instance = cfg_getint(brultech_c, "instance");
+	gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
+	
 	brulnet_conn = smalloc(connection_t);
 	switch (cfg_getint(brulcoll_c, "tscale")) {
 	case TSCALE_C:

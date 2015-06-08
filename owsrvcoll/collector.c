@@ -70,11 +70,13 @@ int need_rereg = 0;
 int timer_pending = 0;
 int persistent = 0;
 int tempscale = 0;
+time_t owsrv_lastupd;
 
 /** Need the argtable in scope, so we can generate proper commands
     for the server */
 extern argtable_t argtable[];
 extern TAILQ_HEAD(, _device_t) alldevs;
+extern int collector_instance;
 
 /** The event base */
 struct event_base *base;
@@ -123,6 +125,7 @@ cfg_opt_t owsrvcoll_opts[] = {
 	CFG_INT_CB("tscale", TSCALE_F, CFGF_NONE, conf_parse_tscale),
 	CFG_INT("update", 60, CFGF_NONE),
 	CFG_INT("rescan", 15, CFGF_NONE),
+	CFG_INT("instance", 1, CFGF_NONE),
 	CFG_END(),
 };
 
@@ -477,6 +480,8 @@ void ows_buf_read_cb(struct bufferevent *in, void *arg)
 		if (dev->name && datagood)
 			gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
 	}
+	/* if we got here, things are happy */
+	owsrv_lastupd = time(NULL);
 
 	free(buf);
 
@@ -582,6 +587,40 @@ void ows_connect_event_cb(struct bufferevent *ev, short what, void *arg)
 *****/
 
 /**
+   \brief Check if a collector is functioning properly
+   \param conn connection_t of collector's gnhastd connection
+   \return 1 if OK, 0 if broken
+   \note if 5 updates pass with no data, bad bad.
+*/
+
+int collector_is_ok(void)
+{
+	int update;
+
+	update = cfg_getint(owsrvcoll_c, "update");
+	if ((time(NULL) - owsrv_lastupd) < (update * 5))
+		return(1);
+	return(0);
+}
+
+/**
+   \brief A timer callback to send gnhastd imalive statements
+   \param nada used for file descriptor
+   \param what why did we fire?
+   \param arg pointer to connection_t of gnhastd connection
+*/
+
+void health_cb(int nada, short what, void *arg)
+{
+	connection_t *conn = (connection_t *)arg;
+
+	if (collector_is_ok())
+		gn_imalive(conn->bev);
+	else
+		LOG(LOG_WARNING, "Collector is non functional");
+}
+
+/**
    \brief Error callback, close down connection
    \param ev The bufferevent that fired
    \param what why did it fire?
@@ -634,6 +673,9 @@ void connect_server_cb(int nada, short what, void *arg)
 	}
 }
 
+
+
+
 /**
    \brief Event callback used with connections
    \param ev The bufferevent that fired
@@ -650,6 +692,13 @@ void connect_event_cb(struct bufferevent *ev, short what, void *arg)
 
 	if (what & BEV_EVENT_CONNECTED) {
 		LOG(LOG_NOTICE, "Connected to %s", conntype[conn->type]);
+		if (conn->type == CONN_TYPE_GNHASTD) {
+			tev = evtimer_new(base, health_cb, conn);
+			secs.tv_sec = HEALTH_CHECK_RATE;
+			evtimer_add(tev, &secs);
+			LOG(LOG_NOTICE, "Setting up self-health checks every"
+			    "%d seconds", secs.tv_sec);
+		}
 	} else if (what & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
 		if (what & BEV_EVENT_ERROR) {
 			err = bufferevent_socket_get_dns_error(ev);
@@ -789,6 +838,7 @@ int main(int argc, char **argv)
 	/* Initialize the device table */
 	init_devtable(cfg, 0);
 	loopnr = 0;
+	owsrv_lastupd = time(NULL);
 
 	cfg = parse_conf(conffile);
 
@@ -819,6 +869,7 @@ int main(int argc, char **argv)
 	/* cheat, and directly call the timer callback
 	   This sets up a connection to the server. */
 	connect_server_cb(0, 0, gnhastd_conn);
+	collector_instance = cfg_getint(owsrvcoll_c, "instance");
 	gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
 
 	/* Finally, parse how to connect to the owserver */

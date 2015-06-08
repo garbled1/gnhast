@@ -72,6 +72,8 @@ extern char *hubhtml_username;
 extern char *hubhtml_password;
 extern int plmtype;
 extern struct event *hubhtml_bufget_ev;
+extern int collector_instance;
+extern int plm_rescan_rate;
 
 void plm_query_all_devices(void);
 void plm_query_grouped_devices(device_t *dev, uint group);
@@ -92,6 +94,7 @@ cfg_opt_t insteoncoll_opts[] = {
 	CFG_INT("hubport", 9761, CFGF_NONE),
 	CFG_STR("httppass", "password", CFGF_NONE),
 	CFG_STR("httpuser", "admin", CFGF_NONE),
+	CFG_INT("instance", 1, CFGF_NONE),
 	CFG_END(),
 };
 
@@ -119,7 +122,7 @@ connection_t *gnhastd_conn;
 uint8_t plm_addr[3];
 int need_rereg = 0;
 char *dumpconf = NULL;
-time_t plm_lastupd;
+extern time_t plm_lastupd;
 
 extern SIMPLEQ_HEAD(fifohead, _cmdq_t) cmdfifo;
 
@@ -171,20 +174,6 @@ void storelog_dimmer(device_t *dev, double d)
 /**********************************************
 	gnhastd handlers
 **********************************************/
-
-/**
-   \brief Check if a collector is functioning properly
-   \param conn connection_t of collector's gnhastd connection
-   \return 1 if OK, 0 if broken
-*/
-
-int collector_is_ok(void)
-{
-	if ((time(NULL) - plm_lastupd) < (cfg_getint(icoll_c, "rescan") * 5))
-		return(1);
-	return(0);
-}
-
 
 /**
    \brief Called when a switch chg command occurs
@@ -711,6 +700,8 @@ main(int argc, char *argv[])
 	/* Initialize the command fifo */
 	SIMPLEQ_INIT(&cmdfifo);
 
+	plm_lastupd = time(NULL);
+
 	cfg = parse_conf(conffile);
 
 	if (!debugmode)
@@ -752,6 +743,7 @@ main(int argc, char *argv[])
 	ev = event_new(base, -1, EV_PERSIST, plm_rescan, plm_conn);
 	rescan.tv_sec = cfg_getint(icoll_c, "rescan");
 	event_add(ev, &rescan);
+	plm_rescan_rate = cfg_getint(icoll_c, "rescan");
 
 	/* Connect to gnhastd */
 
@@ -762,6 +754,7 @@ main(int argc, char *argv[])
 	/* cheat, and directly call the timer callback
 	   This sets up a connection to the server. */
 	connect_server_cb(0, 0, gnhastd_conn);
+	collector_instance = cfg_getint(icoll_c, "instance");
 	gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
 
 	/* setup signal handlers */

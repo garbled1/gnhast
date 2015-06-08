@@ -86,7 +86,8 @@ http_get_t *queryinfo_get;
 http_get_t *querysensors_get;
 http_get_t *queryruntimes_get;
 http_get_t *queryalerts_get;
- 
+time_t venstar_lastupd;
+
 /* debugging */
 //_malloc_options = "AJ";
 
@@ -98,6 +99,7 @@ extern commands_t commands[];
 extern int debugmode;
 extern int notimerupdate;
 extern int ssdp_portnum;
+extern int collector_instance;
 
 /** The event base */
 struct event_base *base;
@@ -166,6 +168,7 @@ cfg_opt_t venstarcoll_opts[] = {
 	CFG_INT("update", 60, CFGF_NONE),
 	CFG_INT_CB("ttype", TTYPE_RES, CFGF_NONE, conf_parse_ttype),
 	CFG_STR("tscale", "F", CFGF_NONE),
+	CFG_INT("instance", 1, CFGF_NONE),
 	CFG_END(),
 };
 
@@ -244,6 +247,23 @@ void coll_chg_cb(device_t *dev, void *arg)
 		return;
 	}
 	return;
+}
+
+/**
+   \brief Check if a collector is functioning properly
+   \param conn connection_t of collector's gnhastd connection
+   \return 1 if OK, 0 if broken
+   \note if 5 updates pass with no data, bad bad.
+*/
+
+int collector_is_ok(void)
+{
+	int update;
+
+	update = cfg_getint(venstar_c, "update");
+	if ((time(NULL) - venstar_lastupd) < (update * 5))
+		return(1);
+	return(0);
 }
 
 /**
@@ -595,6 +615,9 @@ void request_cb(struct evhttp_request *req, void *arg)
 		ev = evtimer_new(base, cb_http_GET, queryinfo_get);
 		event_add(ev, &secs);
 	}
+
+	/* if we got this far everything is a-ok */
+	venstar_lastupd = time(NULL);
 
 request_cb_out:
 	free(buf);
@@ -1106,6 +1129,7 @@ int main(int argc, char **argv)
 	/* Initialize the event system */
 	base = event_base_new();
 	dns_base = evdns_base_new(base, 1);
+	venstar_lastupd = time(NULL);
 
 	/* Initialize the argtable */
 	init_argcomm();
@@ -1126,7 +1150,8 @@ int main(int argc, char **argv)
 	if (cfg) {
 		venstar_c = cfg_getsec(cfg, "venstarcoll");
 		if (!venstar_c)
-			LOG(LOG_FATAL, "Error reading config file, venstar section");
+			LOG(LOG_FATAL, "Error reading config file, "
+			    "venstar section");
 	}
 
 	/* Now, parse the details of connecting to the gnhastd server */
@@ -1134,7 +1159,8 @@ int main(int argc, char **argv)
 	if (cfg) {
 		gnhastd_c = cfg_getsec(cfg, "gnhastd");
 		if (!gnhastd_c)
-			LOG(LOG_FATAL, "Error reading config file, gnhastd section");
+			LOG(LOG_FATAL, "Error reading config file, "
+			    "gnhastd section");
 	}
 
 	buf = cfg_getstr(venstar_c, "tscale");
@@ -1157,6 +1183,7 @@ int main(int argc, char **argv)
 	/* cheat, and directly call the timer callback
 	   This sets up a connection to the server. */
 	generic_connect_server_cb(0, 0, gnhastd_conn);
+	collector_instance = cfg_getint(venstar_c, "instance");
 	gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
 
 	parse_devices(cfg);

@@ -81,6 +81,8 @@ struct event *hubhtml_bufget_ev;
 int plmaldbmorerecords = 0;
 int plmtype = PLM_TYPE_SERIAL;
 int hubtype;
+time_t plm_lastupd;
+int plm_rescan_rate = 9999; /* fake it for the aldb/discovery tools */
 
 /* the bufstatus.xml buffers */
 struct evbuffer *hubhtml_workbuf;
@@ -216,6 +218,19 @@ void connect_server_cb(int nada, short what, void *arg)
 }
 
 /**
+   \brief Check if a collector is functioning properly
+   \param conn connection_t of collector's gnhastd connection
+   \return 1 if OK, 0 if broken
+*/
+
+int collector_is_ok(void)
+{
+	if ((time(NULL) - plm_lastupd) < (plm_rescan_rate * 5))
+		return(1);
+	return(0);
+}
+
+/**
    \brief Event callback used with connections
    \param ev The bufferevent that fired
    \param what why did it fire?
@@ -231,6 +246,14 @@ void connect_event_cb(struct bufferevent *ev, short what, void *arg)
 
 	if (what & BEV_EVENT_CONNECTED) {
 		LOG(LOG_NOTICE, "Connected to %s", conntype[conn->type]);
+		if (conn->type == CONN_TYPE_GNHASTD) {
+			tev = evtimer_new(base, generic_collector_health_cb,
+					  conn);
+			secs.tv_sec = HEALTH_CHECK_RATE;
+			evtimer_add(tev, &secs);
+			LOG(LOG_NOTICE, "Setting up self-health checks every"
+			    "%d seconds", secs.tv_sec);
+		}
 	} else if (what & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
 		if (what & BEV_EVENT_ERROR) {
 			err = bufferevent_socket_get_dns_error(ev);

@@ -31,7 +31,7 @@
    \file collector.c
    \author Tim Rightnour
    \brief An example collector, that generates fake data to test
-   \note You may use this as a skeleton to create a new collector
+   \note You may/should use this as a skeleton to create a new collector
 */
 
 #include <stdio.h>
@@ -81,7 +81,7 @@ extern argtable_t argtable[];
 struct event_base *base;
 struct evdns_base *dns_base;
 
-cfg_t *cfg, *gnhastd_c;
+cfg_t *cfg, *gnhastd_c, *fakecoll_c;
 
 #define CONN_TYPE_GNHASTD       1
 char *conntype[3] = {
@@ -91,6 +91,7 @@ char *conntype[3] = {
 connection_t *gnhastd_conn;
 int need_rereg = 0;
 extern int debugmode;
+extern int collector_instance;
 
 /* Example options setup */
 
@@ -102,9 +103,15 @@ cfg_opt_t gnhastd_opts[] = {
 	CFG_END(),
 };
 
+cfg_opt_t fakecoll_opts[] = {
+	CFG_INT("instance", 1, CFGF_NONE),
+	CFG_END(),
+};
+
 cfg_opt_t options[] = {
 	CFG_SEC("gnhastd", gnhastd_opts, CFGF_NONE),
 	CFG_SEC("device", device_opts, CFGF_MULTI | CFGF_TITLE),
+	CFG_SEC("fakecoll", fakecoll_opts, CFGF_NONE),
 	CFG_STR("logfile", FAKECOLL_LOG_FILE, CFGF_NONE),
 	CFG_STR("pidfile", FAKECOLL_PID_FILE, CFGF_NONE),
 	CFG_END(),
@@ -258,6 +265,21 @@ void build_chaff_engine(void)
 	evtimer_add(timer_ev, &secs);
 }
 
+/* Gnhastd connection type routines go here */
+
+/**
+   \brief Check if a collector is functioning properly
+   \param conn connection_t of collector's gnhastd connection
+   \return 1 if OK, 0 if broken
+   Generally you set this up with some kind of last update check using
+   time(2).  Compare it against the normal update rate, and if there haven't
+   been updates in say, 4-6 cycles, return 0.
+*/
+
+int collector_is_ok(void)
+{
+	return(1); /* lie */
+}
 
 /**
    \brief Main itself
@@ -334,6 +356,14 @@ int main(int argc, char **argv)
 			    "gnhastd section");
 	}
 
+	/* Now parse the collector specific config settings */
+	if (cfg) {
+		fakecoll_c = cfg_getsec(cfg, "fakecoll");
+		if (!fakecoll_c)
+			LOG(LOG_FATAL, "Error reading config file, "
+			    "fakecoll section");
+	}
+
 	gnhastd_conn = smalloc(connection_t);
 	if (port != -1)
 		gnhastd_conn->port = port;
@@ -347,6 +377,7 @@ int main(int argc, char **argv)
 	/* cheat, and directly call the timer callback
 	   This sets up a connection to the server. */
 	generic_connect_server_cb(0, 0, gnhastd_conn);
+	collector_instance = cfg_getint(fakecoll_c, "instance");
 	gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
 
 	/* setup signal handlers */

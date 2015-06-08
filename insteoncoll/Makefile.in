@@ -108,7 +108,8 @@ am__insteon_aldb_SOURCES_DIST = $(top_srcdir)/common/common.c \
 	$(top_srcdir)/common/netparser.c \
 	$(top_srcdir)/common/collcmd.c $(top_srcdir)/common/collcmd.h \
 	$(top_srcdir)/common/http_func.c \
-	$(top_srcdir)/common/http_func.h insteon.h collector.h \
+	$(top_srcdir)/common/http_func.h \
+	$(top_srcdir)/common/genconn.c insteon.h collector.h \
 	insteon_common.c insteon_aldb.c $(top_srcdir)/linux/bswap16.c \
 	$(top_srcdir)/linux/bswap32.c $(top_srcdir)/linux/bswap64.c \
 	$(top_srcdir)/linux/rb.c $(top_srcdir)/linux/queue.h \
@@ -116,12 +117,13 @@ am__insteon_aldb_SOURCES_DIST = $(top_srcdir)/common/common.c \
 	$(top_srcdir)/linux/time.h
 am__objects_1 = common.$(OBJEXT) devices.$(OBJEXT) \
 	confparser.$(OBJEXT) gncoll.$(OBJEXT) serial_common.$(OBJEXT) \
-	netparser.$(OBJEXT) collcmd.$(OBJEXT) http_func.$(OBJEXT)
+	netparser.$(OBJEXT) collcmd.$(OBJEXT) http_func.$(OBJEXT) \
+	genconn.$(OBJEXT) insteon_common.$(OBJEXT)
 am__objects_2 = bswap16.$(OBJEXT) bswap32.$(OBJEXT) bswap64.$(OBJEXT) \
 	rb.$(OBJEXT)
 @NEED_RBTREE_TRUE@am__objects_3 = $(am__objects_2)
-am_insteon_aldb_OBJECTS = $(am__objects_1) insteon_common.$(OBJEXT) \
-	insteon_aldb.$(OBJEXT) $(am__objects_3)
+am_insteon_aldb_OBJECTS = $(am__objects_1) insteon_aldb.$(OBJEXT) \
+	$(am__objects_3)
 insteon_aldb_OBJECTS = $(am_insteon_aldb_OBJECTS)
 insteon_aldb_DEPENDENCIES = $(top_builddir)/libconfuse/libconfuse.la
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -139,15 +141,15 @@ am__insteon_discover_SOURCES_DIST = $(top_srcdir)/common/common.c \
 	$(top_srcdir)/common/netparser.c \
 	$(top_srcdir)/common/collcmd.c $(top_srcdir)/common/collcmd.h \
 	$(top_srcdir)/common/http_func.c \
-	$(top_srcdir)/common/http_func.h insteon.h collector.h \
+	$(top_srcdir)/common/http_func.h \
+	$(top_srcdir)/common/genconn.c insteon.h collector.h \
 	insteon_common.c insteon_discover.c \
 	$(top_srcdir)/linux/bswap16.c $(top_srcdir)/linux/bswap32.c \
 	$(top_srcdir)/linux/bswap64.c $(top_srcdir)/linux/rb.c \
 	$(top_srcdir)/linux/queue.h $(top_srcdir)/linux/endian.h \
 	$(top_srcdir)/linux/rbtree.h $(top_srcdir)/linux/time.h
 am_insteon_discover_OBJECTS = $(am__objects_1) \
-	insteon_common.$(OBJEXT) insteon_discover.$(OBJEXT) \
-	$(am__objects_3)
+	insteon_discover.$(OBJEXT) $(am__objects_3)
 insteon_discover_OBJECTS = $(am_insteon_discover_OBJECTS)
 insteon_discover_DEPENDENCIES =  \
 	$(top_builddir)/libconfuse/libconfuse.la
@@ -169,8 +171,8 @@ am__insteoncoll_SOURCES_DIST = $(top_srcdir)/common/common.c \
 	$(top_srcdir)/linux/rb.c $(top_srcdir)/linux/queue.h \
 	$(top_srcdir)/linux/endian.h $(top_srcdir)/linux/rbtree.h \
 	$(top_srcdir)/linux/time.h
-am_insteoncoll_OBJECTS = $(am__objects_1) genconn.$(OBJEXT) \
-	insteon_common.$(OBJEXT) collector.$(OBJEXT) $(am__objects_3)
+am_insteoncoll_OBJECTS = $(am__objects_1) collector.$(OBJEXT) \
+	$(am__objects_3)
 insteoncoll_OBJECTS = $(am_insteoncoll_OBJECTS)
 insteoncoll_DEPENDENCIES = $(top_builddir)/libconfuse/libconfuse.la
 AM_V_P = $(am__v_P_@AM_V@)
@@ -412,7 +414,10 @@ ALLCOMMON_SRC = \
 	$(top_srcdir)/common/collcmd.c \
 	$(top_srcdir)/common/collcmd.h \
 	$(top_srcdir)/common/http_func.c \
-	$(top_srcdir)/common/http_func.h
+	$(top_srcdir)/common/http_func.h \
+	$(top_srcdir)/common/genconn.c \
+	insteon.h collector.h \
+	insteon_common.c 
 
 RBTREE_SRCS = \
 	$(top_srcdir)/linux/bswap16.c \
@@ -424,13 +429,10 @@ RBTREE_SRCS = \
 	$(top_srcdir)/linux/rbtree.h \
 	$(top_srcdir)/linux/time.h
 
-insteon_discover_SOURCES = $(ALLCOMMON_SRC) insteon.h collector.h \
-	insteon_common.c insteon_discover.c $(am__append_1)
-insteoncoll_SOURCES = $(ALLCOMMON_SRC) $(top_srcdir)/common/genconn.c \
-	insteon.h collector.h insteon_common.c collector.c \
-	$(am__append_2)
-insteon_aldb_SOURCES = $(ALLCOMMON_SRC) insteon.h collector.h \
-	insteon_common.c insteon_aldb.c $(am__append_3)
+insteon_discover_SOURCES = $(ALLCOMMON_SRC) insteon_discover.c \
+	$(am__append_1)
+insteoncoll_SOURCES = $(ALLCOMMON_SRC) collector.c $(am__append_2)
+insteon_aldb_SOURCES = $(ALLCOMMON_SRC) insteon_aldb.c $(am__append_3)
 dist_sysconf_DATA = insteon.db
 insteon_discover_LDADD = $(top_builddir)/libconfuse/libconfuse.la
 insteon_aldb_LDADD = $(top_builddir)/libconfuse/libconfuse.la
@@ -688,6 +690,20 @@ http_func.obj: $(top_srcdir)/common/http_func.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o http_func.obj `if test -f '$(top_srcdir)/common/http_func.c'; then $(CYGPATH_W) '$(top_srcdir)/common/http_func.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/http_func.c'; fi`
 
+genconn.o: $(top_srcdir)/common/genconn.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT genconn.o -MD -MP -MF $(DEPDIR)/genconn.Tpo -c -o genconn.o `test -f '$(top_srcdir)/common/genconn.c' || echo '$(srcdir)/'`$(top_srcdir)/common/genconn.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/genconn.Tpo $(DEPDIR)/genconn.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/genconn.c' object='genconn.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o genconn.o `test -f '$(top_srcdir)/common/genconn.c' || echo '$(srcdir)/'`$(top_srcdir)/common/genconn.c
+
+genconn.obj: $(top_srcdir)/common/genconn.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT genconn.obj -MD -MP -MF $(DEPDIR)/genconn.Tpo -c -o genconn.obj `if test -f '$(top_srcdir)/common/genconn.c'; then $(CYGPATH_W) '$(top_srcdir)/common/genconn.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/genconn.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/genconn.Tpo $(DEPDIR)/genconn.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/genconn.c' object='genconn.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o genconn.obj `if test -f '$(top_srcdir)/common/genconn.c'; then $(CYGPATH_W) '$(top_srcdir)/common/genconn.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/genconn.c'; fi`
+
 bswap16.o: $(top_srcdir)/linux/bswap16.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT bswap16.o -MD -MP -MF $(DEPDIR)/bswap16.Tpo -c -o bswap16.o `test -f '$(top_srcdir)/linux/bswap16.c' || echo '$(srcdir)/'`$(top_srcdir)/linux/bswap16.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/bswap16.Tpo $(DEPDIR)/bswap16.Po
@@ -743,20 +759,6 @@ rb.obj: $(top_srcdir)/linux/rb.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/linux/rb.c' object='rb.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rb.obj `if test -f '$(top_srcdir)/linux/rb.c'; then $(CYGPATH_W) '$(top_srcdir)/linux/rb.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/linux/rb.c'; fi`
-
-genconn.o: $(top_srcdir)/common/genconn.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT genconn.o -MD -MP -MF $(DEPDIR)/genconn.Tpo -c -o genconn.o `test -f '$(top_srcdir)/common/genconn.c' || echo '$(srcdir)/'`$(top_srcdir)/common/genconn.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/genconn.Tpo $(DEPDIR)/genconn.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/genconn.c' object='genconn.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o genconn.o `test -f '$(top_srcdir)/common/genconn.c' || echo '$(srcdir)/'`$(top_srcdir)/common/genconn.c
-
-genconn.obj: $(top_srcdir)/common/genconn.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT genconn.obj -MD -MP -MF $(DEPDIR)/genconn.Tpo -c -o genconn.obj `if test -f '$(top_srcdir)/common/genconn.c'; then $(CYGPATH_W) '$(top_srcdir)/common/genconn.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/genconn.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/genconn.Tpo $(DEPDIR)/genconn.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/genconn.c' object='genconn.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o genconn.obj `if test -f '$(top_srcdir)/common/genconn.c'; then $(CYGPATH_W) '$(top_srcdir)/common/genconn.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/genconn.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

@@ -109,6 +109,8 @@ void generic_collector_health_cb(int nada, short what, void *arg)
 
 	if (collector_is_ok())
 		gn_imalive(conn->bev);
+	else
+		LOG(LOG_WARNING, "Collector is non functional");
 }
 
 /**
