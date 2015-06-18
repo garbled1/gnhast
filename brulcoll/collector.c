@@ -35,6 +35,9 @@
    Currently, only GEM devices with ethernet are supported.
    There is basic support for reading an ecm1240, but only tested via
    GEM emulation, need code to actually setup the ecm and build devices.
+
+   NOGENCONN
+   This collector does not use the generic connection routines.
 */
 
 /*#define WIZNET_DEBUG*/
@@ -104,6 +107,7 @@ brulconf_t brulconf;
 extern argtable_t argtable[];
 extern TAILQ_HEAD(, _device_t) alldevs;
 extern int collector_instance;
+extern struct bufferevent *gnhastd_bev;
 
 /** The event base */
 struct event_base *base;
@@ -1068,6 +1072,8 @@ void connect_server_cb(int nada, short what, void *arg)
 			gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
 		}
 		need_rereg = 0;
+		/* set this for the ping event */
+		gnhastd_bev = conn->bev;
 	}
 }
 
@@ -1095,6 +1101,7 @@ void connect_event_cb(struct bufferevent *ev, short what, void *arg)
 			evtimer_add(tev, &secs);
 			LOG(LOG_NOTICE, "Setting up self-health checks every"
 			    "%d seconds", secs.tv_sec);
+			
 		}
 	} else if (what & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
 		if (what & BEV_EVENT_ERROR) {

@@ -32,6 +32,9 @@
    \author Tim Rightnour
    \brief One Wire Server collector
    This collector connects to an owserver, and relays the data to gnhastd
+
+   NOGENCONN
+   This collector does not use the generic connection routines.
 */
 
 #include <stdio.h>
@@ -77,6 +80,7 @@ time_t owsrv_lastupd;
 extern argtable_t argtable[];
 extern TAILQ_HEAD(, _device_t) alldevs;
 extern int collector_instance;
+extern struct bufferevent *gnhastd_bev;
 
 /** The event base */
 struct event_base *base;
@@ -670,6 +674,8 @@ void connect_server_cb(int nada, short what, void *arg)
 			gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
 		}
 		need_rereg = 0;
+		/* set this for the ping event */
+		gnhastd_bev = conn->bev;
 	}
 }
 

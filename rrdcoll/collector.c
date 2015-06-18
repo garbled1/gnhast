@@ -33,6 +33,9 @@
    \brief RRDtool collector
    This collector connects to gnhastd, and generates rrd data.
    In addition, it relays min/max/avg to the gnhastd server. (does it?)
+
+   NOGENCONN
+   This collector does not use the generic connection routines.
 */
 
 #include <stdio.h>
@@ -90,6 +93,7 @@ extern argtable_t argtable[];
 extern TAILQ_HEAD(, _device_t) alldevs;
 extern commands_t commands[];
 extern int collector_instance;
+extern struct bufferevent *gnhastd_bev;
 
 /** The event base */
 struct event_base *base;
@@ -610,10 +614,12 @@ void connect_server_cb(int nada, short what, void *arg)
 	connection_t *conn = (connection_t *)arg;
 
 	conn->bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
-	if (strcmp(conn->server, "gnhastd") == 0)
+	if (strcmp(conn->server, "gnhastd") == 0) {
 		bufferevent_setcb(conn->bev, gnhastd_read_cb, NULL,
 				  connect_event_cb, conn);
-	else
+		/* set this for the ping event */
+		gnhastd_bev = conn->bev;
+	} else
 		bufferevent_setcb(conn->bev, rrdc_read_cb, NULL,
 				  connect_event_cb, conn);
 	bufferevent_enable(conn->bev, EV_READ|EV_WRITE);
