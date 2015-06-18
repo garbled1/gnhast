@@ -67,6 +67,7 @@
 int loopmax = FAKECOLL_LOOPMAX;
 int loopcur = 0;
 device_t *deva, *devb, *devc;
+int lie_about_ok = 0;
 
 /** our logfile */
 FILE *logfile;
@@ -205,7 +206,8 @@ void cb_generate_chaff(int fd, short what, void *arg)
 		break;
 	}
 
-	if (loopcur >= loopmax) {
+	/* if loopmax is 0 or -1, go forever */
+	if (loopcur >= loopmax && loopmax > 1) {
 		generic_cb_sigterm(0, 0, NULL);
 		return;
 	}
@@ -215,9 +217,11 @@ void cb_generate_chaff(int fd, short what, void *arg)
 	/* sleep for 2-10 seconds */
 	secs.tv_sec = rndm(2, 10);
 
-	/* schedule ourselves as a timer */
-	timer_ev = evtimer_new(base, cb_generate_chaff, NULL);
-	evtimer_add(timer_ev, &secs);
+	if (!lie_about_ok) {
+		/* schedule ourselves as a timer */
+		timer_ev = evtimer_new(base, cb_generate_chaff, NULL);
+		evtimer_add(timer_ev, &secs);
+	}
 }
 
 /**
@@ -278,6 +282,8 @@ void build_chaff_engine(void)
 
 int collector_is_ok(void)
 {
+	if (lie_about_ok)
+		return(0);
 	return(1); /* lie */
 }
 
@@ -297,13 +303,16 @@ int main(int argc, char **argv)
 	char *gnhastdserver = NULL;
 
 	/* process command line arguments */
-	while ((ch = getopt(argc, argv, "?c:dl:s:p:")) != -1)
+	while ((ch = getopt(argc, argv, "?c:dfl:s:p:")) != -1)
 		switch (ch) {
 		case 'c':	/* Set configfile */
 			conffile = strdup(optarg);
 			break;
 		case 'd':	/* debugging mode */
 			debugmode = 1;
+			break;
+		case 'f':	/* lie about being OK */
+			lie_about_ok = 1;
 			break;
 		case 'l':
 			loopmax = atoi(optarg);

@@ -97,6 +97,7 @@ name_map_t devproto_map[] = {
 	{PROTO_SENSOR_ICADDY, "icaddy"},
 	{PROTO_SENSOR_VENSTAR, "venstar"},
 	{PROTO_CONTROL_URSTII, "urstii"},
+	{PROTO_COLLECTOR, "collector"},
 };
 
 name_map_t devsubtype_map[] = {

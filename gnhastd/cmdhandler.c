@@ -300,6 +300,7 @@ int cmd_change(pargs_t *args, void *arg)
 	/* and send it on it's way */
 	evbuffer_add_printf(send, "\n");
 	bufferevent_write_buffer(dev->collector->ev, send);
+
 	return(0);
 }
 
@@ -348,15 +349,18 @@ int cmd_register(pargs_t *args, void *arg)
 		return(-1); /* MUST have UID */
 	}
 
-	LOG(LOG_DEBUG, "Register device: uid=%s name=%s rrd=%s type=%d proto=%d subtype=%d",
+	LOG(LOG_DEBUG, "Register device: uid=%s name=%s rrd=%s type=%d "
+	    "proto=%d subtype=%d",
 	    uid, (name) ? name : "NULL", (rrdname) ? rrdname : "NULL",
 	    devtype, proto, subtype);
 
 	dev = find_device_byuid(uid);
 	if (dev == NULL) {
 		LOG(LOG_DEBUG, "Creating new device for uid %s", uid);
-		if (subtype == 0 || devtype == 0 || proto == 0 || name == NULL) {
-			LOG(LOG_ERROR, "Attempt to register new device without full specifications");
+		if (subtype == 0 || devtype == 0 || proto == 0 ||
+		    name == NULL) {
+			LOG(LOG_ERROR, "Attempt to register new device "
+			    "without full specifications");
 			return(-1);
 		}
 		if (rrdname == NULL)
@@ -374,7 +378,8 @@ int cmd_register(pargs_t *args, void *arg)
 	dev->scale = scale;
 	(void)time(&dev->last_upd);
 	if (dev->collector != NULL && dev->collector != client)
-		LOG(LOG_ERROR, "Device uid:%s has a collector, but a new one registered it!", dev->uid);
+		LOG(LOG_ERROR, "Device uid:%s has a collector, but a new "
+		    "one registered it!", dev->uid);
 	dev->collector = client;
 
 	/* now, update the client_t */
@@ -637,6 +642,7 @@ int cmd_modify(pargs_t *args, void *arg)
 	/* and send it on it's way */
 	evbuffer_add_printf(send, "\n");
 	bufferevent_write_buffer(dev->collector->ev, send);
+
 	return(0);
 }
 
@@ -715,6 +721,7 @@ int cmd_feed(pargs_t *args, void *arg)
 		event_add(client->tev, &secs); /* update with new lcm */
 	}
 	client->feeds++;
+
 	return 0;
 }
 
@@ -745,7 +752,7 @@ int cmd_client(pargs_t *args, void *arg)
 	if (cli == NULL)
 		return -1;
 	client->name = strdup(cli);
-	sprintf(cliaddr, "%s", client->addr ? client->addr : "unknown");
+	sprintf(cliaddr, "%s", client->host ? client->host : "unknown");
 	LOG(LOG_NOTICE, "Client %s registered as %s", cliaddr, cli);
 
 	/* don't create tracking devices for handlers */
@@ -765,11 +772,16 @@ int cmd_client(pargs_t *args, void *arg)
 		sprintf(buf, "coll_%s_%s", cli, cliaddr);
 		dev->rrdname = mk_rrdname(buf);
 		dev->type = DEVICE_SWITCH;
-		dev->proto = PROTO_NONE;
+		dev->proto = PROTO_COLLECTOR;
 		dev->subtype = SUBTYPE_COLLECTOR;
 		dev->collector = client; /* point to self */
 		client->coll_dev = dev; /* client_t points to this dev */
 		insert_device(dev);
+	} else {
+		/* we have an existing device that has re-connected */
+		LOG(LOG_NOTICE, "Re-connecting handler device %s to client %s",
+		    uid, client->name);
+		client->coll_dev = dev;
 	}
 
 	/* mark this collector as functional */
@@ -828,6 +840,7 @@ int cmd_list_devices(pargs_t *args, void *arg)
 	evbuffer_add_printf(send, "endldevs\n");
 	bufferevent_write_buffer(client->ev, send);
 	evbuffer_free(send);
+
 	return 0;
 }
 
@@ -870,6 +883,7 @@ int cmd_list_groups(pargs_t *args, void *arg)
 	evbuffer_add_printf(send, "endlgrps\n");
 	bufferevent_write_buffer(client->ev, send);
 	evbuffer_free(send);
+
 	return 0;
 }
 
@@ -979,6 +993,7 @@ int cmd_cactiask_device(pargs_t *args, void *arg)
 int cmd_disconnect(pargs_t *args, void *arg)
 {
 	client_t *client = (client_t *)arg;
+	int i;
 
 	/* set close on empty, set watermark, then enable the write callback */
 	client->close_on_empty = 1;
@@ -989,6 +1004,13 @@ int cmd_disconnect(pargs_t *args, void *arg)
 	LOG(LOG_NOTICE, "Client %s from %s requested disconnect",
 	    client->name ? client->name : "generic",
 	    client->addr ? client->addr : "unknown");
+
+	/* mark this collector as non-functional */
+	i = COLLECTOR_BAD;
+	if (client->coll_dev != NULL)
+		store_data_dev(client->coll_dev, DATALOC_DATA, &i);
+
+	return 0;
 }
 
 /**
@@ -1004,6 +1026,8 @@ int cmd_ping(pargs_t *args, void *arg)
 	LOG(LOG_NOTICE, "Client %s from %s pinged us",
 	    client->name ? client->name : "generic",
 	    client->addr ? client->addr : "unknown");
+
+	return 0;
 }
 
 /**
@@ -1015,11 +1039,13 @@ int cmd_ping(pargs_t *args, void *arg)
 int cmd_imalive(pargs_t *args, void *arg)
 {
 	client_t *client = (client_t *)arg;
-	int i = COLLECTOR_OK;
+	static uint8_t i = COLLECTOR_OK;
 
 	LOG(LOG_DEBUG, "Client %s from %s is alive",
 	    client->name ? client->name : "generic",
 	    client->addr ? client->addr : "unknown");
 	if (client->coll_dev != NULL)
 		store_data_dev(client->coll_dev, DATALOC_DATA, &i);
+
+	return 0;
 }

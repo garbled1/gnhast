@@ -92,7 +92,7 @@ argtable_t argtable[] = {
 	{"smnum", SC_SMNUMBER, PTINT},
 	{"glist", SC_GROUPLIST, PTCHAR},
 	{"dlist", SC_DEVLIST, PTCHAR},
-	{"collecor", SC_COLLECTOR, PTINT},
+	{"collector", SC_COLLECTOR, PTINT},
 	{"blind", SC_BLIND, PTINT},
 };
 

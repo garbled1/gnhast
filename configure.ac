@@ -81,6 +81,7 @@ AC_CONFIG_FILES([Makefile \
 		 ad2usbcoll/Makefile \
 		 icaddycoll/Makefile \
 		 venstarcoll/Makefile \
+		 moncoll/Makefile \
 		 handlers/Makefile \
 		 tools/Makefile \
 		 gtk-gnhast/Makefile \

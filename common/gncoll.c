@@ -58,6 +58,7 @@ extern argtable_t argtable[];
 extern char *dumpconf;
 
 int collector_instance = 0;
+struct bufferevent *gnhastd_bev = NULL;
 
 /**
    \brief convert a temperature

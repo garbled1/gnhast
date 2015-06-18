@@ -14,6 +14,7 @@ SUBDIRS = libconfuse \
 	ad2usbcoll \
 	icaddycoll \
 	venstarcoll \
+	moncoll \
 	tools \
 	data \
 	handlers $(GTKGNHASTDIR)

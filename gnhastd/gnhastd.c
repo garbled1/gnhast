@@ -31,6 +31,7 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 #include <stdlib.h>
 #include <signal.h>
 #include <sys/queue.h>
@@ -99,8 +100,10 @@ void ping_clients_cb(int nada, short what, void *arg)
 	client_t *client;
 
 	TAILQ_FOREACH(client, &clients, next) {
-		if (client->coll_dev != NULL)
+		if (client->coll_dev != NULL) {
+			LOG(LOG_DEBUG, "Sending ping to %s", client->name);
 			gn_ping(client->ev);
+		}
 	}
 }
 
@@ -118,7 +121,7 @@ void health_update_clients_cb(int nada, short what, void *arg)
 
 	TAILQ_FOREACH(client, &clients, next) {
 		if (client->coll_dev != NULL &&
-		    ((time(NULL) - client->lastupd) < HEALTH_CHECK_RATE * 3))
+		    ((time(NULL) - client->lastupd) > HEALTH_CHECK_RATE * 3))
 			store_data_dev(client->coll_dev, DATALOC_DATA, &i);
 	}
 }

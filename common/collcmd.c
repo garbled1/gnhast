@@ -72,6 +72,7 @@ extern void coll_chg_number_cb(device_t *dev, int64_t num, void *arg);
 /* Bring these in scope so mod can dump a conf file */
 extern char *conffile;
 extern cfg_t *cfg;
+extern struct bufferevent *gnhastd_bev;
 
 /** The command table */
 commands_t commands[] = {
@@ -181,6 +182,8 @@ int __attribute__((weak)) cmd_endlgrps(pargs_t *args, void *arg)
 
 int __attribute__((weak)) cmd_ping(pargs_t *args, void *arg)
 {
+	if (collector_is_ok() && gnhastd_bev != NULL)
+		gn_imalive(gnhastd_bev);
 	return(0);
 }
 

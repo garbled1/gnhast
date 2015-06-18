@@ -673,9 +673,6 @@ void connect_server_cb(int nada, short what, void *arg)
 	}
 }
 
-
-
-
 /**
    \brief Event callback used with connections
    \param ev The bufferevent that fired
@@ -693,7 +690,7 @@ void connect_event_cb(struct bufferevent *ev, short what, void *arg)
 	if (what & BEV_EVENT_CONNECTED) {
 		LOG(LOG_NOTICE, "Connected to %s", conntype[conn->type]);
 		if (conn->type == CONN_TYPE_GNHASTD) {
-			tev = evtimer_new(base, health_cb, conn);
+			tev = event_new(base, -1, EV_PERSIST, health_cb, conn);
 			secs.tv_sec = HEALTH_CHECK_RATE;
 			evtimer_add(tev, &secs);
 			LOG(LOG_NOTICE, "Setting up self-health checks every"

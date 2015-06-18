@@ -80,6 +80,7 @@ enum PROTO_TYPES {
 	PROTO_SENSOR_ICADDY,
 	PROTO_SENSOR_VENSTAR,
 	PROTO_CONTROL_URSTII,
+	PROTO_COLLECTOR,
 	NROF_PROTOS,
 };
 #define PROTO_MAX PROTO_SENSOR_VENSTAR
@@ -241,6 +242,8 @@ typedef struct _client_t {
 	int close_on_empty;	/**< \brief close this connection on empty */
 	char *name;		/**< \brief Name of client */
 	char *addr;		/**< \brief addr:port of client */
+	char *host;		/**< \brief just the host */
+	int port;		/**< \brief just the port */
 	uint32_t updates;	/**< \brief updates recieved from this cli */
 	uint32_t feeds;		/**< \brief feeds for this cli */
 	uint32_t sentdata;	/**< \brief data sent to this cli */

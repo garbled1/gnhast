@@ -62,11 +62,11 @@ extern struct evdns_base *dns_base;
 extern char *conntype[];
 extern int need_rereg;
 extern connection_t *gnhastd_conn;
+extern struct bufferevent *gnhastd_bev;
 
 /*** Callbacks ***/
 extern void genconn_connect_cb(int cevent, connection_t *conn);
 extern int collector_is_ok();
-
 
 /*** Weak Reference Stubs ***/
 
@@ -107,9 +107,11 @@ void generic_collector_health_cb(int nada, short what, void *arg)
 {
 	connection_t *conn = (connection_t *)arg;
 
-	if (collector_is_ok())
+	LOG(LOG_DEBUG, "Running self health check");
+	if (collector_is_ok()) {
 		gn_imalive(conn->bev);
-	else
+		LOG(LOG_DEBUG, "I am ok");
+	} else
 		LOG(LOG_WARNING, "Collector is non functional");
 }
 
@@ -134,6 +136,9 @@ void generic_connect_server_cb(int nada, short what, void *arg)
 					    conn->host, conn->port);
 	LOG(LOG_NOTICE, "Attempting to connect to %s @ %s:%d",
 	     conntype[conn->type], conn->host, conn->port);
+
+	/* set this for the ping event */
+	gnhastd_bev = conn->bev;
 
 	if (need_rereg) {
 		gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
@@ -160,11 +165,11 @@ void generic_connect_event_cb(struct bufferevent *ev, short what, void *arg)
 		genconn_connect_cb(CEVENT_CONNECTED, conn);
 		/* if it's a gnhastd connection, setup a health check */
 		if (strcmp(conntype[conn->type], "gnhastd") == 0) {
-			tev = evtimer_new(base, generic_collector_health_cb,
-					  conn);
+			tev = event_new(base, -1, EV_PERSIST,
+					generic_collector_health_cb, conn);
 			secs.tv_sec = HEALTH_CHECK_RATE;
 			evtimer_add(tev, &secs);
-			LOG(LOG_NOTICE, "Setting up self-health checks every"
+			LOG(LOG_NOTICE, "Setting up self-health checks every "
 			    "%d seconds", secs.tv_sec);
 		}
 	} else if (what & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {

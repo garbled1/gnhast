@@ -166,7 +166,7 @@ void buf_error_cb(struct bufferevent *ev, short what, void *arg)
 	client_t *client = (client_t *)arg;
 	device_t *dev;
 	wrap_device_t *wrap;
-	int err, status;
+	int err, status, i;
 
 	if (what & BEV_EVENT_ERROR) {
 		err = bufferevent_get_openssl_error(ev);
@@ -177,6 +177,12 @@ void buf_error_cb(struct bufferevent *ev, short what, void *arg)
 	LOG(LOG_NOTICE, "Closing %s connection from %s",
 	    client->name ? client->name : "generic",
 	    client->addr ? client->addr : "unknown");
+
+	if (client->coll_dev != NULL) {
+		/* mark this collector as non-functional */
+		i = COLLECTOR_BAD;
+		store_data_dev(client->coll_dev, DATALOC_DATA, &i);
+	}
 
 	if (client->pid > 0) {
 		waitpid(client->pid, &status, 0); /* WNOHANG ??? */
@@ -238,6 +244,9 @@ void accept_cb(struct evconnlistener *serv, int sock, struct sockaddr *sa,
 	sprintf(buf, "%s:%d", inet_ntoa(client_addr->sin_addr),
 		ntohs(client_addr->sin_port));
 	client->addr = strdup(buf);
+	client->host = strdup(inet_ntoa(client_addr->sin_addr));
+	client->port = ntohs(client_addr->sin_port);
+	client->lastupd = time(NULL);
 	LOG(LOG_NOTICE, "Connection on insecure port from %s", buf);
 
 	bufferevent_setcb(client->ev, buf_read_cb, NULL,
@@ -276,6 +285,9 @@ void sslaccept_cb(struct evconnlistener *serv, int sock, struct sockaddr *sa,
 	sprintf(buf, "%s:%d", inet_ntoa(client_addr->sin_addr),
 		ntohs(client_addr->sin_port));
 	client->addr = strdup(buf);
+	client->host = strdup(inet_ntoa(client_addr->sin_addr));
+	client->port = ntohs(client_addr->sin_port);
+	client->lastupd = time(NULL);
 	LOG(LOG_NOTICE, "Connection on secure port from %s",
 	    inet_ntoa(client_addr->sin_addr));
 
