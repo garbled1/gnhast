@@ -1325,6 +1325,7 @@ int plm_handle_aldb(device_t *dev, char *data)
 int plmbuf_get(struct evbuffer *buf, int count, char *data, int what)
 {
 	char *tmp;
+	int i;
 
 	if (plmtype == PLM_TYPE_HUBHTTP) {
 		if (what == P_PULLUP)
@@ -1336,9 +1337,13 @@ int plmbuf_get(struct evbuffer *buf, int count, char *data, int what)
 		if (hex_decode(tmp, count * 2, data) == NULL)
 			return 1;
 	} else {
-		if (what == P_PULLUP)
-			data = evbuffer_pullup(buf, count);
-		else
+		if (what == P_PULLUP) {
+			tmp = evbuffer_pullup(buf, count);
+			if (tmp == NULL)
+				return 1;
+			for (i=0; i < count; i++)
+				data[i] = tmp[i];
+		} else
 			evbuffer_remove(buf, data, count);
 		if (data == NULL)
 			return 1;
@@ -1356,7 +1361,7 @@ int plmbuf_get(struct evbuffer *buf, int count, char *data, int what)
 
 void handle_command(struct evbuffer *evbuf, char plmcmd)
 {
-	char *data;
+	char data[30];
 	uint8_t toaddr[3], fromaddr[3], extdata[14], ackbit;
 	cmdq_t *cmd;
 	int dmult = 1;
@@ -1371,7 +1376,9 @@ void handle_command(struct evbuffer *evbuf, char plmcmd)
 	case PLM_SEND: /* confirmation of send */
 		if (plmbuf_get(evbuf, 9, data, P_PULLUP))
 			return;
+		LOG(LOG_DEBUG, "DATA[5] = %0.2X", data[5]);
 		if (data[5] & PLMFLAG_EXT) {
+			LOG(LOG_DEBUG, "Extended command, issuing reget");
 			if (plmbuf_get(evbuf, 23, data, P_PULLUP))
 				return;
 			ackbit = data[22];
