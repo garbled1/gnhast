@@ -48,7 +48,10 @@
 extern commands_t commands[];
 extern size_t commands_size;
 
-/** \brief The argument to type mappings */
+/**
+   \brief The argument to type mappings
+   \note SC_'s are in commands.h
+*/
 argtable_t argtable[] = {
 	{"uid",	SC_UID, PTCHAR},
 	{"name", SC_NAME, PTCHAR},
@@ -94,6 +97,9 @@ argtable_t argtable[] = {
 	{"dlist", SC_DEVLIST, PTCHAR},
 	{"collector", SC_COLLECTOR, PTINT},
 	{"blind", SC_BLIND, PTINT},
+	{"alsev", SC_ALSEV, PTINT},
+	{"altext", SC_ALTEXT, PTCHAR},
+	{"aluid", SC_ALUID, PTCHAR},
 };
 
 /** \brief size of the args table */ 

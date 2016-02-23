@@ -81,6 +81,7 @@
 #define GRPCMD_ASSIGN_GROUP		0x01
 #define GRPCMD_DEL_GROUP		0x02
 #define STDCMD_PDATA_REQ       		0x03
+	#define EXTCMD2_PDR_REQ			0x00
 	#define STDCMD2_FXNAME_REQ		0x01
 	#define STDCMD2_DTEXT_REQ		0x02
 	#define EXTCMD2_SETTEXT			0x03
@@ -140,6 +141,11 @@ typedef struct _insteon_devdata_t {
 	int aldblen;		/**< \brief length of aldb */
 	uint8_t devcat;		/**< \brief store devcat here if needed */
 	uint8_t subcat;		/**< \brief store subcat here if needed */
+	uint8_t productkey[2];	/**< \brief Product Key */
+	uint8_t firmware;	/**< \brief Firmware revision */
+	uint8_t proto;		/**< \brief protocol */
+	uint8_t ramprate;	/**< \brief ramprate */
+	uint8_t ledbright;	/**< \brief LED brightness */
 } insteon_devdata_t;
 
 #define ALDBLINK_USED	(1<<1)
@@ -165,6 +171,9 @@ typedef struct _insteon_devdata_t {
 
 #define CMDQ_WAITACKDATA (CMDQ_WAITACK|CMDQ_WAITDATA)
 #define CMDQ_WAITACKEXT (CMDQ_WAITACK|CMDQ_WAITEXT)
+#define CMDQ_WAITING(x) (x & CMDQ_WAITACK || x & CMDQ_WAITDATA || \
+			 x & CMDQ_WAITEXT || x & CMDQ_WAITALINK || \
+			 x & CMDQ_WAITANY || x & CMDQ_WAITALDB)
 
 #define CONN_TYPE_PLM		1
 #define CONN_TYPE_GNHASTD	2
@@ -179,6 +188,16 @@ typedef struct _insteon_devdata_t {
 #define CLEARIMBUFF		"1?XB=M=1"
 #define HUB_TYPE_OLD		1
 #define HUB_TYPE_NEW		2
+/* HTTP Hub states */
+#define HUBHTMLSTATE_IDLE	0
+#define HUBHTMLSTATE_WCLEAR	1 /* waiting for clear */
+#define HUBHTMLSTATE_WCMD	2 /* waiting for command */
+#define HUBHTMLSTATE_WSEND	3 /* waiting for send confirmation */
+#define CHECKHTMLSTATE(x) \
+	if (x == PLM_TYPE_HUBHTTP) { \
+		if (hubhtmlstate == HUBHTMLSTATE_WCMD) \
+			hubhtmlstate = HUBHTMLSTATE_IDLE; \
+	}
 
 
 /****************
@@ -205,6 +224,7 @@ void plmcmdq_retry_cur(void);
 void plmcmdq_got_data(int whatkind);
 void plmcmdq_check_ack(char *data);
 void plmcmdq_dequeue(void);
+void plmcmdq_flush(void);
 void plmcmdq_check_recv(char *fromaddr, char *toaddr, uint8_t cmd1,
 			int whatkind);
 void plm_getinfo(void);

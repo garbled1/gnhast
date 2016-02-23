@@ -82,9 +82,11 @@ AC_CONFIG_FILES([Makefile \
 		 icaddycoll/Makefile \
 		 venstarcoll/Makefile \
 		 moncoll/Makefile \
+		 jsoncgicoll/Makefile \
 		 handlers/Makefile \
 		 tools/Makefile \
 		 gtk-gnhast/Makefile \
+		 gtk-insteonedit/Makefile \
 		 data/Makefile \
 		 libconfuse/Makefile])
 

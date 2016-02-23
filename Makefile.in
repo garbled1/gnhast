@@ -150,7 +150,8 @@ CTAGS = ctags
 CSCOPE = cscope
 DIST_SUBDIRS = libconfuse gnhastd fakecoll owsrvcoll rrdcoll brulcoll \
 	insteoncoll wmr918coll wupwscoll ad2usbcoll icaddycoll \
-	venstarcoll moncoll tools data handlers gtk-gnhast
+	venstarcoll moncoll jsoncgicoll tools data handlers gtk-gnhast \
+	gtk-insteonedit
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
 top_distdir = $(distdir)
@@ -321,6 +322,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 @HAVE_GTK2_TRUE@GTKGNHASTDIR = gtk-gnhast
+@HAVE_GTK2_TRUE@GTKINSTDIR = gtk-insteonedit
 SUBDIRS = libconfuse \
 	gnhastd \
 	fakecoll \
@@ -334,9 +336,10 @@ SUBDIRS = libconfuse \
 	icaddycoll \
 	venstarcoll \
 	moncoll \
+	jsoncgicoll \
 	tools \
 	data \
-	handlers $(GTKGNHASTDIR)
+	handlers $(GTKGNHASTDIR) $(GTKINSTDIR)
 
 all: all-recursive
 

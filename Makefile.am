@@ -1,5 +1,6 @@
 if HAVE_GTK2
 GTKGNHASTDIR = gtk-gnhast
+GTKINSTDIR = gtk-insteonedit
 endif
 
 SUBDIRS = libconfuse \
@@ -15,7 +16,8 @@ SUBDIRS = libconfuse \
 	icaddycoll \
 	venstarcoll \
 	moncoll \
+	jsoncgicoll \
 	tools \
 	data \
-	handlers $(GTKGNHASTDIR)
+	handlers $(GTKGNHASTDIR) $(GTKINSTDIR)
 

@@ -711,6 +711,9 @@ device_t *new_dev_from_conf(cfg_t *cfg, char *uid)
 	if (cfg_getint(devconf, "spamhandler") > 0)
 		dev->flags |= DEVFLAG_SPAMHANDLER;
 
+	if (TAILQ_EMPTY(&dev->watchers))
+		TAILQ_INIT(&dev->watchers);
+
 	return dev;
 }
 

@@ -101,9 +101,12 @@ enum SC_COMMANDS {
 	SC_DEVLIST,	/**< \brief device list */
 	SC_COLLECTOR,	/**< \brief collector */
 	SC_BLIND,	/**< \brief blind */
+	SC_ALSEV,	/**< \brief alarm severity */
+	SC_ALTEXT,	/**< \brief alarm text */
+	SC_ALUID,	/**< \brief alarm uid */
 };
 
-/* commands */
+/* commands XXX nothing uses this. why bother? */
 
 #define C_REGISTER		1	/**< \brief Register device */
 #define C_UPDATE		2	/**< \brief Update device status */

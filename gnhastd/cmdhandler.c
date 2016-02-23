@@ -42,6 +42,8 @@
 
 extern TAILQ_HEAD(, _device_t) alldevs;
 extern TAILQ_HEAD(, _device_group_t) allgroups;
+extern TAILQ_HEAD(, _client_t) clients;
+extern TAILQ_HEAD(, _alarm_t) alarms;
 
 /**
    \file cmdhandler.c
@@ -52,6 +54,11 @@ extern TAILQ_HEAD(, _device_group_t) allgroups;
 extern struct event_base *base;
 extern argtable_t argtable[];
 
+/* When adding new commands, update the following files:
+   gnhastd/cmds.h
+   common/gncoll.c  (if we want to make a shortcut cmd for clients)
+*/
+
 /** The command table */
 commands_t commands[] = {
 	{"chg", cmd_change, 0},
@@ -60,6 +67,7 @@ commands_t commands[] = {
 	{"upd", cmd_update, 0},
 	{"mod", cmd_modify, 0},
 	{"feed", cmd_feed, 0},
+	{"cfeed", cmd_cfeed, 0},
 	{"ldevs", cmd_list_devices, 0},
 	{"lgrps", cmd_list_groups, 0},
 	{"ask", cmd_ask_device, 0},
@@ -69,6 +77,9 @@ commands_t commands[] = {
 	{"client", cmd_client, 0},
 	{"ping", cmd_ping, 0},
 	{"imalive", cmd_imalive, 0},
+	{"setalarm", cmd_setalarm, 0},
+	{"listenalarms", cmd_listen_alarms, 0},
+	{"dumpalarms", cmd_dump_alarms, 0},
 };
 
 /** The size of the command table */
@@ -129,6 +140,7 @@ int cmd_update(pargs_t *args, void *arg)
 	device_t *dev;
 	char *uid=NULL;
 	client_t *client = (client_t *)arg;
+	client_t *dwatch;
 
 	/* loop through the args and find the UID */
 	for (i=0; args[i].cword != -1; i++) {
@@ -200,6 +212,12 @@ int cmd_update(pargs_t *args, void *arg)
 	/* Always run handler on first update */
 	if (dev->handler != NULL && (device_watermark(dev) != 0 || hadnodata))
 		run_handler_dev(dev);
+
+	/* look for clients watching us, and update them */
+	TAILQ_FOREACH(dwatch, &dev->watchers, next_dwatch) {
+		gn_update_device(dev, GNC_UPD_RRDNAME, dwatch->ev);
+		dwatch->sentdata++;
+	}
 
 	return(0);
 }
@@ -381,6 +399,9 @@ int cmd_register(pargs_t *args, void *arg)
 		LOG(LOG_ERROR, "Device uid:%s has a collector, but a new "
 		    "one registered it!", dev->uid);
 	dev->collector = client;
+
+	if (TAILQ_EMPTY(&dev->watchers))
+		TAILQ_INIT(&dev->watchers);
 
 	/* now, update the client_t */
 	if (TAILQ_EMPTY(&client->devices)) {
@@ -726,6 +747,43 @@ int cmd_feed(pargs_t *args, void *arg)
 }
 
 /**
+   \brief Handle a cfeed device command
+   \param args The list of arguments
+   \param arg void pointer to client_t of provider
+   \note This command will request immediate updates when a device is updated
+   by a provider. No scaling is provided here.  sorry.
+*/
+
+int cmd_cfeed(pargs_t *args, void *arg)
+{
+	int i;
+	char *uid=NULL;
+	device_t *dev;
+	client_t *client = (client_t *)arg;
+
+	for (i=0; args[i].cword != -1; i++) {
+		switch (args[i].cword) {
+		case SC_UID:
+			uid = args[i].arg.c;
+			break;
+		}
+	}
+	if (uid == NULL)
+		return -1;
+	dev = find_device_byuid(uid);
+	if (dev == NULL)
+		return -1;
+
+	if (TAILQ_EMPTY(&dev->watchers))
+		TAILQ_INIT(&dev->watchers);
+	TAILQ_INSERT_TAIL(&dev->watchers, client, next_dwatch);
+
+	client->watched++;
+
+	return 0;
+}
+
+/**
    \brief Handle a client command
    \param args The list of arguments
    \param arg void pointer to client_t of provider
@@ -1046,6 +1104,126 @@ int cmd_imalive(pargs_t *args, void *arg)
 	    client->addr ? client->addr : "unknown");
 	if (client->coll_dev != NULL)
 		store_data_dev(client->coll_dev, DATALOC_DATA, &i);
+
+	return 0;
+}
+
+
+/**
+   \brief Got a setalarm
+   \param args The list of arguments
+   \param arg void pointer to client_t of connection
+*/
+
+int cmd_setalarm(pargs_t *args, void *arg)
+{
+	client_t *client = (client_t *)arg;
+	client_t *tell;
+	alarm_t *alarm;
+	char *aluid = NULL;
+	char *altext = NULL;
+	int alsev = -1;
+	int i;
+
+	LOG(LOG_DEBUG, "Got alarm set request");
+
+	for (i=0; args[i].cword != -1; i++)
+		switch (args[i].cword) {
+		case SC_ALUID: aluid = args[i].arg.c; break;
+		case SC_ALTEXT: altext = args[i].arg.c; break;
+		case SC_ALSEV: alsev = args[i].arg.i; break;
+		}
+
+	if (aluid == NULL) {
+		LOG(LOG_WARNING, "Got no aluid in setalarm, ignoring");
+		return 0;
+	}
+
+	alarm = update_alarm(aluid, altext, alsev);
+
+	if (alarm == NULL) { /* the alarm has been unset, tell everyone */
+		TAILQ_FOREACH(tell, &clients, next) {
+			if (tell->alarmwatch > 0) {
+				/* send a clearing message */
+				gn_setalarm(client->ev, aluid, "", 0);
+			}
+		}
+	} else {
+		TAILQ_FOREACH(tell, &clients, next)
+			if (tell->alarmwatch > 0)
+				gn_setalarm(client->ev, alarm->aluid,
+					    alarm->altext, alarm->alsev);
+	}
+
+	return 0;
+}
+
+
+/**
+   \brief Got a request to listen to alarms
+   \param args The list of arguments
+   \param arg void pointer to client_t of connection
+   \note if called with no args, unlistens
+*/
+
+int cmd_listen_alarms(pargs_t *args, void *arg)
+{
+	client_t *client = (client_t *)arg;
+	int alsev = 0; /* assume 0 if no arg */
+	int i;
+
+	for (i=0; args[i].cword != -1; i++)
+		switch (args[i].cword) {
+		case SC_ALSEV: alsev = args[i].arg.i; break;
+		}
+
+	LOG(LOG_NOTICE, "Client %s from %s asked to listen to alarm sev %d",
+	    client->name ? client->name : "generic",
+	    client->addr ? client->addr : "unknown", alsev);
+
+	client->alarmwatch = alsev;
+
+	return 0;
+}
+
+/**
+   \brief Got a request to dump all alarms
+   \param args The list of arguments
+   \param arg void pointer to client_t of connection
+*/
+
+int cmd_dump_alarms(pargs_t *args, void *arg)
+{
+	client_t *client = (client_t *)arg;
+	client_t *tell;
+	alarm_t *alarm;
+	int alsev = 1; /* assume 1 if no arg */
+	char *aluid = NULL;
+	int i;
+
+	for (i=0; args[i].cword != -1; i++)
+		switch (args[i].cword) {
+		case SC_ALSEV: alsev = args[i].arg.i; break;
+		case SC_ALUID: aluid = args[i].arg.c; break;
+		}
+
+	if (aluid == NULL) { /* dump everything */
+		TAILQ_FOREACH(alarm, &alarms, next) {
+			LOG(LOG_DEBUG, "alarm: %s %s %d", alarm->aluid,
+					    alarm->altext, alarm->alsev);
+			if (alarm->alsev >= alsev)
+				gn_setalarm(client->ev, alarm->aluid,
+					    alarm->altext, alarm->alsev);
+		}
+	} else {
+		TAILQ_FOREACH(alarm, &alarms, next) {
+			if (alarm->alsev >= alsev &&
+			    strcmp(alarm->aluid, aluid) == 0) {
+				gn_setalarm(client->ev, alarm->aluid,
+					    alarm->altext, alarm->alsev);
+			}
+		}
+	}
 
 	return 0;
 }

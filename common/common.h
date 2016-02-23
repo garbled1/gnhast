@@ -139,4 +139,8 @@ void print_group_table(int devs);
 int serial_connect(char *devnode, int speed, int cflags);
 void serial_eventcb(struct bufferevent *bev, short events, void *arg);
 
+/* From alarms.c */
+alarm_t *find_alarm_by_aluid(char *aluid);
+alarm_t *update_alarm(char *aluid, char *altext, int alsev);
+
 #endif /* _COMMON_H_ */

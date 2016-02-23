@@ -246,10 +246,13 @@ typedef struct _client_t {
 	int port;		/**< \brief just the port */
 	uint32_t updates;	/**< \brief updates recieved from this cli */
 	uint32_t feeds;		/**< \brief feeds for this cli */
+	uint32_t watched;	/**< \brief watched device count */
 	uint32_t sentdata;	/**< \brief data sent to this cli */
 	time_t lastupd;		/**< \brief last time we were talked to */
+	int alarmwatch;		/**< \brief min sev of alarms we want, 0 disables */
 	struct _device_t *coll_dev;	/**< \brief the dev for the collector itself */
 	TAILQ_ENTRY(_client_t) next; /**< \brief next client on list */
+	TAILQ_ENTRY(_client_t) next_dwatch; /**< \brief next client watching dev */
 } client_t;
 
 /* matches struct device */
@@ -338,6 +341,8 @@ typedef struct _device_t {
 	uint32_t flags;		/**< \brief DEVFLAG_* */
 	TAILQ_ENTRY(_device_t) next_client;	/**< \brief Next device in client */
 	TAILQ_ENTRY(_device_t) next_all;	/**< \brief Next in global devlist */
+	TAILQ_HEAD(, _client_t) watchers;  /**< \brief linked list of clients watching this device */
+
 } device_t;
 
 /** A wrapper device structure */
@@ -370,5 +375,13 @@ typedef struct _device_group_t {
 	TAILQ_HEAD(, _wrap_group_t) children; /**< \brief child groups */
 	TAILQ_ENTRY(_device_group_t) next_all;  /**< \brief next in global */
 } device_group_t;
+
+/** An alarm */
+typedef struct _alarm_t {
+	char *aluid;	/**< \brief alarm uid */
+	char *altext;	/**< \brief alarm text */
+	int alsev;	/**< \brief alarm sev, 0 clears alarm */
+	TAILQ_ENTRY(_alarm_t) next; /**< \brief next in global alarm list */
+} alarm_t;
 
 #endif /* _GNHAST_H_ */

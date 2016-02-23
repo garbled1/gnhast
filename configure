@@ -14264,7 +14264,7 @@ fi
 fi
 
 
-ac_config_files="$ac_config_files Makefile gnhastd/Makefile fakecoll/Makefile owsrvcoll/Makefile rrdcoll/Makefile brulcoll/Makefile insteoncoll/Makefile wmr918coll/Makefile wupwscoll/Makefile ad2usbcoll/Makefile icaddycoll/Makefile venstarcoll/Makefile moncoll/Makefile handlers/Makefile tools/Makefile gtk-gnhast/Makefile data/Makefile libconfuse/Makefile"
+ac_config_files="$ac_config_files Makefile gnhastd/Makefile fakecoll/Makefile owsrvcoll/Makefile rrdcoll/Makefile brulcoll/Makefile insteoncoll/Makefile wmr918coll/Makefile wupwscoll/Makefile ad2usbcoll/Makefile icaddycoll/Makefile venstarcoll/Makefile moncoll/Makefile jsoncgicoll/Makefile handlers/Makefile tools/Makefile gtk-gnhast/Makefile gtk-insteonedit/Makefile data/Makefile libconfuse/Makefile"
 
 
 cat >confcache <<\_ACEOF
@@ -15301,9 +15301,11 @@ do
     "icaddycoll/Makefile") CONFIG_FILES="$CONFIG_FILES icaddycoll/Makefile" ;;
     "venstarcoll/Makefile") CONFIG_FILES="$CONFIG_FILES venstarcoll/Makefile" ;;
     "moncoll/Makefile") CONFIG_FILES="$CONFIG_FILES moncoll/Makefile" ;;
+    "jsoncgicoll/Makefile") CONFIG_FILES="$CONFIG_FILES jsoncgicoll/Makefile" ;;
     "handlers/Makefile") CONFIG_FILES="$CONFIG_FILES handlers/Makefile" ;;
     "tools/Makefile") CONFIG_FILES="$CONFIG_FILES tools/Makefile" ;;
     "gtk-gnhast/Makefile") CONFIG_FILES="$CONFIG_FILES gtk-gnhast/Makefile" ;;
+    "gtk-insteonedit/Makefile") CONFIG_FILES="$CONFIG_FILES gtk-insteonedit/Makefile" ;;
     "data/Makefile") CONFIG_FILES="$CONFIG_FILES data/Makefile" ;;
     "libconfuse/Makefile") CONFIG_FILES="$CONFIG_FILES libconfuse/Makefile" ;;
 

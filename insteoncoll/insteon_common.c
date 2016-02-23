@@ -83,6 +83,7 @@ int plmtype = PLM_TYPE_SERIAL;
 int hubtype;
 time_t plm_lastupd;
 int plm_rescan_rate = 9999; /* fake it for the aldb/discovery tools */
+insteon_devdata_t plminfo;
 
 /* the bufstatus.xml buffers */
 struct evbuffer *hubhtml_workbuf;
@@ -91,6 +92,7 @@ char *hubhtml_username;
 char *hubhtml_password;
 int hubhtml_portnum;
 http_get_t *buffstatus_get;
+int hubhtmlstate;
 
 SIMPLEQ_HEAD(fifohead, _cmdq_t) cmdfifo;
 char *conntype[5] = {
@@ -373,10 +375,23 @@ void hubhtml_plmc_request_cb(struct evhttp_request *req, void *arg)
 	}
 	data = evhttp_request_get_input_buffer(req);
 	len = evbuffer_get_length(data);
-	/*LOG(LOG_DEBUG, "input buf len= %d", len);*/
+	LOG(LOG_DEBUG, "Send processed: input buf len= %d", len);
 	if (len == 0)
 		return;
 	evbuffer_drain(data, len); /* toss the data on the buffer */
+}
+
+/**
+   \brief Event to perform an IM clear on http type hubs
+   \param fd unused
+   \param what what happened?
+   \param arg unused
+*/
+
+void hubhtml_clear_im_buffer_cb(int fd, short what, void *arg)
+{
+	http_POST(hubhtml_url, "/" CLEARIMBUFF, hubhtml_portnum, NULL,
+		  hubhtml_plmc_request_cb);
 }
 
 /**
@@ -394,6 +409,7 @@ void hubhtml_buf_request_cb(struct evhttp_request *req, void *arg)
 	char *bstart, *bend, *new_start;
 	char size[2], tmp[2];
 	static int buf_empty;
+	struct timeval secs = { 0, 300 };
 
 	if (req == NULL) {
 		LOG(LOG_ERROR, "Got NULL req in hubhtml_buf_request_cb() ??");
@@ -478,16 +494,20 @@ void hubhtml_buf_request_cb(struct evhttp_request *req, void *arg)
 		usable_len = blen;
 	}
 
-	/* Now, immediately clear the buffer! */
+	/* Now, clear the buffer, we do this with a delay via event */
 	if (usable_len > 0)
-		http_POST(hubhtml_url, "/" CLEARIMBUFF, hubhtml_portnum, NULL,
-			  hubhtml_plmc_request_cb);
+		event_base_once(base, -1, EV_TIMEOUT,
+				hubhtml_clear_im_buffer_cb, NULL, &secs);
 
 	usable_len = evbuffer_get_length(hubhtml_workbuf);
 	LOG(LOG_DEBUG, "Current work buffer is %d bytes long", usable_len);
 	evbuffer_copyout(hubhtml_workbuf, &debugbuffer, 4096);
 	debugbuffer[usable_len] = '\0';
 	LOG(LOG_DEBUG, "Workbuf: %s", debugbuffer);
+
+	/* were we waiting for a clear?  if so, we got it */
+	if (hubhtmlstate == HUBHTMLSTATE_WCLEAR && usable_len == 0)
+		hubhtmlstate = HUBHTMLSTATE_IDLE;
 
 request_cb_out:
 	free(buf);
@@ -503,6 +523,8 @@ request_cb_out:
 void hubhtml_startfeed(char *url_prefix, int portnum)
 {
 	struct timeval secs = { 0, 0 };
+
+	hubhtmlstate = HUBHTMLSTATE_IDLE;
 
 	/* setup the buffer */
 	hubhtml_workbuf = evbuffer_new();
@@ -534,6 +556,7 @@ void hubhtml_startfeed(char *url_prefix, int portnum)
 	/* Clear the IM buffer before we start */
 	http_POST(hubhtml_url, "/" CLEARIMBUFF, hubhtml_portnum, NULL,
 		  hubhtml_plmc_request_cb);
+	hubhtmlstate = HUBHTMLSTATE_WCLEAR;
 
 	/* do one right now */
 	cb_http_GET(0, 0, buffstatus_get);
@@ -559,6 +582,8 @@ void plm_send_cmd(connection_t *conn, cmdq_t *cmd)
 		bufferevent_write(conn->bev, cmd->cmd, cmd->msglen);
 		return;
 	}
+
+	LOG(LOG_DEBUG, "plm_send_cmd: 0x%0.2X/0x%0.2X", cmd->cmd[0], cmd->cmd[1]);
 
 	/* we have an htmlhub, yay. */
 	sprintf(buf, "/3?");
@@ -778,6 +803,21 @@ void plm_print_cmd(cmdq_t *cmd)
 }
 
 /**
+   \brief Used to debug the runq
+*/
+static void plm_dump_queue(void)
+{
+	cmdq_t *cmd, *tmp;
+	int i = 0;
+
+	LOG(LOG_DEBUG, "Dumping command queue:");
+	SIMPLEQ_FOREACH_SAFE(cmd, &cmdfifo, entries, tmp) {
+		LOG(LOG_DEBUG, "Queue Entry %d:", i++);
+		plm_print_cmd(cmd);
+	}
+}
+
+/**
    \brief Condense the run queue
 */
 
@@ -860,6 +900,12 @@ void plm_runq(int fd, short what, void *arg)
 	struct timespec aldb = { 10, 0 };
 	char dsend[256];
 
+	if (plmtype == PLM_TYPE_HUBHTTP) {
+		qsec.tv_sec = 12; /* the http hub is WAY slower */
+		//LOG(LOG_DEBUG, "Runqueue: hubhtmlstate = %d", hubhtmlstate);
+		if (hubhtmlstate != 0)
+			return;
+	}
 
 	//LOG(LOG_DEBUG, "Queue runner entered");
 	plm_condense_runq();
@@ -873,6 +919,10 @@ again:
 	if (cmd == NULL)
 		return;
 
+/*
+	if (cmd->cmd[0] == 0x30)
+	    LOG(LOG_DEBUG, "runq: 0x%0.2X/0x%0.2X", cmd->cmd[0], cmd->cmd[1]);
+*/
 	if (cmd->cmd[0] == CMDQ_NOPWAIT) {
 		LOG(LOG_DEBUG, "Runqueue sleeping");
 		/* we have a sleep request */
@@ -889,7 +939,7 @@ again:
 	if (!cmd->state || (cmd->state && (cmd->sendcount > CMDQ_MAX_SEND))) {
 		/* dequeue */
 		LOG(LOG_DEBUG, "dequeueing current cmd");
-		SIMPLEQ_REMOVE_HEAD(&cmdfifo, entries);
+		SIMPLEQ_REMOVE_HEAD(&cmdfifo, entries);		
 		free(cmd);
 		goto again;
 	}
@@ -899,6 +949,8 @@ again:
 		cmd->state &= ~CMDQ_WAITSEND;
 		clock_gettime(CLOCK_MONOTONIC, &cmd->tp);
 		plm_send_cmd(conn, cmd);
+		if (plmtype == PLM_TYPE_HUBHTTP)
+			hubhtmlstate = HUBHTMLSTATE_WCMD;
 		LOG(LOG_DEBUG, "Running a qevent to:%0.2X.%0.2X.%0.2X "
 		    "cmd:%0.2x/%0.2x state/w:%0.2x/%0.2x",
 		    cmd->cmd[2], cmd->cmd[3], cmd->cmd[4],
@@ -1022,7 +1074,21 @@ void plmcmdq_check_ack(char *data)
 */
 void plmcmdq_dequeue(void)
 {
-	if (SIMPLEQ_FIRST(&cmdfifo) != NULL)
+	cmdq_t *cmd;
+
+	cmd = SIMPLEQ_FIRST(&cmdfifo);
+	if (cmd != NULL) {
+		SIMPLEQ_REMOVE_HEAD(&cmdfifo, entries);
+		free(cmd);
+	}
+}
+
+/**
+   \brief Flush the whole queue
+*/
+void plmcmdq_flush(void)
+{
+	while (SIMPLEQ_FIRST(&cmdfifo) != NULL)
 		SIMPLEQ_REMOVE_HEAD(&cmdfifo, entries);
 }
 
@@ -1075,6 +1141,7 @@ void plm_getinfo(void)
 {
 	cmdq_t *cmd;
 
+	LOG(LOG_DEBUG, "Queueing PLM Getinfo");
 	cmd = smalloc(cmdq_t);
 	cmd->cmd[0] = PLM_START;
 	cmd->cmd[1] = PLM_GETINFO;
@@ -1093,7 +1160,7 @@ void plm_getplm_aldb(int fl)
 {
 	cmdq_t *cmd;
 
-	LOG(LOG_DEBUG, "Asking for aldb record %d", fl);
+	LOG(LOG_DEBUG, "Queue asking for aldb record %d", fl);
 	cmd = smalloc(cmdq_t);
 	cmd->cmd[0] = PLM_START;
 	if (fl == 0){
@@ -1187,6 +1254,12 @@ void plm_handle_getinfo(uint8_t *data)
 	addr_to_string(im, plm_addr);
 	LOG(LOG_NOTICE, "PLM address: %s devcat: %0.2X subcat: %0.2X "
 	    "Firmware: %0.2X", im, data[5], data[6], data[7]);
+	plminfo.daddr[0] = data[2];
+	plminfo.daddr[1] = data[3];
+	plminfo.daddr[2] = data[4];
+	plminfo.devcat = data[5];
+	plminfo.subcat = data[6];
+	plminfo.firmware = data[7];
 	plmcmdq_dequeue();
 }
 
@@ -1364,7 +1437,7 @@ void handle_command(struct evbuffer *evbuf, char plmcmd)
 	char data[30];
 	uint8_t toaddr[3], fromaddr[3], extdata[14], ackbit;
 	cmdq_t *cmd;
-	int dmult = 1;
+	int dmult = 1, dequeue = 0;
 
 	if (plmtype == PLM_TYPE_HUBHTTP)
 		dmult = 2;
@@ -1408,6 +1481,13 @@ void handle_command(struct evbuffer *evbuf, char plmcmd)
 			evbuffer_drain(evbuf, 23*dmult);
 		else
 			evbuffer_drain(evbuf, 9*dmult); /* discard echo */
+
+		if (plmtype == PLM_TYPE_HUBHTTP) {
+			if (hubhtmlstate == HUBHTMLSTATE_WSEND)
+				hubhtmlstate = HUBHTMLSTATE_IDLE;
+			if (cmd != NULL && CMDQ_WAITING(cmd->state))
+				hubhtmlstate = HUBHTMLSTATE_WCMD;
+		}
 		break;
 	case PLM_RECV_STD: /* we have a std msg */
 		if (plmbuf_get(evbuf, 11, data, P_PULLUP))
@@ -1417,6 +1497,7 @@ void handle_command(struct evbuffer *evbuf, char plmcmd)
 		memcpy(toaddr, data+5, 3);
 		plm_handle_stdrecv(fromaddr, toaddr, data[8], data[9],
 				   data[10]);
+		CHECKHTMLSTATE(plmtype);
 		break;
 	case PLM_RECV_EXT:
 		if (plmbuf_get(evbuf, 25, data, P_PULLUP))
@@ -1427,6 +1508,7 @@ void handle_command(struct evbuffer *evbuf, char plmcmd)
 		memcpy(extdata, data+11, 14);
 		plm_handle_extrecv(fromaddr, toaddr, data[8], data[9],
 				   data[10], extdata);
+		CHECKHTMLSTATE(plmtype);
 		break;
 	case PLM_RECV_X10:
 		if (plmbuf_get(evbuf, 4, data, P_PULLUP))
@@ -1447,12 +1529,14 @@ void handle_command(struct evbuffer *evbuf, char plmcmd)
 			return;
 		plmbuf_get(evbuf, 9, data, P_REMOVE);
 		plm_handle_getinfo(data);
+		CHECKHTMLSTATE(plmtype);
 		break;
 	case PLM_ALINK_COMPLETE:
 		if (plmbuf_get(evbuf, 10, data, P_PULLUP))
 			return;
 		plmbuf_get(evbuf, 10, data, P_REMOVE);
 		plm_handle_alink_complete(data);
+		CHECKHTMLSTATE(plmtype);
 		break;
 	case PLM_ALINK_CFAILREP:
 		if (plmbuf_get(evbuf, 7, data, P_PULLUP))
@@ -1460,12 +1544,14 @@ void handle_command(struct evbuffer *evbuf, char plmcmd)
 		LOG(LOG_WARNING, "Got all-link failure for device %X.%X.%X"
 		    " group %X", data[4], data[5], data[6], data[3]);
 		plmbuf_get(evbuf, 7, data, P_REMOVE);
+		CHECKHTMLSTATE(plmtype);
 		break;
 	case PLM_ALINK_CSTATUSREP:
 		if (plmbuf_get(evbuf, 3, data, P_PULLUP))
 			return;
 		LOG(LOG_NOTICE, "All link cleanup status: %X", data[2]);
 		plmbuf_get(evbuf, 3, data, P_REMOVE);
+		CHECKHTMLSTATE(plmtype);
 		break;
 	case PLM_ALINK_START:
 		if (plmbuf_get(evbuf, 5, data, P_PULLUP))
@@ -1474,12 +1560,14 @@ void handle_command(struct evbuffer *evbuf, char plmcmd)
 		LOG(LOG_NOTICE, "Starting all link code:%X group:%X",
 		    data[2], data[3]);
 		plmbuf_get(evbuf, 5, data, P_REMOVE);
+		CHECKHTMLSTATE(plmtype);
 		break;
 	case PLM_ALINK_CANCEL:
 		if (plmbuf_get(evbuf, 3, data, P_PULLUP))
 			return;
 		LOG(LOG_NOTICE, "All link cancelled");
 		plmbuf_get(evbuf, 3, data, P_REMOVE);
+		CHECKHTMLSTATE(plmtype);
 		break;
 	case PLM_ALINK_SEND:
 		if (plmbuf_get(evbuf, 6, data, P_PULLUP))
@@ -1487,19 +1575,22 @@ void handle_command(struct evbuffer *evbuf, char plmcmd)
 		LOG(LOG_NOTICE, "Sent all-link command %X/%X to group %X"
 		    " Status: %X", data[3], data[4], data[2], data[5]);
 		plmbuf_get(evbuf, 6, data, P_REMOVE);
+		CHECKHTMLSTATE(plmtype);
 		break;
 	case PLM_ALINK_GETLASTRECORD:
 		if (plmbuf_get(evbuf, 3, data, P_PULLUP))
 			return;
 		LOG(LOG_DEBUG, "Sent get last ALINK record");
 		plmbuf_get(evbuf, 3, data, P_REMOVE);
+		CHECKHTMLSTATE(plmtype);
 		break;
 	case PLM_ALINK_GETFIRST:
 	case PLM_ALINK_GETNEXT:
+		plm_dump_queue();
 		if (plmbuf_get(evbuf, 3, data, P_PULLUP))
 			return;
-		if (data[1] == cmd->cmd[1])
-			plmcmdq_dequeue(); /* dequeue */
+		if (cmd && data[1] == cmd->cmd[1])
+			dequeue = 1;
 		if (data[2] == PLMCMD_ACK) /* more records in db */
 			plm_getplm_aldb(1); /* get next record */
 		else if (data[2] == PLMCMD_NAK) { /* last one */
@@ -1507,12 +1598,14 @@ void handle_command(struct evbuffer *evbuf, char plmcmd)
 			LOG(LOG_NOTICE, "Last PLM ALDB record");
 		}
 		plmbuf_get(evbuf, 3, data, P_REMOVE);
+		CHECKHTMLSTATE(plmtype);
 		break;
 	case PLM_ALINK_RECORD:
 		if (plmbuf_get(evbuf, 10, data, P_PULLUP))
 			return;
 		plmbuf_get(evbuf, 10, data, P_REMOVE);
 		plm_handle_aldb_record_resp(data);
+		CHECKHTMLSTATE(plmtype);
 		break;
 	case PLM_BUTTONEVENT:
 		if (plmbuf_get(evbuf, 3, data, P_PULLUP))
@@ -1579,6 +1672,7 @@ void handle_command(struct evbuffer *evbuf, char plmcmd)
 			return;
 		LOG(LOG_ERROR, "Sent modify all-link record (ignored)");
 		plmbuf_get(evbuf, 12, data, P_REMOVE);
+		CHECKHTMLSTATE(plmtype);
 		break;
 	case PLM_SLEEP:
 		if (plmbuf_get(evbuf, 5, data, P_PULLUP))
@@ -1595,6 +1689,10 @@ void handle_command(struct evbuffer *evbuf, char plmcmd)
 		plmbuf_get(evbuf, 2, data, P_REMOVE);
 		break;
 	}
+
+	if (dequeue)
+		plmcmdq_dequeue();
+	plm_dump_queue();
 }
 
 
@@ -1614,6 +1712,7 @@ void hubhtml_readcb(evutil_socket_t fd, short what, void *arg)
 	int loopcount = 0;
 
 moredata:
+
 	plmhead = evbuffer_pullup(hubhtml_workbuf, 4);
 	if (plmhead == NULL)
 		return; /* need more data, so wait */
@@ -1640,8 +1739,13 @@ moredata:
 		memcpy(oplmhead, plmhead, 4);
 		goto moredata; /* ? I guess. */
 	}
-
+	cmd = SIMPLEQ_FIRST(&cmdfifo);
+	if (cmd != NULL)
+	    LOG(LOG_DEBUG, "1readcbrq: 0x%0.2X/0x%0.2X", cmd->cmd[0], cmd->cmd[1]);
 	handle_command(hubhtml_workbuf, data[1]);
+	cmd = SIMPLEQ_FIRST(&cmdfifo);
+	if (cmd != NULL)
+	    LOG(LOG_DEBUG, "2readcbrq: 0x%0.2X/0x%0.2X", cmd->cmd[0], cmd->cmd[1]);
 }
 
 /**

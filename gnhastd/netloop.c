@@ -68,6 +68,7 @@
 
 extern cfg_t *cfg;
 extern struct event_base *base;
+extern TAILQ_HEAD(, _device_t) alldevs;
 TAILQ_HEAD(, _client_t) clients = TAILQ_HEAD_INITIALIZER(clients);
 
 static int setnonblock(int fd)
@@ -164,6 +165,7 @@ void buf_write_cb(struct bufferevent *out, void *arg)
 void buf_error_cb(struct bufferevent *ev, short what, void *arg)
 {
 	client_t *client = (client_t *)arg;
+	client_t *watch;
 	device_t *dev;
 	wrap_device_t *wrap;
 	int err, status, i;
@@ -203,6 +205,23 @@ void buf_error_cb(struct bufferevent *ev, short what, void *arg)
 	if (client->addr)
 		free(client->addr);
 	close(client->fd);
+
+	/* find all devices I'm watching, and undo.  This is nasty */
+	TAILQ_FOREACH(dev, &alldevs, next_all) {
+		TAILQ_FOREACH(watch, &dev->watchers, next_dwatch) {
+			if (watch == client) {
+				TAILQ_REMOVE(&dev->watchers, client,
+					     next_dwatch);
+				LOG(LOG_DEBUG, "Unwatching device %s",
+				    dev->uid);
+				client->watched--;
+			}
+		}
+	}
+	if (client->watched > 0)
+		LOG(LOG_ERROR, "Client is still watching %d devices",
+		    client->watched);
+
 	/* remove all the tailq entries on the device list */
 	if (client->provider)
 		while (dev = TAILQ_FIRST(&client->devices)) {

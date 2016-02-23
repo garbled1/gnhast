@@ -42,6 +42,7 @@
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
 #include <event2/event.h>
+#include <event2/dns.h>
 
 #include "gnhast.h"
 #include "common.h"
@@ -56,6 +57,9 @@ extern TAILQ_HEAD(, _device_t) alldevs;
 extern int nrofdevs;
 extern int plmaldbmorerecords;
 extern char *conntype[];
+extern char *hubhtml_password;
+extern char *hubhtml_username;
+extern int plmtype;
 
 /* Configuration file details */
 
@@ -519,7 +523,9 @@ main(int argc, char *argv[])
 	insteon_devdata_t *dd;
 
 	devaddr = NULL;
-	while ((c = getopt(argc, argv, "a:df:h:n:ps:w")) != -1)
+	hubhtml_username = NULL;
+
+	while ((c = getopt(argc, argv, "a:df:h:n:ps:wP:U:")) != -1)
 		switch (c) {
 		case 'a':
 			devaddr = strdup(optarg);
@@ -545,6 +551,12 @@ main(int argc, char *argv[])
 		case 'w':
 			writealdb = 1;
 			break;
+		case 'P':
+			hubhtml_password = strdup(optarg);
+			break;
+		case 'U':
+			hubhtml_username = strdup(optarg);
+			break;
 		default:
 			usage();
 		}
@@ -555,6 +567,10 @@ main(int argc, char *argv[])
 
 	if (writealdb && aldbfile == NULL)
 		usage();
+
+	/* Initialize the event system */
+	base = event_base_new();
+	dns_base = evdns_base_new(base, 1);
 
 	/* Initialize the device table */
 	init_devtable(cfg, 0);
@@ -580,7 +596,7 @@ main(int argc, char *argv[])
 	/* Initialize the command fifo */
 	SIMPLEQ_INIT(&cmdfifo);
 
-	cfg = parse_conf(conffile);
+	//cfg = parse_conf(conffile);
 
 	cfg_idb = parse_insteondb(idbfile);
 	if (cfg_idb == NULL)
@@ -588,10 +604,13 @@ main(int argc, char *argv[])
 
 	if (device != NULL) {
 		fd = plmtype_connect(PLM_TYPE_SERIAL, device, NULL, -1);
+		plmtype = PLM_TYPE_SERIAL;
 	} else if (port == 9761) {
 		fd = plmtype_connect(PLM_TYPE_HUBPLM, NULL, host, port);
+		plmtype = PLM_TYPE_HUBPLM;
 	} else {
 		fd = plmtype_connect(PLM_TYPE_HUBHTTP, NULL, host, port);
+		plmtype = PLM_TYPE_HUBHTTP;
 	}
 
 	plm_getinfo();

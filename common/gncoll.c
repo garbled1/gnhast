@@ -651,6 +651,35 @@ void gn_imalive(struct bufferevent *bev)
 */
 
 /**
+   \brief Send an alarm set command
+   \param bev bufferevent connected to a gnhastd server
+   \param aluid alarm uid
+   \param altext alarm text
+   \param alsev alarm severity
+*/
+
+void gn_setalarm(struct bufferevent *bev, char *aluid, char *altext, int alsev)
+{
+	struct evbuffer *send;
+
+	LOG(LOG_DEBUG, "got gn_setalarm");
+	send = evbuffer_new();
+	if (altext == NULL) {
+		evbuffer_add_printf(send, "setalarm %s:%s %s:%d\n",
+				    ARGNM(SC_ALUID), aluid,
+				    ARGNM(SC_ALSEV), alsev);
+	} else {
+		evbuffer_add_printf(send, "setalarm %s:%s %s:%s %s:%d\n",
+				    ARGNM(SC_ALUID), aluid,
+				    ARGNM(SC_ALTEXT), altext,
+				    ARGNM(SC_ALSEV), alsev);
+	}
+	bufferevent_write_buffer(bev, send);
+	evbuffer_free(send);
+}
+
+
+/**
    \brief Generic routine to build a simple device
    \param cfg base config structure
    \param uid UID of device
