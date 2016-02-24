@@ -669,7 +669,7 @@ void gn_setalarm(struct bufferevent *bev, char *aluid, char *altext, int alsev)
 				    ARGNM(SC_ALUID), aluid,
 				    ARGNM(SC_ALSEV), alsev);
 	} else {
-		evbuffer_add_printf(send, "setalarm %s:%s %s:%s %s:%d\n",
+		evbuffer_add_printf(send, "setalarm %s:%s %s:\"%s\" %s:%d\n",
 				    ARGNM(SC_ALUID), aluid,
 				    ARGNM(SC_ALTEXT), altext,
 				    ARGNM(SC_ALSEV), alsev);
