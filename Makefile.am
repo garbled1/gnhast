@@ -19,5 +19,6 @@ SUBDIRS = libconfuse \
 	jsoncgicoll \
 	tools \
 	data \
+	gnhastweb \
 	handlers $(GTKGNHASTDIR) $(GTKINSTDIR)
 

@@ -644,6 +644,7 @@ RRD_CFLAGS
 PKG_CONFIG_LIBDIR
 PKG_CONFIG_PATH
 PKG_CONFIG
+PERL
 RRDTOOL
 CURL
 NETCAT
@@ -13649,7 +13650,7 @@ done
   done
 IFS=$as_save_IFS
 
-  test -z "$ac_cv_path_CURL" && ac_cv_path_CURL="/usr/pkg/bin/nc"
+  test -z "$ac_cv_path_CURL" && ac_cv_path_CURL="/usr/pkg/bin/curl"
   ;;
 esac
 fi
@@ -13698,6 +13699,47 @@ RRDTOOL=$ac_cv_path_RRDTOOL
 if test -n "$RRDTOOL"; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RRDTOOL" >&5
 $as_echo "$RRDTOOL" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+# Extract the first word of "perl", so it can be a program name with args.
+set dummy perl; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_path_PERL+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  case $PERL in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_PERL="$PERL" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH$PATH_SEPARATOR/usr/bin$PATH_SEPARATOR/usr/pkg/bin$PATH_SEPARATOR/usr/local/bin
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_path_PERL="$as_dir/$ac_word$ac_exec_ext"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  test -z "$ac_cv_path_PERL" && ac_cv_path_PERL="/usr/pkg/bin/perl"
+  ;;
+esac
+fi
+PERL=$ac_cv_path_PERL
+if test -n "$PERL"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $PERL" >&5
+$as_echo "$PERL" >&6; }
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
@@ -14264,7 +14306,7 @@ fi
 fi
 
 
-ac_config_files="$ac_config_files Makefile gnhastd/Makefile fakecoll/Makefile owsrvcoll/Makefile rrdcoll/Makefile brulcoll/Makefile insteoncoll/Makefile wmr918coll/Makefile wupwscoll/Makefile ad2usbcoll/Makefile icaddycoll/Makefile venstarcoll/Makefile moncoll/Makefile jsoncgicoll/Makefile handlers/Makefile tools/Makefile gtk-gnhast/Makefile gtk-insteonedit/Makefile data/Makefile libconfuse/Makefile"
+ac_config_files="$ac_config_files Makefile gnhastd/Makefile fakecoll/Makefile owsrvcoll/Makefile rrdcoll/Makefile brulcoll/Makefile insteoncoll/Makefile wmr918coll/Makefile wupwscoll/Makefile ad2usbcoll/Makefile icaddycoll/Makefile venstarcoll/Makefile moncoll/Makefile jsoncgicoll/Makefile handlers/Makefile tools/Makefile gtk-gnhast/Makefile gtk-insteonedit/Makefile data/Makefile gnhastweb/Makefile libconfuse/Makefile"
 
 
 cat >confcache <<\_ACEOF
@@ -15307,6 +15349,7 @@ do
     "gtk-gnhast/Makefile") CONFIG_FILES="$CONFIG_FILES gtk-gnhast/Makefile" ;;
     "gtk-insteonedit/Makefile") CONFIG_FILES="$CONFIG_FILES gtk-insteonedit/Makefile" ;;
     "data/Makefile") CONFIG_FILES="$CONFIG_FILES data/Makefile" ;;
+    "gnhastweb/Makefile") CONFIG_FILES="$CONFIG_FILES gnhastweb/Makefile" ;;
     "libconfuse/Makefile") CONFIG_FILES="$CONFIG_FILES libconfuse/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;

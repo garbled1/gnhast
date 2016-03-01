@@ -150,8 +150,8 @@ CTAGS = ctags
 CSCOPE = cscope
 DIST_SUBDIRS = libconfuse gnhastd fakecoll owsrvcoll rrdcoll brulcoll \
 	insteoncoll wmr918coll wupwscoll ad2usbcoll icaddycoll \
-	venstarcoll moncoll jsoncgicoll tools data handlers gtk-gnhast \
-	gtk-insteonedit
+	venstarcoll moncoll jsoncgicoll tools data gnhastweb handlers \
+	gtk-gnhast gtk-insteonedit
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
 top_distdir = $(distdir)
@@ -257,6 +257,7 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
+PERL = @PERL@
 PKG_CONFIG = @PKG_CONFIG@
 PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
 PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
@@ -339,6 +340,7 @@ SUBDIRS = libconfuse \
 	jsoncgicoll \
 	tools \
 	data \
+	gnhastweb \
 	handlers $(GTKGNHASTDIR) $(GTKINSTDIR)
 
 all: all-recursive

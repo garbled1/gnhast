@@ -475,7 +475,8 @@ int cmd_register_group(pargs_t *args, void *arg)
 	} else
 		LOG(LOG_DEBUG, "Updating existing device group uid:%s", uid);
 
-	devgrp->name = name;
+	if (name != NULL)
+		devgrp->name = name;
 
 	if (grouplist != NULL) {
 		tmpbuf = strdup(grouplist);
