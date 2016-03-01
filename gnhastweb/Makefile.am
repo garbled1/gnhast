@@ -10,6 +10,7 @@ EXTRA_DIST = \
 	gnhastweb.conf \
 	favicon.png \
 	gnhast-icon-48.png \
+	cgi-bin/ \
 	css/font-awesome.min.css \
 	css/gnhastweb.css \
 	css/tr_bg.png \
