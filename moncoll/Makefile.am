@@ -32,4 +32,8 @@ moncoll_SOURCES += \
 	$(top_srcdir)/linux/time.h
 endif
 
+confexampledir = $(datarootdir)/gnhast/examples
+dist_confexample_DATA = \
+	moncoll.conf
+
 moncoll_LDADD = $(top_builddir)/libconfuse/libconfuse.la

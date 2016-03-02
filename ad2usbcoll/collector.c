@@ -554,6 +554,24 @@ void ad2usb_handle_std(char *data, size_t len)
 	}
 }
 
+/**
+   \brief A timer callback to wake up the ad2usb device
+   \param nada used for file descriptor
+   \param what why did we fire?
+   \param arg pointer to connection_t
+*/
+
+void ad2usb_wake_up(int nada, short what, void *arg)
+{
+	connection_t *conn = (connection_t *)arg;
+	struct evbuffer *send;
+
+	LOG(LOG_NOTICE, "Sending wakeup to AD2USB");
+	send = evbuffer_new();
+	evbuffer_add_printf(send, "\n");
+	bufferevent_write_buffer(ad2usb_conn->bev, send);
+	evbuffer_free(send);
+}
 
 /**
    \brief ad2usb read callback
@@ -774,6 +792,10 @@ int main(int argc, char **argv)
 	bufferevent_setcb(ad2usb_conn->bev, ad2usb_buf_read_cb,
 			  NULL, serial_eventcb, ad2usb_conn);
 	bufferevent_enable(ad2usb_conn->bev, EV_READ|EV_WRITE);
+
+	ev = evtimer_new(base, ad2usb_wake_up, ad2usb_conn);
+	secs.tv_sec = 1; /* wait 1 second and hit the enter key */
+	evtimer_add(ev, &secs);
 
 	/* setup signal handlers */
 	ev = evsignal_new(base, SIGHUP, cb_sighup, conffile);

@@ -77,6 +77,9 @@ int serial_connect(char *devnode, int speed, int cflags)
 	if (tcsetattr(sfd, TCSANOW, &tio) == -1)
 		LOG(LOG_FATAL, "Cannot setattr for `%s'", devnode);
 
+	LOG(LOG_NOTICE, "Connected to serial device %s at %dbps", devnode,
+	    speed);
+
 	return sfd;
 }
 

@@ -249,11 +249,11 @@ void connect_event_cb(struct bufferevent *ev, short what, void *arg)
 	if (what & BEV_EVENT_CONNECTED) {
 		LOG(LOG_NOTICE, "Connected to %s", conntype[conn->type]);
 		if (conn->type == CONN_TYPE_GNHASTD) {
-			tev = evtimer_new(base, generic_collector_health_cb,
-					  conn);
+			tev = event_new(base, -1, EV_PERSIST,
+					generic_collector_health_cb, conn);
 			secs.tv_sec = HEALTH_CHECK_RATE;
 			evtimer_add(tev, &secs);
-			LOG(LOG_NOTICE, "Setting up self-health checks every"
+			LOG(LOG_NOTICE, "Setting up self-health checks every "
 			    "%d seconds", secs.tv_sec);
 		}
 	} else if (what & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
@@ -810,11 +810,13 @@ static void plm_dump_queue(void)
 	cmdq_t *cmd, *tmp;
 	int i = 0;
 
-	LOG(LOG_DEBUG, "Dumping command queue:");
+	//LOG(LOG_DEBUG, "Dumping command queue:");
 	SIMPLEQ_FOREACH_SAFE(cmd, &cmdfifo, entries, tmp) {
-		LOG(LOG_DEBUG, "Queue Entry %d:", i++);
-		plm_print_cmd(cmd);
+		//LOG(LOG_DEBUG, "Queue Entry %d:", i++);
+		//plm_print_cmd(cmd);
+		i++;
 	}
+	LOG(LOG_DEBUG, "Queue Length = %d", i);
 }
 
 /**
@@ -1345,6 +1347,9 @@ int plm_handle_aldb(device_t *dev, char *data)
 	}
 	memcpy(&dd->aldb[recno], &rec, sizeof(aldb_t));
 
+	addr_to_string(ln, rec.devaddr);
+	LOG(LOG_DEBUG, "Got aldb record from %s", ln);
+
 	/* Build a device group? */
 	if (rec.lflags & ALDBLINK_MASTER) {
 		sprintf(gn, "%s-%0.2X", dev->loc, rec.group);
@@ -1374,6 +1379,7 @@ int plm_handle_aldb(device_t *dev, char *data)
 	if (data[5] == 0 && data[6] == 0 && data[7] == 0 && data[8] == 0 &&
 	    data[9] == 0 && data[10] == 0 && data[11] == 0 && data[12] == 0)
 		return 1;
+	LOG(LOG_DEBUG, "More records to follow for %s", ln);
 	return 0;
 }
 

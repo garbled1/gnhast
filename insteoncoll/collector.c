@@ -772,6 +772,7 @@ main(int argc, char *argv[])
 	parse_devices(cfg);
 	plm_ping_all_devices();
 
+	LOG(LOG_NOTICE, "Initialization complete, entering normal operation");
 	/* loopit */
 	event_base_dispatch(base);
 

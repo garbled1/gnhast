@@ -244,7 +244,11 @@ void cb_restart_collectors(int fd, short what, void *arg)
 			mon->kill_attempts = 0;
 			LOG(LOG_NOTICE, "Restarting down collector %s",
 			    mon->name);
-			snprintf(cbuf, 512, "%s %s", mon->path, mon->args);
+			if (mon->args == NULL || strlen(mon->args) < 1)
+				snprintf(cbuf, 512, "%s", mon->path);
+			else
+				snprintf(cbuf, 512, "%s %s", mon->path,
+					 mon->args);
 			if (system(cbuf)) {
 				LOG(LOG_ERROR, "Couldn't restart collector %s"
 				    " with cmd %s", mon->name, cbuf);
