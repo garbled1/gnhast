@@ -648,8 +648,10 @@ void cb_sigterm(int fd, short what, void *arg)
 	LOG(LOG_NOTICE, "Recieved SIGTERM, shutting down");
 	gnhastd_conn->shutdown = 1;
 	gn_disconnect(gnhastd_conn->bev);
-	if (plm_conn != NULL)
+	if (plm_conn != NULL) {
+		bufferevent_disable(plm_conn->bev, EV_READ|EV_WRITE);
 		bufferevent_free(plm_conn->bev);
+	}
 	ev = evtimer_new(base, generic_cb_shutdown, NULL);
 	evtimer_add(ev, &secs);
 

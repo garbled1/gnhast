@@ -197,6 +197,7 @@ void buf_error_cb(struct bufferevent *ev, short what, void *arg)
 			    WTERMSIG(status));
 	}
 
+	bufferevent_disable(client->ev, EV_READ|EV_WRITE);
 	bufferevent_free(client->ev);
 	if (client->tev)
 		event_free(client->tev);

@@ -177,6 +177,7 @@ void hubplm_connect_event_cb(struct bufferevent *ev, short what, void *arg)
 		}
 		LOG(LOG_DEBUG, "Lost connection to %s, closing",
 		    conntype[conn->type]);
+		bufferevent_disable(ev, EV_READ|EV_WRITE);
 		bufferevent_free(ev);
 		/* Retry immediately */
 		connect_server_cb(0, 0, conn);
@@ -266,6 +267,7 @@ void connect_event_cb(struct bufferevent *ev, short what, void *arg)
 		}
 		LOG(LOG_NOTICE, "Lost connection to %s, closing",
 		    conntype[conn->type]);
+		bufferevent_disable(ev, EV_READ|EV_WRITE);
 		bufferevent_free(ev);
 
 		if (!conn->shutdown) {

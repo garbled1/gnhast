@@ -977,6 +977,7 @@ void brul_netconnect_event_cb(struct bufferevent *ev, short what, void *arg)
 		}
 		LOG(LOG_DEBUG, "Lost connection to %s, closing",
 		    conntype[conn->type]);
+		bufferevent_disable(ev, EV_READ|EV_WRITE);
 		bufferevent_free(ev);
 		/* Retry immediately */
 		connect_server_cb(0, 0, conn);
@@ -1113,6 +1114,7 @@ void connect_event_cb(struct bufferevent *ev, short what, void *arg)
 		}
 		LOG(LOG_NOTICE, "Lost connection to %s, closing",
 		    conntype[conn->type]);
+		bufferevent_disable(ev, EV_READ|EV_WRITE);
 		bufferevent_free(ev);
 
 		if (!conn->shutdown) {
@@ -1191,8 +1193,10 @@ void cb_sigterm(int fd, short what, void *arg)
 	LOG(LOG_NOTICE, "Recieved SIGTERM, shutting down");
 	gnhastd_conn->shutdown = 1;
 	gn_disconnect(gnhastd_conn->bev);
-	if (brulnet_conn->bev)
+	if (brulnet_conn->bev) {
+		bufferevent_disable(brulnet_conn->bev, EV_READ|EV_WRITE);
 		bufferevent_free(brulnet_conn->bev);
+	}
 	ev = evtimer_new(base, cb_shutdown, NULL);
 	evtimer_add(ev, &secs);
 }

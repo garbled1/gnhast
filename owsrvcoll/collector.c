@@ -582,6 +582,7 @@ void ows_connect_event_cb(struct bufferevent *ev, short what, void *arg)
 			LOG(LOG_DEBUG, "Lost connection to %s, closing",
 			    conntype[conn->type]);
 		persistent = 0;
+		bufferevent_disable(ev, EV_READ|EV_WRITE);
 		bufferevent_free(ev);
 	}
 }
@@ -635,6 +636,7 @@ void buf_error_cb(struct bufferevent *ev, short what, void *arg)
 {
 	client_t *client = (client_t *)arg;
 
+	bufferevent_disable(client->ev, EV_READ|EV_WRITE);
 	bufferevent_free(client->ev);
 	close(client->fd);
 	free(client);
@@ -712,6 +714,7 @@ void connect_event_cb(struct bufferevent *ev, short what, void *arg)
 		}
 		LOG(LOG_NOTICE, "Lost connection to %s, closing",
 		    conntype[conn->type]);
+		bufferevent_disable(ev, EV_READ|EV_WRITE);
 		bufferevent_free(ev);
 
 		if (!conn->shutdown) {
@@ -783,6 +786,7 @@ void cb_sigterm(int fd, short what, void *arg)
 	LOG(LOG_NOTICE, "Recieved SIGTERM, shutting down");
 	gnhastd_conn->shutdown = 1;
 	gn_disconnect(gnhastd_conn->bev);
+	bufferevent_disable(owserver_conn->bev, EV_READ|EV_WRITE);
 	bufferevent_free(owserver_conn->bev);
 	ev = evtimer_new(base, cb_shutdown, NULL);
 	evtimer_add(ev, &secs);

@@ -847,6 +847,7 @@ void wx200d_connect_event_cb(struct bufferevent *ev, short what, void *arg)
 		}
 		LOG(LOG_DEBUG, "Lost connection to %s, closing",
 		    conntype[conn->type]);
+		bufferevent_disable(ev, EV_READ|EV_WRITE);
 		bufferevent_free(ev);
 		/* Retry immediately */
 		connect_server_cb(0, 0, conn);
@@ -1490,6 +1491,7 @@ void buf_error_cb(struct bufferevent *ev, short what, void *arg)
 {
 	client_t *client = (client_t *)arg;
 
+	bufferevent_disable(client->ev, EV_READ|EV_WRITE);
 	bufferevent_free(client->ev);
 	close(client->fd);
 	free(client);
@@ -1567,6 +1569,7 @@ void connect_event_cb(struct bufferevent *ev, short what, void *arg)
 		}
 		LOG(LOG_NOTICE, "Lost connection to %s, closing",
 		    conntype[conn->type]);
+		bufferevent_disable(ev, EV_READ|EV_WRITE);
 		bufferevent_free(ev);
 
 		if (!conn->shutdown) {
