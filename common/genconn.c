@@ -182,6 +182,7 @@ void generic_connect_event_cb(struct bufferevent *ev, short what, void *arg)
 		}
 		LOG(LOG_NOTICE, "Lost connection to %s, closing",
 		     conntype[conn->type]);
+		bufferevent_disable(ev, EV_READ|EV_WRITE);
 		bufferevent_free(ev);
 		conn->connected = 0;
 		genconn_connect_cb(CEVENT_DISCONNECTED, conn);
@@ -195,9 +196,10 @@ void generic_connect_event_cb(struct bufferevent *ev, short what, void *arg)
 			LOG(LOG_NOTICE, "Attempting reconnection to "
 			    "conn->server @ %s:%d in %d seconds",
 			    conn->host, conn->port, secs.tv_sec);
-		} else if (conn->shutdown == 1)
+		} else if (conn->shutdown == 1) {
 			genconn_connect_cb(CEVENT_SHUTDOWN, conn);
 			event_base_loopexit(base, NULL);
+		}
 	}
 }
 

@@ -1,6 +1,6 @@
 #!@PERL@
 
-use Data::Dump qw[ pp ];
+#use Data::Dump qw[ pp ];
 use IO::Socket::INET;
 use Text::ParseWords;
 # auto-flush on socket

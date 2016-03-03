@@ -165,7 +165,7 @@ void buf_write_cb(struct bufferevent *out, void *arg)
 void buf_error_cb(struct bufferevent *ev, short what, void *arg)
 {
 	client_t *client = (client_t *)arg;
-	client_t *watch;
+	client_t *watch, *nextc;
 	device_t *dev;
 	wrap_device_t *wrap;
 	int err, status, i;
@@ -208,7 +208,7 @@ void buf_error_cb(struct bufferevent *ev, short what, void *arg)
 
 	/* find all devices I'm watching, and undo.  This is nasty */
 	TAILQ_FOREACH(dev, &alldevs, next_all) {
-		TAILQ_FOREACH(watch, &dev->watchers, next_dwatch) {
+		TAILQ_FOREACH_SAFE(watch, &dev->watchers, next_dwatch, nextc) {
 			if (watch == client) {
 				TAILQ_REMOVE(&dev->watchers, client,
 					     next_dwatch);

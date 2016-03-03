@@ -1,32 +1,42 @@
 #!@PERL@
 
-$rrdfiledir = "/usr/pkg/share/cacti/rra/gnhast";
-
 $res = "3600";
 $start = "-24h";
 $end = "now-1h";
+$path = "/usr/pkg/share/cacti/rra/gnhast/";
+
+&ReadParse;
 
 $res = $in{'res'} if ($in{'res'} ne undef);
 $start = $in{'start'} if ($in{'start'} ne undef);
 $end = $in{'end'} if ($in{'end'} ne undef);
+$file = $path . $in{'uid'} . ".rrd";
 
+print "Access-Control-Allow-Origin: *\n";
+print "Fake-Header: $file\n";
 print "Content-Type: application/json\n\n";
-open(FILE, "rrdtool fetch $rrdfiledir/28.FE7862040000.rrd AVERAGE -r $res -s $start -e $end|");
+
+if (-e $file) {
+  open(FILE, "/usr/pkg/bin/rrdtool fetch $file AVERAGE -r $res -s $start -e $end|");
+} else {
+  print "{ \"data\" : [ bad: \"$file\" ] }\n";
+  exit 0;
+}
 
 $first = 0;
-print "data = [\n";
+print "{ \"data\" : [";
 while (<FILE>) {
   chomp();
   ($ts, $num) = split(/: */, $_);
   $ts *= 1000;
-  if ($ts != 0) {
+  if ($ts != 0 && $num ne "nan") {
     $newnum = sprintf("%0.3f", $num);
-    print "," if ($first != 0);
-    print "{time:\"$ts\",val:$newnum}\n";
+    print ", " if ($first != 0);
+    print "{ \"time\" : $ts, \"val\" : $newnum }";
     $first++;
   }
 }
-print "];\n";
+print " ] }";
 
 
 sub ReadParse {

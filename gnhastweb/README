@@ -3,7 +3,7 @@ How to install gnhastweb:
 1) Run the normal gnhast build.  This will substitue the @PERL@ with your
 perl path.
 
-2) Edit cgi-bin/rrdjson.cgi.  Change $rrdfiledir to the location of your
+2) Edit cgi-bin/rrdjson.cgi.  Change $path to the location of your
 generated rrd files.  These would be wherever you told rrdcoll to put them.
 
 3) Copy all the cgi-bin/* scripts to the cgi-bin dir of your webserver.
@@ -26,9 +26,10 @@ gnhastd {
   port = 2920
 }
 
-8) Copy the example gnhastweb.conf file to the htdocs directory of your
-webserver.  (I may change it's location later)  Edit it to your heart's
-content.  The example activates most of the features, many can be
-disabled.
+8) Copy the example gnhastweb.conf file to the cgi-bin directory of your
+webserver.  Edit it to your heart's content.  The example activates most
+of the features, many can be disabled.
 
-9) Connect to your webserver, it should work?
+9) Copy header.html to the cgi-bin directory of your webserver.
+
+10) Connect to your webserver, it should work?

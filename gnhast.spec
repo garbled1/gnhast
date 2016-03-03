@@ -1,6 +1,6 @@
 Summary: Garbled's NetBSD Home Automation Scripting Tools
 Name: gnhast
-Version: 0.3
+Version: 0.4
 Release: 1
 License: BSD
 #Group: 

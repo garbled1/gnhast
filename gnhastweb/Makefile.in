@@ -247,6 +247,7 @@ EXTRA_DIST = \
 	README \
 	gnhastweb.conf \
 	favicon.png \
+	header.html \
 	gnhast-icon-48.png \
 	cgi-bin/ \
 	css/font-awesome.min.css \

@@ -792,7 +792,8 @@ void cb_end_discovery(int fd, short what, void *arg)
 	}
 
 	for (i=0; i < MAX_ICADDY_DEVS; i++) {
-		if (strcasecmp(hn, icaddy_list[i].uc_hostname) == 0) {
+		if (icaddy_list[i].uc_hostname != NULL &&
+		    strcasecmp(hn, icaddy_list[i].uc_hostname) == 0) {
 			LOG(LOG_DEBUG, "Found disc record %d matches by"
 			    " hostname", i);
 			hn_len = strlen(hn);
@@ -800,7 +801,8 @@ void cb_end_discovery(int fd, short what, void *arg)
 			icaddy_url = safer_malloc(hn_len + 8);
 			sprintf(icaddy_url, "http://%s", hn);
 			break;
-		} else if (strcasecmp(hn, icaddy_list[i].ipaddr) == 0) {
+		} else if (icaddy_list[i].ipaddr != NULL &&
+			   strcasecmp(hn, icaddy_list[i].ipaddr) == 0) {
 			hn_len = strlen(icaddy_list[i].ipaddr);
 			icaddy_url = safer_malloc(hn_len + 9);
 			sprintf(icaddy_url, "http://%s",
