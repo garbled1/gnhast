@@ -369,18 +369,29 @@ foreach $key (keys(%devices)) {
 # do we have fake groups?
 
 foreach $grp (keys(%{$confarray[0]{'fakegroups'}})) {
-  if ($confarray[0]{'fakegroups'}{$grp}{'parent'} ne undef) {
-    $parent = $confarray[0]{'fakegroups'}{$grp}{'parent'};
-    push(@{$groups{$parent}{'glist'}}, $grp);
+  if ($grp eq "toplevel") { # handle these slightly different
+    for ($i=1; $i < 100; $i++) {
+      if ($confarray[0]{'fakegroups'}{$grp}{"uid".$i} ne undef) {
+	$dev = $confarray[0]{'fakegroups'}{$grp}{"uid".$i};
+	push @topleveldevices, $dev;
+      } else {
+	$i = 999;
+      }
+    }
   } else {
-    push(@toplevelgroups, $grp);
-  }
-  for ($i=1; $i < 100; $i++) {
-    if ($confarray[0]{'fakegroups'}{$grp}{"uid".$i} ne undef) {
-      $dev = $confarray[0]{'fakegroups'}{$grp}{"uid".$i};
-      push(@{$groups{$grp}{'dlist'}}, $dev);
+    if ($confarray[0]{'fakegroups'}{$grp}{'parent'} ne undef) {
+      $parent = $confarray[0]{'fakegroups'}{$grp}{'parent'};
+      push(@{$groups{$parent}{'glist'}}, $grp);
     } else {
-      $i = 999;
+      push(@toplevelgroups, $grp);
+    }
+    for ($i=1; $i < 100; $i++) {
+      if ($confarray[0]{'fakegroups'}{$grp}{"uid".$i} ne undef) {
+	$dev = $confarray[0]{'fakegroups'}{$grp}{"uid".$i};
+	push(@{$groups{$grp}{'dlist'}}, $dev);
+      } else {
+	$i = 999;
+      }
     }
   }
 }

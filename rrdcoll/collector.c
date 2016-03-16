@@ -632,6 +632,7 @@ void connect_server_cb(int nada, short what, void *arg)
 	if (need_rereg) {
 		rrd_rrdcreate(cfg); /* ask for feeds */
 		request_devlist(conn);
+		gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
 	}
 }
 
