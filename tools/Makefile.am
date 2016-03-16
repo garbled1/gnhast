@@ -18,21 +18,28 @@ notify_listen_SOURCES = \
 	$(top_srcdir)/common/ssdp.h \
 	notify_listen.c
 
-dist_bin_SCRIPTS = addhandler modhargs venstar_stats
-CLEANFILES = $(dist_bin_SCRIPTS)
+bin_SCRIPTS = addhandler modhargs venstar_stats start_gnhast stop_gnhast
+CLEANFILES = $(bin_SCRIPTS)
 EXTRA_DIST = \
+	start_gnhast.sh \
+	stop_gnhast.sh \
 	addhandler.sh \
 	modhargs.sh \
 	venstar_stats.sh
+
+confexampledir = $(datarootdir)/gnhast/examples
+dist_confexample_DATA = \
+	gnhastd.run
 
 do_subst = sed -e 's,[@]NETCAT[@],$(NETCAT),g' \
 	-e 's,[@]GNHANDLERDIR[@],$(pkglibexecdir),g' \
 	-e 's,[@]SYSCONFDIR[@],$(sysconfdir),g' \
 	-e 's,[@]BINDIR[@],$(DESTDIR)$(bindir),g' \
 	-e 's,[@]CURL[@],$(CURL),g' \
+	-e 's,[@]LOCALSTATEDIR[@],$(localstatedir),g' \
 	-e 's,[@]RRDTOOL[@],$(RRDTOOL),g'
 
 .SECONDEXPANSION:
-${dist_bin_SCRIPTS}: $$@.sh
+${bin_SCRIPTS}: $$@.sh
 	$(do_subst) < $(srcdir)/$? > $@
 	chmod +x $@

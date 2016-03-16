@@ -701,8 +701,8 @@ void connect_event_cb(struct bufferevent *ev, short what, void *arg)
 			tev = event_new(base, -1, EV_PERSIST, health_cb, conn);
 			secs.tv_sec = HEALTH_CHECK_RATE;
 			evtimer_add(tev, &secs);
-			LOG(LOG_NOTICE, "Setting up self-health checks every"
-			    " %d seconds", secs.tv_sec);
+			LOG(LOG_NOTICE, "Setting up self-health checks every "
+			    "%d seconds", secs.tv_sec);
 		}
 	} else if (what & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
 		if (what & BEV_EVENT_ERROR) {

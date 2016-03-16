@@ -1,0 +1,38 @@
+# My gnhastd start conf
+
+VDIR="/usr/local/var/run"
+GNHASTD=YES
+GNHASTD_PID=${VDIR}/gnhastd.pid
+
+MONCOLL=YES
+MONCOLL_PID=${VDIR}/moncoll.pid
+
+COLL1_CMD=owsrvcoll
+COLL1_PID=${VDIR}/owsrvcoll.pid
+
+COLL2_CMD=brulcoll
+COLL2_PID=${VDIR}/brulcoll.pid
+
+COLL3_CMD=insteoncoll
+COLL3_PID=${VDIR}/insteoncoll.pid
+
+COLL4_CMD=wmr918coll
+COLL4_PID=${VDIR}/wmr918coll.pid
+
+COLL5_CMD=wupwscoll
+COLL5_ARGS="-c /usr/local/etc/wunderground.conf"
+COLL5_PID=${VDIR}/wunderground.pid
+
+COLL6_CMD=wupwscoll
+COLL6_ARGS="-c /usr/local/etc/pwsweather.conf"
+COLL6_PID=${VDIR}/wupwscoll.pid
+
+COLL7_CMD=ad2usbcoll
+COLL7_PID=${VDIR}/ad2usbcoll.pid
+
+COLL8_CMD=venstarcoll
+COLL8_PID=${VDIR}/venstarcoll.pid
+
+COLL9_CMD=venstarcoll
+COLL9_ARGS="-c /usr/local/etc/ven-mainnorth.conf"
+COLL9_PID=${VDIR}/ven-mainnorth.pid
