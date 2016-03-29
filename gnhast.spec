@@ -46,6 +46,8 @@ rm -rf $RPM_BUILD_ROOT
 /usr/local/share/gnhast/examples/venstar.conf
 /usr/local/share/gnhast/examples/pwsweather.conf
 /usr/local/share/gnhast/examples/wunderground.conf
+/usr/local/share/gnhast/examples/moncoll.conf
+/usr/local/share/gnhast/examples/gnhastd.run
 /usr/local/share/gnhast/pixmaps/alarmstatus.png
 /usr/local/share/gnhast/pixmaps/amps.png
 /usr/local/share/gnhast/pixmaps/battery.png
@@ -64,7 +66,7 @@ rm -rf $RPM_BUILD_ROOT
 /usr/local/share/gnhast/pixmaps/hub.png
 /usr/local/share/gnhast/pixmaps/humid.png
 /usr/local/share/gnhast/pixmaps/lux.png
-/usr/local/share/gnhast/pixmaps/moisture.png
+/usr/local/share/gnhast/pixmaps/ph.png
 /usr/local/share/gnhast/pixmaps/number.png
 /usr/local/share/gnhast/pixmaps/outlet.png
 /usr/local/share/gnhast/pixmaps/percent.png
@@ -104,6 +106,11 @@ rm -rf $RPM_BUILD_ROOT
 /usr/local/bin/notify_listen
 /usr/local/bin/ssdp_scan
 /usr/local/bin/gtk-gnhast
+/usr/local/bin/moncoll
+/usr/local/bin/jsoncoll.cgi
+/usr/local/bin/start_gnhast
+/usr/local/bin/stop_gnhast
+/usr/local/bin/gtk-insteonedit
 
 
 %changelog
@@ -112,3 +119,6 @@ rm -rf $RPM_BUILD_ROOT
 
 * Wed Jul  9 2014 Tim Rightnour <root@garbled.net> - 
 - Update for 0.3 release
+
+* Tue Mar 29 2016 Tim Rightnour <root@garbled.net> -
+- Update for 0.4 release
