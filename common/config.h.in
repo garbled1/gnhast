@@ -30,15 +30,6 @@
 /* Define to 1 if you have the `crypto' library (-lcrypto). */
 #undef HAVE_LIBCRYPTO
 
-/* Define to 1 if you have the `event_core' library (-levent_core). */
-#undef HAVE_LIBEVENT_CORE
-
-/* Define to 1 if you have the `event_extra' library (-levent_extra). */
-#undef HAVE_LIBEVENT_EXTRA
-
-/* Define to 1 if you have the `event_openssl' library (-levent_openssl). */
-#undef HAVE_LIBEVENT_OPENSSL
-
 /* Define to 1 if you have the `m' library (-lm). */
 #undef HAVE_LIBM
 

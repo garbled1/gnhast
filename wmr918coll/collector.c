@@ -412,6 +412,7 @@ double wx2_calc_baro(uint8_t d1, uint8_t d2, uint8_t d3,
 	switch (scale) {
 	case BAROSCALE_IN: baro = BARO_MBTOIN(baro); break;
 	case BAROSCALE_MM: baro = BARO_MBTOMM(baro); break;
+	case BAROSCALE_CB: baro = MBTOCB(baro); break;
 	}
 	return baro;
 }
@@ -567,6 +568,10 @@ void wx2_handle_baro(uint8_t *data)
 	case BAROSCALE_MM:
 		local = BARO_MBTOMM(local);
 		sealevel = BARO_MBTOMM(sealevel);
+		break;
+	case BAROSCALE_CB:
+		local = MBTOCB(local);
+		sealevel = MBTOCB(sealevel);
 		break;
 	}
 
@@ -1097,6 +1102,10 @@ void wmr_handle_bth(uint8_t *data)
 		baro = BARO_MBTOMM(baro);
 		seabaro = BARO_MBTOMM(seabaro);
 		break;
+	case BAROSCALE_CB:
+		baro = MBTOCB(baro);
+		seabaro = MBTOCB(seabaro);
+		break;
 	}
 
 	switch (BCDLO(data[9])) {
@@ -1179,6 +1188,10 @@ void wmr_handle_extbth(uint8_t *data)
 	case BAROSCALE_MM:
 		baro = BARO_MBTOMM(baro);
 		seabaro = BARO_MBTOMM(seabaro);
+		break;
+	case BAROSCALE_CB:
+		baro = MBTOCB(baro);
+		seabaro = MBTOCB(seabaro);
 		break;
 	}
 

@@ -433,7 +433,7 @@ int cmd_update(pargs_t *args, void *arg)
 		case SC_PRESSURE:
 		case SC_SPEED:
 		case SC_DIR:
-		case SC_MOISTURE:
+		case SC_PH:
 		case SC_WETNESS:
 		case SC_VOLTAGE:
 		case SC_WATT:
@@ -571,7 +571,7 @@ int cmd_change(pargs_t *args, void *arg)
                 case SC_PRESSURE:
                 case SC_SPEED:
                 case SC_DIR:
-                case SC_MOISTURE:
+                case SC_PH:
                 case SC_WETNESS:
                 case SC_VOLTAGE:
                 case SC_WATT:

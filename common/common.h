@@ -52,6 +52,8 @@
 
 #define INTOMM(x)	(x * 25.4)
 #define MMTOIN(x)	(x * 0.0393701)
+#define MBTOCB(x)	(x * 0.1)
+#define CBTOMB(x)	(x * 10.0)
 
 #define KPHTOMPH(x)	(x * 0.621371)
 #define MSTOMPH(x)	(x * 2.23694)

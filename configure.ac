@@ -29,9 +29,10 @@ AC_CHECK_HEADERS([arpa/inet.h fcntl.h netdb.h netinet/in.h \
 	 sys/queue.h sys/rbtree.h ])
 
 # Checks for libraries.
-AC_CHECK_LIB(event_core, event_base_new,, AC_MSG_ERROR(["Unable to find libevent2 core"]))
-AC_CHECK_LIB(event_extra, evdns_base_new,, AC_MSG_ERROR(["Unable to find libevent2 extra"]))
-AC_CHECK_LIB(event_openssl, bufferevent_get_openssl_error,, AC_MSG_ERROR(["Unable to find libevent2 openssl"]))
+AC_SEARCH_LIBS([event_base_new], [event_core event], , AC_MSG_ERROR(["Unable to find libevent 2 core"]))
+AC_SEARCH_LIBS([evdns_base_new], [event_extra event], , AC_MSG_ERROR(["Unable to find libevent2 extra"]))
+AC_SEARCH_LIBS([bufferevent_get_openssl_error], [event_openssl event], , AC_MSG_ERROR(["Unable to find libevent2 openssl"]))
+
 AC_CHECK_LIB(ssl, SSL_CTX_new,,AC_MSG_ERROR(["Unable to find openSSL library"]))
 AC_CHECK_LIB(crypto, RAND_poll,,AC_MSG_ERROR(["Unable to find crypto library"]))
 AC_CHECK_LIB(m, lrint,,AC_MSG_ERROR(["Unable to find math library"]))

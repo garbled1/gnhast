@@ -110,7 +110,7 @@ name_map_t devsubtype_map[] = {
 	{SUBTYPE_PRESSURE, "pressure"},
 	{SUBTYPE_SPEED, "windspeed"},
 	{SUBTYPE_DIR, "winddir"},
-	{SUBTYPE_MOISTURE, "moisture"},
+	{SUBTYPE_PH, "ph"},
 	{SUBTYPE_WETNESS, "wetness"},
 	{SUBTYPE_HUB, "hub"},
 	{SUBTYPE_LUX, "lux"},
@@ -454,8 +454,8 @@ void get_data_dev(device_t *dev, int where, void *data)
 		case SUBTYPE_DIR:
 			*((double *)data) = store->dir;
 			break;
-		case SUBTYPE_MOISTURE:
-			*((double *)data) = store->moisture;
+		case SUBTYPE_PH:
+			*((double *)data) = store->ph;
 			break;
 		case SUBTYPE_WETNESS:
 			*((double *)data) = store->wetness;
@@ -578,8 +578,8 @@ void store_data_dev(device_t *dev, int where, void *data)
 		case SUBTYPE_DIR:
 			store->dir = *((double *)data);
 			break;
-		case SUBTYPE_MOISTURE:
-			store->moisture = *((double *)data);
+		case SUBTYPE_PH:
+			store->ph = *((double *)data);
 			break;
 		case SUBTYPE_WETNESS:
 			store->wetness = *((double *)data);

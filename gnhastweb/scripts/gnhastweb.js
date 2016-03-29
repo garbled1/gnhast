@@ -89,7 +89,7 @@ function make_graph(data, uid, devname) {
 
 var subtypes = ["none",
 		"switch", "outlet", "temp", "humid", "counter",
-		"pressure", "speed", "dir", "moisture", "wetness",
+		"pressure", "speed", "dir", "ph", "wetness",
 		"hub", "lux", "voltage", "wattsec", "watt", "amps",
 		"rainrate", "weather", "alarmstatus", "number", "percentage",
 		"flowrate", "distance", "volume", "timer", "thmode",

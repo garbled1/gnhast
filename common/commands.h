@@ -74,7 +74,7 @@ enum SC_COMMANDS {
 	SC_SPEED,	/**< \brief speed */
 	SC_DIR,		/**< \brief direction */
 	SC_WETNESS,	/**< \brief wetness */
-	SC_MOISTURE,	/**< \brief moisture */
+	SC_PH,		/**< \brief pH */
 	SC_VOLTAGE,	/**< \brief voltage */
 	SC_WATTSEC,	/**< \brief watt seconds */
 	SC_WATT,	/**< \brief wattage */

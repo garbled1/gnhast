@@ -26,7 +26,7 @@ $header = "header.html";
 	    "pressure",
 	    "speed",
 	    "dir",
-	    "moisture",
+	    "ph",
 	    "wetness",
 	    "hub",
 	    "lux",
@@ -52,7 +52,7 @@ $header = "header.html";
 	   );
 
 @ststorage = ("none", "switch", "switch", "temp", "humid", "count", "pres",
-	      "speed", "dir", "moist", "wet", "hub", "lux", "volts", "wsec",
+	      "speed", "dir", "ph", "wet", "hub", "lux", "volts", "wsec",
 	      "watt", "amps",
 	      "rain", "weather", "alarm", "number", "pct", "flow",
 	      "distance", "volume", "timer", "thmode", "thstate", "smnum",
@@ -64,7 +64,7 @@ $header = "header.html";
 
 @tscale = ('F', 'C', 'K', 'R');
 @tscalenm = ("Farenheit", "Celcius", "Kelvin", "Rankine");
-@baroscale = ('in', 'mm', 'mb');
+@baroscale = ('in', 'mm', 'mb', 'cb');
 @lengthscale = ('in', 'mm');
 @speedscale = ('mph', 'knots', 'ms', 'kph');
 @speedscalenm = ('MPH', 'Knots', 'm/s', 'KPH');
@@ -100,7 +100,7 @@ $header = "header.html";
 			     '', 'wi wi-humidity', '' ],
 		"counter" => [ 'counter', 'COUNTER', 2,
 			       '', 'fa fa-hashtag', '' ],
-		"pressure" => [ 'pressure', 'BAROMETER', 1,
+		"pressure" => [ 'pressure', 'PRESSURE', 1,
 				$baroscale[$scales{'baro'}],
 				"wi wi-barometer", '' ],
 		"speed" => [ 'windspeed', 'SPEED', 1,
@@ -108,8 +108,8 @@ $header = "header.html";
 			     "fa fa-mixcloud", '' ],
 		"dir" => [ 'winddir', 'DIRECTION', 1,
 			   'Degrees', 'fa fa-safari', '' ],
-		"moisture" => [ 'moisture', "MOISTURE", 1,
-				"", "fa fa-tint fa-flip-horizontal", "" ],
+		"ph" => [ 'ph', "ph", 1,
+				"", "fa fa-balance-scale", "" ],
 		"wetness" => [ 'wetness', "WETNESS", 1,
 			       "", "fa fa-tint fa-flip-horizontal", "" ],
 		"hub" => [ 'hub', "HUB", 1, '', 'notyet', ""],
@@ -921,7 +921,7 @@ sub print_devdata {
       print "$devices{$uid}{$ststorage[$subt]}";
     }
   }
-  if ($subtnm eq "humid" || $subtnm eq "moisture" || $subtnm eq "wetness" ||
+  if ($subtnm eq "humid" || $subtnm eq "wetness" ||
       $devices{$uid}{'devt'} == 2 || $subtnm eq "percentage") {
     print "%";
   }

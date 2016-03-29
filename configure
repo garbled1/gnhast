@@ -13295,13 +13295,12 @@ done
 
 
 # Checks for libraries.
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for event_base_new in -levent_core" >&5
-$as_echo_n "checking for event_base_new in -levent_core... " >&6; }
-if ${ac_cv_lib_event_core_event_base_new+:} false; then :
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing event_base_new" >&5
+$as_echo_n "checking for library containing event_base_new... " >&6; }
+if ${ac_cv_search_event_base_new+:} false; then :
   $as_echo_n "(cached) " >&6
 else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-levent_core  $LIBS"
+  ac_func_search_save_LIBS=$LIBS
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -13320,35 +13319,46 @@ return event_base_new ();
   return 0;
 }
 _ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_event_core_event_base_new=yes
-else
-  ac_cv_lib_event_core_event_base_new=no
+for ac_lib in '' event_core event; do
+  if test -z "$ac_lib"; then
+    ac_res="none required"
+  else
+    ac_res=-l$ac_lib
+    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
+  fi
+  if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_search_event_base_new=$ac_res
 fi
 rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
+    conftest$ac_exeext
+  if ${ac_cv_search_event_base_new+:} false; then :
+  break
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_event_core_event_base_new" >&5
-$as_echo "$ac_cv_lib_event_core_event_base_new" >&6; }
-if test "x$ac_cv_lib_event_core_event_base_new" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBEVENT_CORE 1
-_ACEOF
-
-  LIBS="-levent_core $LIBS"
+done
+if ${ac_cv_search_event_base_new+:} false; then :
 
 else
-  as_fn_error $? "\"Unable to find libevent2 core\"" "$LINENO" 5
+  ac_cv_search_event_base_new=no
+fi
+rm conftest.$ac_ext
+LIBS=$ac_func_search_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search_event_base_new" >&5
+$as_echo "$ac_cv_search_event_base_new" >&6; }
+ac_res=$ac_cv_search_event_base_new
+if test "$ac_res" != no; then :
+  test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
+
+else
+  as_fn_error $? "\"Unable to find libevent 2 core\"" "$LINENO" 5
 fi
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for evdns_base_new in -levent_extra" >&5
-$as_echo_n "checking for evdns_base_new in -levent_extra... " >&6; }
-if ${ac_cv_lib_event_extra_evdns_base_new+:} false; then :
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing evdns_base_new" >&5
+$as_echo_n "checking for library containing evdns_base_new... " >&6; }
+if ${ac_cv_search_evdns_base_new+:} false; then :
   $as_echo_n "(cached) " >&6
 else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-levent_extra  $LIBS"
+  ac_func_search_save_LIBS=$LIBS
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -13367,35 +13377,46 @@ return evdns_base_new ();
   return 0;
 }
 _ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_event_extra_evdns_base_new=yes
-else
-  ac_cv_lib_event_extra_evdns_base_new=no
+for ac_lib in '' event_extra event; do
+  if test -z "$ac_lib"; then
+    ac_res="none required"
+  else
+    ac_res=-l$ac_lib
+    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
+  fi
+  if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_search_evdns_base_new=$ac_res
 fi
 rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
+    conftest$ac_exeext
+  if ${ac_cv_search_evdns_base_new+:} false; then :
+  break
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_event_extra_evdns_base_new" >&5
-$as_echo "$ac_cv_lib_event_extra_evdns_base_new" >&6; }
-if test "x$ac_cv_lib_event_extra_evdns_base_new" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBEVENT_EXTRA 1
-_ACEOF
+done
+if ${ac_cv_search_evdns_base_new+:} false; then :
 
-  LIBS="-levent_extra $LIBS"
+else
+  ac_cv_search_evdns_base_new=no
+fi
+rm conftest.$ac_ext
+LIBS=$ac_func_search_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search_evdns_base_new" >&5
+$as_echo "$ac_cv_search_evdns_base_new" >&6; }
+ac_res=$ac_cv_search_evdns_base_new
+if test "$ac_res" != no; then :
+  test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
 
 else
   as_fn_error $? "\"Unable to find libevent2 extra\"" "$LINENO" 5
 fi
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for bufferevent_get_openssl_error in -levent_openssl" >&5
-$as_echo_n "checking for bufferevent_get_openssl_error in -levent_openssl... " >&6; }
-if ${ac_cv_lib_event_openssl_bufferevent_get_openssl_error+:} false; then :
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing bufferevent_get_openssl_error" >&5
+$as_echo_n "checking for library containing bufferevent_get_openssl_error... " >&6; }
+if ${ac_cv_search_bufferevent_get_openssl_error+:} false; then :
   $as_echo_n "(cached) " >&6
 else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-levent_openssl  $LIBS"
+  ac_func_search_save_LIBS=$LIBS
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -13414,27 +13435,40 @@ return bufferevent_get_openssl_error ();
   return 0;
 }
 _ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_event_openssl_bufferevent_get_openssl_error=yes
-else
-  ac_cv_lib_event_openssl_bufferevent_get_openssl_error=no
+for ac_lib in '' event_openssl event; do
+  if test -z "$ac_lib"; then
+    ac_res="none required"
+  else
+    ac_res=-l$ac_lib
+    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
+  fi
+  if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_search_bufferevent_get_openssl_error=$ac_res
 fi
 rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
+    conftest$ac_exeext
+  if ${ac_cv_search_bufferevent_get_openssl_error+:} false; then :
+  break
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_event_openssl_bufferevent_get_openssl_error" >&5
-$as_echo "$ac_cv_lib_event_openssl_bufferevent_get_openssl_error" >&6; }
-if test "x$ac_cv_lib_event_openssl_bufferevent_get_openssl_error" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBEVENT_OPENSSL 1
-_ACEOF
+done
+if ${ac_cv_search_bufferevent_get_openssl_error+:} false; then :
 
-  LIBS="-levent_openssl $LIBS"
+else
+  ac_cv_search_bufferevent_get_openssl_error=no
+fi
+rm conftest.$ac_ext
+LIBS=$ac_func_search_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search_bufferevent_get_openssl_error" >&5
+$as_echo "$ac_cv_search_bufferevent_get_openssl_error" >&6; }
+ac_res=$ac_cv_search_bufferevent_get_openssl_error
+if test "$ac_res" != no; then :
+  test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
 
 else
   as_fn_error $? "\"Unable to find libevent2 openssl\"" "$LINENO" 5
 fi
+
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for SSL_CTX_new in -lssl" >&5
 $as_echo_n "checking for SSL_CTX_new in -lssl... " >&6; }

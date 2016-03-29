@@ -18,7 +18,7 @@ dist_icons_DATA = alarmstatus.png \
 	hub.png \
 	humid.png \
 	lux.png \
-	moisture.png \
+	ph.png \
 	number.png \
 	outlet.png \
 	percent.png \

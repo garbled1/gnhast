@@ -103,11 +103,13 @@ double gn_scale_pressure(double press, int cur, int new)
 	switch (cur) {
 	case BAROSCALE_IN: d = BARO_INTOMB(press); break;
 	case BAROSCALE_MM: d = BARO_MMTOMB(press); break;
+	case BAROSCALE_CB: d = CBTOMB(press); break;
 	}
 	/* now from MB -> new scale */
 	switch (new) {
 	case BAROSCALE_IN: return BARO_MBTOIN(d); break;
 	case BAROSCALE_MM: return BARO_MBTOMM(d); break;
+	case BAROSCALE_CB: return MBTOCB(d); break;
 	}
 	return d;
 }

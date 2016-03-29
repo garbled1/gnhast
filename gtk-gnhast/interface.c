@@ -117,7 +117,7 @@ static void load_icons(void)
 	subtype_icons[SUBTYPE_PRESSURE] = create_pixbuf("pressure.png");
 	subtype_icons[SUBTYPE_SPEED] = create_pixbuf("speed.png");
 	subtype_icons[SUBTYPE_DIR] = create_pixbuf("dir.png");
-	subtype_icons[SUBTYPE_MOISTURE] = create_pixbuf("moisture.png");
+	subtype_icons[SUBTYPE_PH] = create_pixbuf("ph.png");
 	subtype_icons[SUBTYPE_WETNESS] = create_pixbuf("wetness.png");
 	subtype_icons[SUBTYPE_HUB] = create_pixbuf("hub.png");
 	subtype_icons[SUBTYPE_LUX] = create_pixbuf("lux.png");

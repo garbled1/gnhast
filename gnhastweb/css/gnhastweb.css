@@ -1740,22 +1740,22 @@ input[type='range']:focus {
   text-shadow: 1px 1px 0px #b2ff1a;
 }
 
-/* moisture */
-.moisture {
+/* ph */
+.ph {
   background: #d9b3ff;
   border: 1px solid #bf80ff;
 }
-.moisture .inner {
+.ph .inner {
   border-top: 1px solid #bf80ff;
 }
-.moisture .inner .icon {
+.ph .inner .icon {
   width: 53px;
   height: 53px;
   position: absolute;
   top: -100px;
   left: 60px;
 }
-.moisture .inner .text {
+.ph .inner .text {
   border: 1px solid #bf80ff;
   background: #d9b3ff;
   color: #000000;

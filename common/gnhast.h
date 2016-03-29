@@ -107,7 +107,7 @@ enum SUBTYPE_TYPES {
 	SUBTYPE_PRESSURE,
 	SUBTYPE_SPEED,
 	SUBTYPE_DIR,
-	SUBTYPE_MOISTURE,
+	SUBTYPE_PH, /* stored in ph */
 	SUBTYPE_WETNESS,
 	SUBTYPE_HUB,
 	SUBTYPE_LUX,
@@ -160,6 +160,7 @@ enum BAROSCALE_TYPES {
 	BAROSCALE_IN,
 	BAROSCALE_MM,
 	BAROSCALE_MB,
+	BAROSCALE_CB,
 };
 
 enum LENGTH_TYPES {
@@ -301,7 +302,7 @@ typedef union _data_t {
 	double dir;     /**< \brief direction (wind) */
 	double level;	/**< \brief level (for dimmers) */
 	double wetness;	/**< \brief wetness */
-	double moisture;/**< \brief moisture level */
+	double ph;	/**< \brief pH */
 	double volts;	/**< \brief voltage */
 	double watts;	/**< \brief watts */
 	double amps;	/**< \brief amps */

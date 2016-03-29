@@ -501,6 +501,8 @@ int conf_parse_baroscale(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		*(int *)result = BAROSCALE_MB;
 	else if (strcasecmp(value, "HPA") == 0)
 		*(int *)result = BAROSCALE_MB;
+	else if (strcasecmp(value, "CB") == 0)
+		*(int *)result = BAROSCALE_CB;
 	else {
 		cfg_error(cfg, "invalid baro scale value for option '%s': %s",
 		    cfg_opt_name(opt), value);
@@ -527,6 +529,9 @@ void conf_print_baroscale(cfg_opt_t *opt, unsigned int index, FILE *fp)
 		break;
 	case BAROSCALE_MB:
 		fprintf(fp, "mb");
+		break;
+	case BAROSCALE_CB:
+		fprintf(fp, "cb");
 		break;
 	default:
 		fprintf(fp, "mb");
