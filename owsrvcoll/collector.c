@@ -209,7 +209,26 @@ schedtop:
 		} else {
 			sz += strlen((char *)dev->localdata) + 1; /*+1 for / */
 			buf = safer_malloc(sz);
-			snprintf(buf, sz, "%s/%s/pressure",
+			if (((char *)dev->localdata)[0] == 's') {
+				/* moisture type */
+				snprintf(buf, sz, "%s/moisture/%s", dev->loc,
+					 (char *)dev->localdata);
+			} else
+				snprintf(buf, sz, "%s/%s/pressure",
+					 dev->loc, (char *)dev->localdata);
+		}
+		break;
+	case SUBTYPE_WETNESS:
+		sz = 10; /* /moisture + NUL */
+		sz += strlen(dev->loc);
+		if (dev->localdata == NULL) {
+			LOG(LOG_ERROR, "Must have multimodel info for "
+			    "leaf wetness type %s", dev->uid);
+			return;
+		} else {
+			sz += strlen((char *)dev->localdata) + 1; /*+1 for / */
+			buf = safer_malloc(sz);
+			snprintf(buf, sz, "%s/moisture/%s",
 				 dev->loc, (char *)dev->localdata);
 		}
 		break;
@@ -235,6 +254,7 @@ schedtop:
 		goto schedcbout;
 		break;
 	}
+	LOG(LOG_DEBUG, "Sending '%s' size=%d", buf, sz);
 	sendmsg.version = 0;
 	sendmsg.payload = htonl(sz);
 	sendmsg.type = htonl(OWSM_READ);
@@ -310,7 +330,6 @@ void ows_schedule_dirall(connection_t *conn)
 	bufferevent_write(conn->bev, buf, strlen(buf)+1);
 }
 
-
 /**
    \brief handling code for a DIRALL response
    \param conn connection_t of connection
@@ -349,8 +368,12 @@ void ows_handle_dirall(connection_t *conn, char *buf)
 			}
 			if (strncmp(p, "1D.", 3) == 0)
 				dev->subtype = SUBTYPE_NONE;
-			if (strncmp(p, "EF.", 3) == 0)
+			if (strncmp(p, "EF.", 3) == 0) {
+				LOG(LOG_WARNING, "OW device family EF is not "
+				    "auto-determinable, needs config entry "
+				    "for uid %s\n", p);
 				dev->subtype = SUBTYPE_NONE;
+			}
 			if (strncmp(p, "26.", 3) == 0) {
 				LOG(LOG_WARNING, "OW device family 26 is not "
 				    "auto-determinable, needs config entry "

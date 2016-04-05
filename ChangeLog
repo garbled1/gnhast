@@ -1,3 +1,8 @@
+0.5 - Development Version
+	New Features:
+
+	owsrvcoll - Add support for moisture and wetness Hobby Boards sensors.
+	
 0.4 - Release Version
 	Added Collectors:
 		moncoll

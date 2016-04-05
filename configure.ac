@@ -1,5 +1,5 @@
 
-AC_INIT([gnhast], 0.4)
+AC_INIT([gnhast], 0.5)
 AM_INIT_AUTOMAKE
 LT_INIT([disable-shared])
 AC_PROG_CC
