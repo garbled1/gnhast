@@ -76,14 +76,13 @@ int discovery_fd = -1;
 int discovery_port = 0;
 int discovery_count = 0;
 int discovery_done = 0;
-int waiting = 0;
+int waiting = 0; /* are we waiting for more zone updates from gnhastd? */
 char *icaddy_url = NULL;
 char *ichn;
 int hasrain = 0;
 icaddy_discovery_resp_t icaddy_list[MAX_ICADDY_DEVS];
 struct event *disc_ev; /* the discovery event */
 time_t icaddy_lastupd;
-
 http_get_t *status_get;
 http_get_t *settings_get;
  

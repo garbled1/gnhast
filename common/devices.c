@@ -751,7 +751,8 @@ int datatype_dev(device_t *dev)
    \param dev device
    \return 0 no, 1 above hiwat, -1 below lowat, 2 no watermark
    Check if we are spamming the handler.  If not, check only if we CROSSED
-   a watermark.
+   a watermark. Unless CHANGEHANDLER is set, that takes precedence.  Then
+   we check if the value has changed at all.
 */
 
 int device_watermark(device_t *dev)
@@ -760,7 +761,35 @@ int device_watermark(device_t *dev)
 	uint32_t lwu, hwu, du, pdu;
 	int64_t lwj, hwj, dj, pdj;
 	int spam = (dev->flags & DEVFLAG_SPAMHANDLER);
+	int change = (dev->flags & DEVFLAG_CHANGEHANDLER);
 
+	/* handle a change type first, easier, also,
+	   change needs no watermarks */
+	if (change) {
+		switch (datatype_dev(dev)) {
+		case DATATYPE_UINT:
+			get_data_dev(dev, DATALOC_LAST, &pdu);
+			get_data_dev(dev, DATALOC_DATA, &du);
+			if (du != pdu)
+				return 1;
+			break;
+		case DATATYPE_LL:
+			get_data_dev(dev, DATALOC_LAST, &pdj);
+			get_data_dev(dev, DATALOC_DATA, &dj);
+			if (dj != pdj)
+				return 1;
+			break;
+		case DATATYPE_DOUBLE:
+			get_data_dev(dev, DATALOC_LAST, &pdd);
+			get_data_dev(dev, DATALOC_DATA, &dd);
+			if (dd != pdd)
+				return 1;
+			break;
+		}
+		return 0;
+	}
+
+	/* now handle a watermark type */
 	if (datatype_dev(dev) == DATATYPE_UINT) {
 		get_data_dev(dev, DATALOC_LOWAT, &lwu);
 		get_data_dev(dev, DATALOC_HIWAT, &hwu);

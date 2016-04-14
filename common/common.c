@@ -42,6 +42,7 @@
 #include <sys/queue.h>
 
 #include "common.h"
+#include "confparser.h"
 
 char *stored_logname = NULL;
 char *stored_pidfile = NULL;

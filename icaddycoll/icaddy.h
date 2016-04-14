@@ -24,6 +24,7 @@
 #define ICJ_RUNOFF_URL	"/stopSprinklers.htm"
 #define ICJ_RUNOFF_POST	"stop=off"
 #define ICJ_STOPPROG_POST	"stop=active"
+#define ICJ_INDEX_URL	"/index.htm"
 
 typedef struct _http_ctx_t {
         struct evhttp_uri *uri;

@@ -51,6 +51,7 @@
 
 #include "common.h"
 #include "gnhast.h"
+#include "confparser.h"
 #include "confuse.h"
 #include "collcmd.h"
 #include "genconn.h"

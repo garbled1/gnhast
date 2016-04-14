@@ -288,6 +288,7 @@ enum DATATYPE_TYPES {
 
 #define DEVFLAG_SPAMHANDLER	(1<<1)	/**< \brief do we spam the handler? */
 #define DEVFLAG_NODATA		(1<<2)	/**< \brief device has no cur data */
+#define DEVFLAG_CHANGEHANDLER	(1<<3)	/**< \brief fire when device changes */
 
 /** data union */
 typedef union _data_t {

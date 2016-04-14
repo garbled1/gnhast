@@ -73,7 +73,7 @@ cfg_opt_t device_opts[] = {
 	CFG_STR("multimodel", 0, CFGF_NODEFAULT),
 	CFG_STR("handler", 0, CFGF_NODEFAULT),
 	CFG_STR_LIST("hargs", 0, CFGF_NODEFAULT),
-	CFG_INT_CB("spamhandler", 0, CFGF_NONE, conf_parse_bool),
+	CFG_INT_CB("spamhandler", 0, CFGF_NONE, conf_parse_spamhandler),
 	CFG_FLOAT("hiwat", 0.0, CFGF_NONE),
 	CFG_FLOAT("lowat", 0.0, CFGF_NONE),
 	CFG_END(),
@@ -152,6 +152,46 @@ int conf_parse_bool(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		*(int *)result = 0;
 	else {
 		cfg_error(cfg, "invalid bool value for option '%s': %s",
+		    cfg_opt_name(opt), value);
+		return -1;
+	}
+	return 0;
+}
+
+/**
+   \brief parse a spamhandler
+   \param cfg the config base
+   \param opt the option we are parsing
+   \param the value of the option
+   \param result result of option parsing will be stored here
+   \return success
+   \note For result:  0=no 1=yes 2=onchange
+*/
+int conf_parse_spamhandler(cfg_t *cfg, cfg_opt_t *opt, const char *value,
+			   void *result)
+{
+	if (strcasecmp(value, "yes") == 0)
+		*(int *)result = 1;
+	else if (strcasecmp(value, "true") == 0)
+		*(int *)result = 1;
+	else if (strcasecmp(value, "1") == 0)
+		*(int *)result = 1;
+	else if (strcasecmp(value, "spam") == 0)
+		*(int *)result = 1;
+	else if (strcasecmp(value, "no") == 0)
+		*(int *)result = 0;
+	else if (strcasecmp(value, "false") == 0)
+		*(int *)result = 0;
+	else if (strcasecmp(value, "0") == 0)
+		*(int *)result = 0;
+	else if (strcasecmp(value, "2") == 0)
+		*(int *)result = 2;
+	else if (strcasecmp(value, "change") == 0)
+		*(int *)result = 2;
+	else if (strcasecmp(value, "onchange") == 0)
+		*(int *)result = 2;
+	else {
+		cfg_error(cfg, "invalid spamhandler value for option '%s': %s",
 		    cfg_opt_name(opt), value);
 		return -1;
 	}
@@ -244,6 +284,31 @@ void conf_print_bool(cfg_opt_t *opt, unsigned int index, FILE *fp)
 		break;
 	case 1:
 		fprintf(fp, "yes");
+		break;
+	default:
+		fprintf(fp, "no");
+		break;
+	}
+}
+
+/**
+   \brief Used to print spamhandler values
+   \param opt option structure
+   \param index number of option to print
+   \param fp passed FILE
+*/
+
+void conf_print_spamhandler(cfg_opt_t *opt, unsigned int index, FILE *fp)
+{
+	switch (cfg_opt_getnint(opt, index)) {
+	case 0:
+		fprintf(fp, "no");
+		break;
+	case 1:
+		fprintf(fp, "yes");
+		break;
+	case 2:
+		fprintf(fp, "onchange");
 		break;
 	default:
 		fprintf(fp, "no");
@@ -646,6 +711,7 @@ device_t *new_dev_from_conf(cfg_t *cfg, char *uid)
 	cfg_t *devconf;
 	double d;
 	uint32_t u;
+	int64_t ll;
 	int i;
 
 	devconf = find_devconf_byuid(cfg, uid);
@@ -702,19 +768,33 @@ device_t *new_dev_from_conf(cfg_t *cfg, char *uid)
 	     dev->subtype == SUBTYPE_PRESSURE ||
 	     dev->subtype == SUBTYPE_COUNTER))
 		dev->localdata = (void *)strdup(cfg_getstr(devconf, "multimodel"));
-	if (datatype_dev(dev) == DATATYPE_UINT) {
+	switch (datatype_dev(dev)) {
+	case DATATYPE_UINT:
 		u = (uint32_t)lrint(cfg_getfloat(devconf, "lowat"));
 		store_data_dev(dev, DATALOC_LOWAT, &u);
 		u = (uint32_t)lrint(cfg_getfloat(devconf, "hiwat"));
 		store_data_dev(dev, DATALOC_HIWAT, &u);
-	} else {
+		break;
+	case DATATYPE_LL:
+		ll = (int64_t)llrint(cfg_getfloat(devconf, "lowat"));
+		store_data_dev(dev, DATALOC_LOWAT, &ll);
+		ll = (int64_t)llrint(cfg_getfloat(devconf, "hiwat"));
+		store_data_dev(dev, DATALOC_HIWAT, &ll);
+		break;
+	case DATATYPE_DOUBLE:
 		d = cfg_getfloat(devconf, "lowat");
 		store_data_dev(dev, DATALOC_LOWAT, &d);
 		d = cfg_getfloat(devconf, "hiwat");
 		store_data_dev(dev, DATALOC_HIWAT, &d);
+		break;
 	}
-	if (cfg_getint(devconf, "spamhandler") > 0)
+	switch (cfg_getint(devconf, "spamhandler")) {
+	case 1:
 		dev->flags |= DEVFLAG_SPAMHANDLER;
+		break;
+	case 2:
+		dev->flags |= DEVFLAG_CHANGEHANDLER;
+	}
 
 	if (TAILQ_EMPTY(&dev->watchers))
 		TAILQ_INIT(&dev->watchers);
@@ -776,6 +856,7 @@ cfg_t *new_conf_from_dev(cfg_t *cfg, device_t *dev)
 	cfg_t *devconf;
 	double d=0;
 	uint32_t u=0;
+	int64_t ll=0;
 	int i;
 
 	devconf = find_devconf_byuid(cfg, dev->uid);
@@ -823,16 +904,25 @@ cfg_t *new_conf_from_dev(cfg_t *cfg, device_t *dev)
 		cfg_setint(devconf, "type", dev->type);
 	if (dev->proto)
 		cfg_setint(devconf, "proto", dev->proto);
-	if (datatype_dev(dev) == DATATYPE_UINT) {
+	switch (datatype_dev(dev)) {
+	case DATATYPE_UINT:
 		get_data_dev(dev, DATALOC_LOWAT, &u);
 		cfg_setfloat(devconf, "lowat", (double)u);
 		get_data_dev(dev, DATALOC_HIWAT, &u);
 		cfg_setfloat(devconf, "hiwat", (double)u);
-	} else {
+		break;
+	case DATATYPE_LL:
+		get_data_dev(dev, DATALOC_LOWAT, &ll);
+		cfg_setfloat(devconf, "lowat", (double)ll);
+		get_data_dev(dev, DATALOC_HIWAT, &ll);
+		cfg_setfloat(devconf, "hiwat", (double)ll);
+		break;
+	case DATATYPE_DOUBLE:
 		get_data_dev(dev, DATALOC_LOWAT, &d);
 		cfg_setfloat(devconf, "lowat", d);
 		get_data_dev(dev, DATALOC_HIWAT, &d);
 		cfg_setfloat(devconf, "hiwat", d);
+		break;
 	}
 
 	return devconf;
@@ -884,7 +974,7 @@ cfg_t *dump_conf(cfg_t *cfg, int flags, const char *filename)
 		a = cfg_getopt(section, "proto");
 		cfg_opt_set_print_func(a, conf_print_proto);
 		a = cfg_getopt(section, "spamhandler");
-		cfg_opt_set_print_func(a, conf_print_bool);
+		cfg_opt_set_print_func(a, conf_print_spamhandler);
 		a = cfg_getopt(section, "tscale");
 		cfg_opt_set_print_func(a, conf_print_tscale);
 		a = cfg_getopt(section, "baroscale");

@@ -372,6 +372,7 @@ int main(int argc, char **argv)
 #endif
 	ev = evsignal_new(base, SIGUSR1, cb_sigusr1, NULL);
 	event_add(ev, NULL);
+	signal(SIGPIPE, SIG_IGN); /* ignore sigpipe */
 
 	pid = getpid();
 	writepidfile(cfg_getstr(cfg, "pidfile"));

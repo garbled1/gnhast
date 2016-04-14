@@ -200,6 +200,9 @@ double gn_maybe_scale(device_t *dev, int scale, double val)
 {
 	double d;
 
+	LOG(LOG_DEBUG, "maybe_scale: scale=%d dev->scale=%d val=%f",
+	    scale, dev->scale, val);
+
 	if (dev->scale == scale)
 		return val;
 		

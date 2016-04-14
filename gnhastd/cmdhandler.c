@@ -570,6 +570,7 @@ int cmd_modify(pargs_t *args, void *arg)
 	int i, j;
 	double d;
 	uint32_t u;
+	int64_t ll;
 	device_t *dev;
 	char *uid=NULL;
 	client_t *client = (client_t *)arg;
@@ -633,17 +634,32 @@ int cmd_modify(pargs_t *args, void *arg)
 				j = DATALOC_HIWAT;
 			else
 				j = DATALOC_LOWAT;
-			if (datatype_dev(dev) == DATATYPE_UINT) {
+			switch (datatype_dev(dev)) {
+			case DATATYPE_UINT:
 				u = (uint32_t)lrint(args[i].arg.d);
 				store_data_dev(dev, j, &u);
-			} else {
+				LOG(LOG_NOTICE, "Changing uid:%s %s to %ud",
+				    dev->uid,
+				    (j == DATALOC_HIWAT) ? "high watermark" :
+				    "low watermark", u);
+				break;
+			case DATATYPE_LL:
+				ll = (int64_t)llrint(args[i].arg.d);
+				store_data_dev(dev, j, &ll);
+				LOG(LOG_NOTICE, "Changing uid:%s %s to %lld",
+				    dev->uid,
+				    (j == DATALOC_HIWAT) ? "high watermark" :
+				    "low watermark", ll);
+				break;
+			case DATATYPE_DOUBLE:
 				d = args[i].arg.d;
 				store_data_dev(dev, j, &d);
+				LOG(LOG_NOTICE, "Changing uid:%s %s to %f",
+				    dev->uid,
+				    (j == DATALOC_HIWAT) ? "high watermark" :
+				    "low watermark", d);
+				break;
 			}
-			LOG(LOG_NOTICE, "Changing uid:%s %s to %d",
-			    dev->uid,
-			    (j == DATALOC_HIWAT) ? "high watermark" :
-			        "low watermark", args[i].arg.d);
 			break;
 		case SC_HARGS:
 			parse_hargs(dev, args[i].arg.c);
@@ -954,12 +970,26 @@ int cmd_list_groups(pargs_t *args, void *arg)
 
 int cmd_ask_device(pargs_t *args, void *arg)
 {
-	int i, scale=0, what;
+	int i, scale, what;
 	device_t *dev;
 	char *uid = NULL;
 	client_t *client = (client_t *)arg;
 
 	what = GNC_UPD_NAME|GNC_UPD_RRDNAME;
+
+	/* first, find the device */
+	dev = NULL;
+	for (i=0; args[i].cword != -1; i++) {
+		if (args[i].cword == SC_UID) {
+			uid = args[i].arg.c;
+			dev = find_device_byuid(uid);
+		}
+	}
+	if (dev == NULL)
+		return 1;
+
+	/* preset the scale to the device's native scale */
+	scale = dev->scale;
 
 	/* check for a scale/flag arguments first */
 	for (i=0; args[i].cword != -1; i++)
@@ -971,17 +1001,9 @@ int cmd_ask_device(pargs_t *args, void *arg)
 		case SC_HARGS: what |= GNC_UPD_HARGS; break;
 		}
 
-	for (i=0; args[i].cword != -1; i++) {
-		if (args[i].cword == SC_UID) {
-			uid = args[i].arg.c;
-			dev = find_device_byuid(uid);
-			if (dev == NULL)
-				continue;
-			gn_update_device(dev, what|GNC_UPD_SCALE(scale),
-					 client->ev);
-			client->sentdata++;
-		}
-	}
+	gn_update_device(dev, what|GNC_UPD_SCALE(scale), client->ev);
+	client->sentdata++;
+
 	return 0;
 }
 

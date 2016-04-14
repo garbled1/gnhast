@@ -115,8 +115,9 @@ am__uninstall_files_from_dir = { \
     || { echo " ( cd '$$dir' && rm -f" $$files ")"; \
          $(am__cd) "$$dir" && rm -f $$files; }; \
   }
-am__installdirs = "$(DESTDIR)$(handlerlibexecshelldir)"
-SCRIPTS = $(handlerlibexecshell_SCRIPTS)
+am__installdirs = "$(DESTDIR)$(handlerlibexecperldir)" \
+	"$(DESTDIR)$(handlerlibexecshelldir)"
+SCRIPTS = $(handlerlibexecperl_SCRIPTS) $(handlerlibexecshell_SCRIPTS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -273,20 +274,29 @@ handlerlibexecshell_SCRIPTS = \
 	timer2 \
 	functions \
 	nightlight \
+	autowater \
 	switchon \
 	switchoff
 
-CLEANFILES = $(handlerlibexecshell_SCRIPTS)
+handlerlibexecperldir = $(handlerlibexecdir)
+handlerlibexecperl_SCRIPTS = \
+	wateruse
+
+CLEANFILES = $(handlerlibexecshell_SCRIPTS) $(handlerlibexecperl_SCRIPTS)
 EXTRA_DIST = \
 	timer.sh \
 	timer2.sh \
 	functions.sh \
 	nightlight.sh \
+	autowater.sh \
+	wateruse.pl \
 	switchon.sh \
 	switchoff.sh
 
 do_subst = sed -e 's,[@]NETCAT[@],$(NETCAT),g' \
 	-e 's,[@]GNHANDLERDIR[@],$(pkglibexecdir),g' \
+	-e 's,[@]LOCALSTATEDIR[@],$(localstatedir),g' \
+	-e 's,[@]PERL[@],$(PERL),g' \
 	-e 's,[@]SYSCONFDIR[@],$(sysconfdir),g'
 
 all: all-am
@@ -322,6 +332,41 @@ $(top_srcdir)/configure:  $(am__configure_deps)
 $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
+install-handlerlibexecperlSCRIPTS: $(handlerlibexecperl_SCRIPTS)
+	@$(NORMAL_INSTALL)
+	@list='$(handlerlibexecperl_SCRIPTS)'; test -n "$(handlerlibexecperldir)" || list=; \
+	if test -n "$$list"; then \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(handlerlibexecperldir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(handlerlibexecperldir)" || exit 1; \
+	fi; \
+	for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  if test -f "$$d$$p"; then echo "$$d$$p"; echo "$$p"; else :; fi; \
+	done | \
+	sed -e 'p;s,.*/,,;n' \
+	    -e 'h;s|.*|.|' \
+	    -e 'p;x;s,.*/,,;$(transform)' | sed 'N;N;N;s,\n, ,g' | \
+	$(AWK) 'BEGIN { files["."] = ""; dirs["."] = 1; } \
+	  { d=$$3; if (dirs[d] != 1) { print "d", d; dirs[d] = 1 } \
+	    if ($$2 == $$4) { files[d] = files[d] " " $$1; \
+	      if (++n[d] == $(am__install_max)) { \
+		print "f", d, files[d]; n[d] = 0; files[d] = "" } } \
+	    else { print "f", d "/" $$4, $$1 } } \
+	  END { for (d in files) print "f", d, files[d] }' | \
+	while read type dir files; do \
+	     if test "$$dir" = .; then dir=; else dir=/$$dir; fi; \
+	     test -z "$$files" || { \
+	       echo " $(INSTALL_SCRIPT) $$files '$(DESTDIR)$(handlerlibexecperldir)$$dir'"; \
+	       $(INSTALL_SCRIPT) $$files "$(DESTDIR)$(handlerlibexecperldir)$$dir" || exit $$?; \
+	     } \
+	; done
+
+uninstall-handlerlibexecperlSCRIPTS:
+	@$(NORMAL_UNINSTALL)
+	@list='$(handlerlibexecperl_SCRIPTS)'; test -n "$(handlerlibexecperldir)" || exit 0; \
+	files=`for p in $$list; do echo "$$p"; done | \
+	       sed -e 's,.*/,,;$(transform)'`; \
+	dir='$(DESTDIR)$(handlerlibexecperldir)'; $(am__uninstall_files_from_dir)
 install-handlerlibexecshellSCRIPTS: $(handlerlibexecshell_SCRIPTS)
 	@$(NORMAL_INSTALL)
 	@list='$(handlerlibexecshell_SCRIPTS)'; test -n "$(handlerlibexecshelldir)" || list=; \
@@ -404,7 +449,7 @@ check-am: all-am
 check: check-am
 all-am: Makefile $(SCRIPTS)
 installdirs:
-	for dir in "$(DESTDIR)$(handlerlibexecshelldir)"; do \
+	for dir in "$(DESTDIR)$(handlerlibexecperldir)" "$(DESTDIR)$(handlerlibexecshelldir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-am
@@ -464,7 +509,8 @@ install-dvi: install-dvi-am
 
 install-dvi-am:
 
-install-exec-am: install-handlerlibexecshellSCRIPTS
+install-exec-am: install-handlerlibexecperlSCRIPTS \
+	install-handlerlibexecshellSCRIPTS
 
 install-html: install-html-am
 
@@ -502,7 +548,8 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-handlerlibexecshellSCRIPTS
+uninstall-am: uninstall-handlerlibexecperlSCRIPTS \
+	uninstall-handlerlibexecshellSCRIPTS
 
 .MAKE: install-am install-strip
 
@@ -511,6 +558,7 @@ uninstall-am: uninstall-handlerlibexecshellSCRIPTS
 	distclean-libtool distdir dvi dvi-am html html-am info info-am \
 	install install-am install-data install-data-am install-dvi \
 	install-dvi-am install-exec install-exec-am \
+	install-handlerlibexecperlSCRIPTS \
 	install-handlerlibexecshellSCRIPTS install-html \
 	install-html-am install-info install-info-am install-man \
 	install-pdf install-pdf-am install-ps install-ps-am \
@@ -518,11 +566,15 @@ uninstall-am: uninstall-handlerlibexecshellSCRIPTS
 	maintainer-clean maintainer-clean-generic mostlyclean \
 	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
 	tags-am uninstall uninstall-am \
+	uninstall-handlerlibexecperlSCRIPTS \
 	uninstall-handlerlibexecshellSCRIPTS
 
 
 .SECONDEXPANSION:
 ${handlerlibexecshell_SCRIPTS}: $$@.sh
+	$(do_subst) < $(srcdir)/$? > $@
+	chmod +x $@
+${handlerlibexecperl_SCRIPTS}: $$@.pl
 	$(do_subst) < $(srcdir)/$? > $@
 	chmod +x $@
 
