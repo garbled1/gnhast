@@ -177,8 +177,9 @@ void generic_connect_event_cb(struct bufferevent *ev, short what, void *arg)
 			err = bufferevent_socket_get_dns_error(ev);
 			if (err)
 				LOG(LOG_FATAL,
-				     "DNS Failure connecting to %s: %s",
-				     conntype[conn->type], strerror(err));
+				    "DNS Failure connecting to %s: %s",
+				    conntype[conn->type],
+				    evdns_err_to_string(err));
 		}
 		LOG(LOG_NOTICE, "Lost connection to %s, closing",
 		     conntype[conn->type]);

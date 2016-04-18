@@ -323,9 +323,9 @@ int cmd_change(pargs_t *args, void *arg)
 }
 
 /**
-	\brief Handle a register device command
-	\param args The list of arguments
-	\param arg void pointer to client_t of provider
+   \brief Handle a register device command
+   \param args The list of arguments
+   \param arg void pointer to client_t of provider
 */
 
 int cmd_register(pargs_t *args, void *arg)
@@ -718,7 +718,7 @@ void feeddata_cb(int nada, short what, void *arg)
 
 int cmd_feed(pargs_t *args, void *arg)
 {
-	int i, rate=60, lc, scale=0;
+	int i, rate=60, lc, scale;
 	char *uid=NULL;
 	struct timeval secs = {0, 0};
 	device_t *dev;
@@ -733,9 +733,6 @@ int cmd_feed(pargs_t *args, void *arg)
 		case SC_RATE:
 			rate = args[i].arg.i;
 			break;
-		case SC_SCALE:
-			scale = args[i].arg.i;
-			break;
 		}
 	}
 	secs.tv_sec = rate;
@@ -744,6 +741,17 @@ int cmd_feed(pargs_t *args, void *arg)
 	dev = find_device_byuid(uid);
 	if (dev == NULL)
 		return -1;
+
+	/* check for scale arg */
+	scale = dev->scale;
+	for (i=0; args[i].cword != -1; i++) {
+		switch (args[i].cword) {
+		case SC_SCALE:
+			scale = args[i].arg.i;
+			break;
+		}
+	}
+
 	add_wrapped_device(dev, client, rate, scale);
 	if (client->tev == NULL || !event_initialized(client->tev)) {
 		client->tev = event_new(base, -1, EV_PERSIST, feeddata_cb,
@@ -991,7 +999,7 @@ int cmd_ask_device(pargs_t *args, void *arg)
 	/* preset the scale to the device's native scale */
 	scale = dev->scale;
 
-	/* check for a scale/flag arguments first */
+	/* check for scale/flag arguments */
 	for (i=0; args[i].cword != -1; i++)
 		switch (args[i].cword) {
 		case SC_SCALE: scale = args[i].arg.i; break;
@@ -1041,27 +1049,28 @@ int cmd_ask_full_device(pargs_t *args, void *arg)
 
 int cmd_cactiask_device(pargs_t *args, void *arg)
 {
-	int i, scale=0;
+	int i, scale;
 	device_t *dev;
 	char *uid = NULL;
 	client_t *client = (client_t *)arg;
 
-	/* check for a scale argument first */
+	/* check for uid argument first */
 	for (i=0; args[i].cword != -1; i++)
-		if (args[i].cword == SC_SCALE)
-			scale = args[i].arg.i;
-
-	for (i=0; args[i].cword != -1; i++) {
 		if (args[i].cword == SC_UID) {
 			uid = args[i].arg.c;
 			dev = find_device_byuid(uid);
 			if (dev == NULL)
-				continue;
-			gn_update_device(dev, GNC_UPD_CACTI|
-					 GNC_UPD_SCALE(scale), client->ev);
-			client->sentdata++;
+				return 0;
 		}
-	}
+	/* now setup scale */
+	scale = dev->scale;
+	for (i=0; args[i].cword != -1; i++)
+		if (args[i].cword == SC_SCALE)
+			scale = args[i].arg.i;
+
+	gn_update_device(dev, GNC_UPD_CACTI|GNC_UPD_SCALE(scale), client->ev);
+	client->sentdata++;
+
 	return 0;
 }
 
