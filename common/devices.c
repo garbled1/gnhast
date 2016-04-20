@@ -132,6 +132,9 @@ name_map_t devsubtype_map[] = {
 	{SUBTYPE_SMNUMBER, "smnumber"},
 	{SUBTYPE_COLLECTOR, "collector"},
 	{SUBTYPE_BLIND, "blind"},
+	{SUBTYPE_TRIGGER, "trigger"},
+	{SUBTYPE_ORP, "orp"},
+	{SUBTYPE_SALINITY, "salinity"},
 	{SUBTYPE_BOOL, "bool"},
 };
 
@@ -434,6 +437,16 @@ void get_data_dev(device_t *dev, int where, void *data)
 	case DEVICE_TIMER:
 	{
 		switch (dev->subtype) {
+		/* placing the new generics here at the top for
+		   eventual conversion */
+		case SUBTYPE_TRIGGER:
+			*((uint32_t *)data) = store->ui;
+			break;
+		case SUBTYPE_ORP:
+		case SUBTYPE_SALINITY:
+			*((double *)data) = store->d;
+			break;
+		/* old style follows */
 		case SUBTYPE_TEMP:
 			*((double *)data) = store->temp;
 			break;
@@ -558,6 +571,15 @@ void store_data_dev(device_t *dev, int where, void *data)
 	case DEVICE_BLIND:
 	{
 		switch (dev->subtype) {
+		/* new style at the top for eventual conversion */
+		case SUBTYPE_TRIGGER:
+			store->ui = *((uint32_t *)data);
+			break;
+		case SUBTYPE_ORP:
+		case SUBTYPE_SALINITY:
+			store->d = *((double *)data);
+			break;
+		/* old style */
 		case SUBTYPE_TEMP:
 			store->temp = *((double *)data);
 			break;
@@ -736,6 +758,7 @@ int datatype_dev(device_t *dev)
 	case SUBTYPE_SMNUMBER:
 	case SUBTYPE_COLLECTOR:
 	case SUBTYPE_BLIND:
+	case SUBTYPE_TRIGGER:
 		return DATATYPE_UINT;
 		break;
 	case SUBTYPE_WATTSEC:

@@ -40,6 +40,9 @@ int conf_parse_lightscale(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 void conf_print_lightscale(cfg_opt_t *opt, unsigned int index, FILE *fp);
 void conf_print_subtype(cfg_opt_t *opt, unsigned int index, FILE *fp);
 
+int conf_parse_salinescale(cfg_t *cfg, cfg_opt_t *opt, const char *value,
+			   void *result);
+void conf_print_salinescale(cfg_opt_t *opt, unsigned int index, FILE *fp);
 
 void parse_devgroups(cfg_t *cfg);
 void print_group_table(int devs);

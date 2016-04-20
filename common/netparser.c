@@ -100,6 +100,9 @@ argtable_t argtable[] = {
 	{"alsev", SC_ALSEV, PTINT},
 	{"altext", SC_ALTEXT, PTCHAR},
 	{"aluid", SC_ALUID, PTCHAR},
+	{"trigger", SC_TRIGGER, PTUINT},
+	{"orp", SC_ORP, PTDOUBLE},
+	{"salinity", SC_SALINITY, PTDOUBLE},
 };
 
 /** \brief size of the args table */ 
@@ -188,6 +191,9 @@ int find_arg_bydev(device_t *dev)
 	case SUBTYPE_SMNUMBER: return find_arg_byid(SC_SMNUMBER); break;
 	case SUBTYPE_COLLECTOR: return find_arg_byid(SC_COLLECTOR); break;
 	case SUBTYPE_BLIND: return find_arg_byid(SC_BLIND); break;
+	case SUBTYPE_TRIGGER: return find_arg_byid(SC_TRIGGER); break;
+	case SUBTYPE_ORP: return find_arg_byid(SC_ORP); break;
+	case SUBTYPE_SALINITY: return find_arg_byid(SC_SALINITY); break;
 	}
 	return -1;
 }

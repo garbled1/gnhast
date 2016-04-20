@@ -70,6 +70,7 @@ cfg_opt_t device_opts[] = {
 	CFG_INT_CB("speedscale", 0, CFGF_NONE, conf_parse_speedscale),
 	CFG_INT_CB("lengthscale", 0, CFGF_NONE, conf_parse_lscale),
 	CFG_INT_CB("lightscale", 0, CFGF_NONE, conf_parse_lightscale),
+	CFG_INT_CB("salinescale", 0, CFGF_NONE, conf_parse_salinescale),
 	CFG_STR("multimodel", 0, CFGF_NODEFAULT),
 	CFG_STR("handler", 0, CFGF_NODEFAULT),
 	CFG_STR_LIST("hargs", 0, CFGF_NODEFAULT),
@@ -650,6 +651,60 @@ void conf_print_lightscale(cfg_opt_t *opt, unsigned int index, FILE *fp)
 		break;
 	default:
 		fprintf(fp, "lux");
+		break;
+	}
+}
+
+/**
+   \brief parse a salinity scale
+   \param cfg the config base
+   \param opt the option we are parsing
+   \param the value of the option
+   \param result result of option parsing will be stored here
+   \return success
+*/
+
+int conf_parse_salinescale(cfg_t *cfg, cfg_opt_t *opt, const char *value,
+			  void *result)
+{
+	if (strcasecmp(value, "PPT") == 0)
+		*(int *)result = SALINITY_PPT;
+	else if (strcasecmp(value, "SG") == 0)
+		*(int *)result = SALINITY_SG;
+	else if (strcasecmp(value, "SALINITY_COND") == 0)
+		*(int *)result = SALINITY_COND;
+	else if (strcasecmp(value, "MS") == 0)
+		*(int *)result = SALINITY_COND;
+	else {
+		cfg_error(cfg,
+			  "invalid salinity scale value for option '%s': %s",
+			  cfg_opt_name(opt), value);
+		return -1;
+	}
+	return 0;
+}
+
+/**
+   \brief Used to print salinity scale values
+   \param opt option structure
+   \param index number of option to print
+   \param fp passed FILE
+*/
+
+void conf_print_salinescale(cfg_opt_t *opt, unsigned int index, FILE *fp)
+{
+	switch (cfg_opt_getnint(opt, index)) {
+	case SALINITY_PPT:
+		fprintf(fp, "ppt");
+		break;
+	case SALINITY_SG:
+		fprintf(fp, "sg");
+		break;
+	case SALINITY_COND:
+		fprintf(fp, "ms");
+		break;
+	default:
+		fprintf(fp, "ppt");
 		break;
 	}
 }

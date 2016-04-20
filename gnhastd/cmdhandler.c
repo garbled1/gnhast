@@ -194,10 +194,13 @@ int cmd_update(pargs_t *args, void *arg)
 		case SC_FLOWRATE:
 		case SC_DISTANCE:
 		case SC_VOLUME:
+		case SC_ORP:
+		case SC_SALINITY:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.d);
 			break;
 		case SC_COUNT:
 		case SC_TIMER:
+		case SC_TRIGGER:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.u);
 			break;
 		case SC_WATTSEC:
@@ -291,6 +294,8 @@ int cmd_change(pargs_t *args, void *arg)
 		case SC_FLOWRATE:
 		case SC_DISTANCE:
 		case SC_VOLUME:
+		case SC_ORP:
+		case SC_SALINITY:
 			evbuffer_add_printf(send, " %s:%f",
 					    ARGNM(args[i].cword),
 					    args[i].arg.d);
@@ -298,6 +303,7 @@ int cmd_change(pargs_t *args, void *arg)
 			break;
 		case SC_COUNT:
 		case SC_TIMER:
+		case SC_TRIGGER:
 			evbuffer_add_printf(send, " %s:%d",
 					    ARGNM(args[i].cword),
 					    args[i].arg.u);

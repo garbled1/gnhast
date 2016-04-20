@@ -1,4 +1,9 @@
 0.5 - Development Version
+	Added Subtypes:
+		trigger - momentary switches
+		ORP - oxidation redux potential
+		salinity - Salinity (ppt)
+
 	New Features:
 
 	owsrvcoll - Add support for moisture and wetness Hobby Boards sensors.

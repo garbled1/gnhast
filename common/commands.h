@@ -104,6 +104,9 @@ enum SC_COMMANDS {
 	SC_ALSEV,	/**< \brief alarm severity */
 	SC_ALTEXT,	/**< \brief alarm text */
 	SC_ALUID,	/**< \brief alarm uid */
+	SC_TRIGGER,	/**< \brief trigger */
+	SC_ORP,		/**< \brief ORP */
+	SC_SALINITY,	/**< \brief salinity */
 };
 
 /* commands XXX nothing uses this. why bother? */

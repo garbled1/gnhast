@@ -442,10 +442,13 @@ int cmd_update(pargs_t *args, void *arg)
 		case SC_FLOWRATE:
 		case SC_VOLUME:
 		case SC_DISTANCE:
+		case SC_ORP:
+		case SC_SALINITY:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.d);
 			break;
 		case SC_TIMER:
 		case SC_COUNT:
+		case SC_TRIGGER:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.u);
 			break;
 		case SC_WATTSEC:
@@ -491,9 +494,9 @@ int cmd_update(pargs_t *args, void *arg)
 }
 
 /**
-	\brief Handle a change device command
-	\param args The list of arguments
-	\param arg void pointer to client_t of provider
+   \brief Handle a change device command
+   \param args The list of arguments
+   \param arg void pointer to client_t of provider
 */
 
 int cmd_change(pargs_t *args, void *arg)
@@ -580,10 +583,13 @@ int cmd_change(pargs_t *args, void *arg)
                 case SC_FLOWRATE:
                 case SC_DISTANCE:
                 case SC_VOLUME:
+		case SC_ORP:
+		case SC_SALINITY:
 			store_data_dev(dev, DATALOC_CHANGE, &args[i].arg.d);
 			break;
 		case SC_COUNT:
 		case SC_TIMER:
+		case SC_TRIGGER:
 			store_data_dev(dev, DATALOC_CHANGE, &args[i].arg.u);
 			tstate = args[i].arg.u; /* XXX */
 			break;

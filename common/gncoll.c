@@ -194,6 +194,8 @@ double gn_scale_light(double light, int cur, int new)
    \param val the current value (avoids second call to get_data_dev)
    \return scaled value
    \note This only works on type double
+
+   XXX - Need to implement salinity scaling!!
 */
 
 double gn_maybe_scale(device_t *dev, int scale, double val)

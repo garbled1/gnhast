@@ -92,7 +92,7 @@ enum PROTO_TYPES {
     common/confparser.c (if scaled type, like pressure)
     common/gncoll.c (if scaled type, like pressure)
     gnhastd/cmdhandler.c
-    common/commands.h
+    common/commands.h (SC_ instances are here)
     common/collcmd.c
     Note, you must also update the SC_ instances.
 ***/
@@ -129,6 +129,9 @@ enum SUBTYPE_TYPES {
 	SUBTYPE_SMNUMBER, /* 8bit number stored in state */
 	SUBTYPE_BLIND, /* stored in state, see BLIND_* */
 	SUBTYPE_COLLECTOR, /* stored in state */
+	SUBTYPE_TRIGGER, /* momentary switch (ui) */
+	SUBTYPE_ORP, /* Oxidation Redux Potential (d) */
+	SUBTYPE_SALINITY, /* Salinity (d) */
 	SUBTYPE_BOOL,
 	NROF_SUBTYPES,
 };
@@ -209,6 +212,12 @@ enum THERMOSTAT_STATE_TYPES {
 	THERMSTATE_COOLING,
 	THERMSTATE_LOCKOUT,
 	THERMSTATE_ERROR,
+};
+
+enum SALINITY_TYPES {
+	SALINITY_PPT,
+	SALINITY_SG,
+	SALINITY_COND, /* mS */
 };
 
 struct _device_group_t;
@@ -312,6 +321,9 @@ typedef union _data_t {
 	double volume;	/**< \brief volume */
 	double flow;	/**< \brief flow */
 	int64_t number;	/**< \brief generic number */
+	double d;	/**< \brief Generic double */
+	uint32_t ui;	/**< \brief Generic uint32 */
+	int64_t ll;	/**< \brief Generic int64 */
 } data_t;
 
 /** The device structure */
