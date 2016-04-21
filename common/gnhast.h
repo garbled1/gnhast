@@ -64,7 +64,7 @@ enum DEV_TYPES {
 	DEVICE_BLIND, /* can go up or down, but cannot be queried */
 	NROF_TYPES,
 };
-#define DEVICE_MAX DEVICE_TIMER
+#define DEVICE_MAX DEVICE_BLIND
 /* a type blind should always return BLIND_STOP, for consistency */
 
 enum PROTO_TYPES {
@@ -81,9 +81,12 @@ enum PROTO_TYPES {
 	PROTO_SENSOR_VENSTAR,
 	PROTO_CONTROL_URSTII,
 	PROTO_COLLECTOR,
+	PROTO_CAMERA_AXIS,
+	PROTO_TUXEDO,
+	PROTO_NEPTUNE_APEX,
 	NROF_PROTOS,
 };
-#define PROTO_MAX PROTO_SENSOR_VENSTAR
+#define PROTO_MAX PROTO_NEPTUNE_APEX
 
 /***
     The following files must be updated when adding a subtype:
