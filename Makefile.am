@@ -17,6 +17,7 @@ SUBDIRS = libconfuse \
 	venstarcoll \
 	moncoll \
 	jsoncgicoll \
+	urtsicoll \
 	tools \
 	data \
 	gnhastweb \

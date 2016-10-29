@@ -79,7 +79,7 @@ enum PROTO_TYPES {
 	PROTO_SENSOR_AD2USB,
 	PROTO_SENSOR_ICADDY,
 	PROTO_SENSOR_VENSTAR,
-	PROTO_CONTROL_URSTII,
+	PROTO_CONTROL_URTSI,
 	PROTO_COLLECTOR,
 	PROTO_CAMERA_AXIS,
 	PROTO_TUXEDO,
@@ -226,6 +226,7 @@ enum SALINITY_TYPES {
 struct _device_group_t;
 struct _client_t;
 struct _device_t;
+struct _wrap_client_t;
 struct _wrap_device_t;
 struct _wrap_group_t;
 
@@ -263,9 +264,9 @@ typedef struct _client_t {
 	uint32_t sentdata;	/**< \brief data sent to this cli */
 	time_t lastupd;		/**< \brief last time we were talked to */
 	int alarmwatch;		/**< \brief min sev of alarms we want, 0 disables */
+	uint32_t alchan;	/**< \brief alarm channels we watch */
 	struct _device_t *coll_dev;	/**< \brief the dev for the collector itself */
 	TAILQ_ENTRY(_client_t) next; /**< \brief next client on list */
-	TAILQ_ENTRY(_client_t) next_dwatch; /**< \brief next client watching dev */
 } client_t;
 
 /* matches struct device */
@@ -301,6 +302,30 @@ enum DATATYPE_TYPES {
 #define DEVFLAG_SPAMHANDLER	(1<<1)	/**< \brief do we spam the handler? */
 #define DEVFLAG_NODATA		(1<<2)	/**< \brief device has no cur data */
 #define DEVFLAG_CHANGEHANDLER	(1<<3)	/**< \brief fire when device changes */
+
+/* Flags (new method) for alarm channels See common.h SET_FLAG macros */
+
+#define ACHAN_GENERIC	0	/**< \brief Generic default channel */
+#define ACHAN_POWER	1	/**< \brief Power related */
+#define ACHAN_LIGHTS	2	/**< \brief Lights and switches */
+#define ACHAN_SECURE	3	/**< \brief Security/alarm panel */
+#define ACHAN_WEATHER	4	/**< \brief Weather related */
+#define ACHAN_AC	5	/**< \brief Air conditioning */
+#define ACHAN_YARD	6	/**< \brief Lawn/yard */
+#define ACHAN_GNHAST	7	/**< \brief Gnhast/collectors */
+#define ACHAN_SYSTEM	8	/**< \brief Underlying OS stuff */
+#define ACHAN_EMERG	9	/**< \brief Emergency Alerts */
+#define ACHAN_MESSAGING	10	/**< \brief Text messaging facility */
+/* Define new ones here */
+#define ACHAN_USER1	24	/**< \brief User defined channel */
+#define ACHAN_USER2	25	/**< \brief User defined channel */
+#define ACHAN_USER3	26	/**< \brief User defined channel */
+#define ACHAN_USER4	27	/**< \brief User defined channel */
+#define ACHAN_USER5	28	/**< \brief User defined channel */
+#define ACHAN_USER6	29	/**< \brief User defined channel */
+#define ACHAN_USER7	30	/**< \brief User defined channel */
+#define ACHAN_USER8	31	/**< \brief User defined channel */
+
 
 /** data union */
 typedef union _data_t {
@@ -358,9 +383,14 @@ typedef struct _device_t {
 	uint32_t flags;		/**< \brief DEVFLAG_* */
 	TAILQ_ENTRY(_device_t) next_client;	/**< \brief Next device in client */
 	TAILQ_ENTRY(_device_t) next_all;	/**< \brief Next in global devlist */
-	TAILQ_HEAD(, _client_t) watchers;  /**< \brief linked list of clients watching this device */
-
+	TAILQ_HEAD(, _wrap_client_t) watchers;  /**< \brief linked list of clients watching this device */
 } device_t;
+
+/** A wrapper client structure */
+typedef struct _wrap_client_t {
+	client_t *client;	/**< \brief wrapped client */
+	TAILQ_ENTRY(_wrap_client_t) next; /**< \brief next client */
+} wrap_client_t;
 
 /** A wrapper device structure */
 typedef struct _wrap_device_t {
@@ -398,6 +428,7 @@ typedef struct _alarm_t {
 	char *aluid;	/**< \brief alarm uid */
 	char *altext;	/**< \brief alarm text */
 	int alsev;	/**< \brief alarm sev, 0 clears alarm */
+	uint32_t alchan;	/**< \brief alarm channel (BITFLAG) */
 	TAILQ_ENTRY(_alarm_t) next; /**< \brief next in global alarm list */
 } alarm_t;
 

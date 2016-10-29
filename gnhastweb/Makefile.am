@@ -3,7 +3,8 @@ CGIBIN = $(srcdir)/cgi-bin
 noinst_X = \
 	$(CGIBIN)/gnhastweb.cgi \
 	$(CGIBIN)/rrdjson.cgi \
-	$(CGIBIN)/askfjson.cgi
+	$(CGIBIN)/askfjson.cgi \
+	$(CGIBIN)/askgjson.cgi
 CLEANFILES = $(noinst_X)
 EXTRA_DIST = \
 	README \
@@ -51,5 +52,9 @@ $(CGIBIN)/rrdjson.cgi: src/rrdjson.pl
 	chmod +x $@
 
 $(CGIBIN)/askfjson.cgi: src/askfjson.pl
+	$(do_subst) < $(srcdir)/$? > $@
+	chmod +x $@
+
+$(CGIBIN)/askgjson.cgi: src/askgjson.pl
 	$(do_subst) < $(srcdir)/$? > $@
 	chmod +x $@

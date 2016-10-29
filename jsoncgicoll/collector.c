@@ -70,6 +70,7 @@ char *conffile = SYSCONFDIR "/" JSONCGICOLL_CONFIG_FILE;
    for the server */
 extern argtable_t argtable[];
 extern TAILQ_HEAD(, _device_t) alldevs;
+extern TAILQ_HEAD(, _alarm_t) alarms;
 
 /** The event base */
 struct event_base *base;
@@ -152,19 +153,46 @@ void coll_upd_cb(device_t *dev, void *arg)
 
 	if (dev->type == DEVICE_SWITCH || dev->type == DEVICE_DIMMER ||
 	    dev->subtype == SUBTYPE_SWITCH) {
-		printf("data: [{\n");
-		printf("\"uid\" : \"%s\", ", dev->uid);
+		printf("data: [ ");
+		printf("{\"uid\" : \"%s\", ", dev->uid);
 		printf("\"type\" : \"%d\", ", dev->type);
 		printf("\"subt\" : \"%d\", ", dev->subtype);
 		buf = print_data_dev(dev, DATALOC_DATA);
 		if (buf == NULL)
-			printf("\"value\" : \"\" }\n");
+			printf("\"value\" : \"\" } ");
 		else {
-			printf("\"value\" : \"%s\" }]\n\n", buf);
+			printf("\"value\" : \"%s\" } ", buf);
 			free(buf);
 		}
+		printf(" ]\n\n");
 		fflush(stdout);
 	}
+}
+
+/**
+   \brief Called when an alarm command occurs
+   \param alarm alarm that got updated
+   \param aluid alarm UID
+   \param arg pointer to client_t
+*/
+
+void coll_alarm_cb(alarm_t *alarm, char *aluid, void *arg)
+{
+	if (alarm == NULL) {
+		/* we got a clearing event */
+		printf("data: [ ");
+		printf("{\"aluid\" : \"%s\", ", aluid);
+		printf("\"altext\" : \"\", \"alsev\" : \"0\", ");
+		printf("\"alchan\" : \"%u\" } ]\n\n", ALL_FLAGS_SET);
+		fflush(stdout);
+		return;
+	}
+	printf("data: [ ");
+	printf("{\"aluid\" : \"%s\", ", alarm->aluid);
+	printf("\"altext\" : \"%s\", ", alarm->altext);
+	printf("\"alsev\" : \"%d\", ", alarm->alsev);
+	printf("\"alchan\" : \"%u\" } ]\n\n", alarm->alchan);
+	fflush(stdout);
 }
 
 /**
@@ -206,8 +234,9 @@ int cmd_endldevs(pargs_t *args, void *arg)
 		/* schedule a feed with the server */
 		send = evbuffer_new();
 
-		if (dev->type == DEVICE_SWITCH || dev->type == DEVICE_DIMMER ||
-		    dev->subtype == SUBTYPE_SWITCH) {
+		if ((dev->type == DEVICE_SWITCH || dev->type == DEVICE_DIMMER
+		     || dev->subtype == SUBTYPE_SWITCH) &&
+		    dev->subtype != SUBTYPE_COLLECTOR) {
 			/* do a cfeed instead */
 			evbuffer_add_printf(send, "cfeed %s:%s\n",
 					    ARGNM(SC_UID), dev->uid);
@@ -248,7 +277,7 @@ int cmd_endldevs(pargs_t *args, void *arg)
 /*** Collector specific code goes here ***/
 
 /**
-   \brief Ask for list of all devices
+   \brief Ask for list of all devices, connect to alarms
 */
 
 void jsoncoll_establish_feeds(void)
@@ -257,6 +286,9 @@ void jsoncoll_establish_feeds(void)
 
 	send = evbuffer_new();
 	evbuffer_add_printf(send, "ldevs\n");
+	evbuffer_add_printf(send, "listenalarms alsev:1 alchan:%u\n",
+			    ALL_FLAGS_SET);
+	evbuffer_add_printf(send, "dumpalarms\n");
 	bufferevent_write_buffer(gnhastd_conn->bev, send);
 	evbuffer_free(send);
 }
@@ -395,7 +427,7 @@ int main(int argc, char **argv)
 	   This sets up a connection to the server. */
 	generic_connect_server_cb(0, 0, gnhastd_conn);
 	collector_instance = getpid(); /* we need a unique instance */
-	gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
+	//gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
 
 	/* setup signal handlers */
 

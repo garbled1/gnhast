@@ -88,7 +88,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-bin_PROGRAMS = brulcoll$(EXEEXT)
+bin_PROGRAMS = urtsicoll$(EXEEXT)
 @NEED_RBTREE_TRUE@am__append_1 = \
 @NEED_RBTREE_TRUE@	$(top_srcdir)/linux/bswap16.c \
 @NEED_RBTREE_TRUE@	$(top_srcdir)/linux/bswap32.c \
@@ -99,7 +99,7 @@ bin_PROGRAMS = brulcoll$(EXEEXT)
 @NEED_RBTREE_TRUE@	$(top_srcdir)/linux/rbtree.h \
 @NEED_RBTREE_TRUE@	$(top_srcdir)/linux/time.h
 
-subdir = brulcoll
+subdir = urtsicoll
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -111,28 +111,29 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am__brulcoll_SOURCES_DIST = $(top_srcdir)/common/common.c \
+am__urtsicoll_SOURCES_DIST = $(top_srcdir)/common/common.c \
 	$(top_srcdir)/common/serial_common.c \
 	$(top_srcdir)/common/devices.c \
 	$(top_srcdir)/common/netparser.c \
 	$(top_srcdir)/common/confparser.c \
-	$(top_srcdir)/common/gncoll.c $(top_srcdir)/common/collcmd.c \
+	$(top_srcdir)/common/gncoll.c $(top_srcdir)/common/genconn.c \
+	$(top_srcdir)/common/genconn.h $(top_srcdir)/common/collcmd.c \
 	$(top_srcdir)/common/collcmd.h $(top_srcdir)/common/common.h \
 	$(top_srcdir)/common/gnhast.h $(top_srcdir)/common/confuse.h \
 	$(top_srcdir)/common/confparser.h \
-	$(top_srcdir)/common/gncoll.h brultech.h collector.c \
+	$(top_srcdir)/common/gncoll.h urtsi.h collector.h collector.c \
 	$(top_srcdir)/linux/bswap16.c $(top_srcdir)/linux/bswap32.c \
 	$(top_srcdir)/linux/bswap64.c $(top_srcdir)/linux/rb.c \
 	$(top_srcdir)/linux/queue.h $(top_srcdir)/linux/endian.h \
 	$(top_srcdir)/linux/rbtree.h $(top_srcdir)/linux/time.h
 @NEED_RBTREE_TRUE@am__objects_1 = bswap16.$(OBJEXT) bswap32.$(OBJEXT) \
 @NEED_RBTREE_TRUE@	bswap64.$(OBJEXT) rb.$(OBJEXT)
-am_brulcoll_OBJECTS = common.$(OBJEXT) serial_common.$(OBJEXT) \
+am_urtsicoll_OBJECTS = common.$(OBJEXT) serial_common.$(OBJEXT) \
 	devices.$(OBJEXT) netparser.$(OBJEXT) confparser.$(OBJEXT) \
-	gncoll.$(OBJEXT) collcmd.$(OBJEXT) collector.$(OBJEXT) \
-	$(am__objects_1)
-brulcoll_OBJECTS = $(am_brulcoll_OBJECTS)
-brulcoll_DEPENDENCIES = $(top_builddir)/libconfuse/libconfuse.la
+	gncoll.$(OBJEXT) genconn.$(OBJEXT) collcmd.$(OBJEXT) \
+	collector.$(OBJEXT) $(am__objects_1)
+urtsicoll_OBJECTS = $(am_urtsicoll_OBJECTS)
+urtsicoll_DEPENDENCIES = $(top_builddir)/libconfuse/libconfuse.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -171,8 +172,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(brulcoll_SOURCES)
-DIST_SOURCES = $(am__brulcoll_SOURCES_DIST)
+SOURCES = $(urtsicoll_SOURCES)
+DIST_SOURCES = $(am__urtsicoll_SOURCES_DIST)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -333,18 +334,19 @@ AM_CPPFLAGS = -DLOCALSTATEDIR=\"$(localstatedir)\" \
 	-DSYSCONFDIR=\"$(sysconfdir)\" \
 	-I$(top_srcdir)/common
 
-brulcoll_SOURCES = $(top_srcdir)/common/common.c \
+urtsicoll_SOURCES = $(top_srcdir)/common/common.c \
 	$(top_srcdir)/common/serial_common.c \
 	$(top_srcdir)/common/devices.c \
 	$(top_srcdir)/common/netparser.c \
 	$(top_srcdir)/common/confparser.c \
-	$(top_srcdir)/common/gncoll.c $(top_srcdir)/common/collcmd.c \
+	$(top_srcdir)/common/gncoll.c $(top_srcdir)/common/genconn.c \
+	$(top_srcdir)/common/genconn.h $(top_srcdir)/common/collcmd.c \
 	$(top_srcdir)/common/collcmd.h $(top_srcdir)/common/common.h \
 	$(top_srcdir)/common/gnhast.h $(top_srcdir)/common/confuse.h \
 	$(top_srcdir)/common/confparser.h \
-	$(top_srcdir)/common/gncoll.h brultech.h collector.c \
+	$(top_srcdir)/common/gncoll.h urtsi.h collector.h collector.c \
 	$(am__append_1)
-brulcoll_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+urtsicoll_LDADD = $(top_builddir)/libconfuse/libconfuse.la
 all: all-am
 
 .SUFFIXES:
@@ -358,9 +360,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu brulcoll/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu urtsicoll/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --gnu brulcoll/Makefile
+	  $(AUTOMAKE) --gnu urtsicoll/Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
 	  *config.status*) \
@@ -428,9 +430,9 @@ clean-binPROGRAMS:
 	echo " rm -f" $$list; \
 	rm -f $$list
 
-brulcoll$(EXEEXT): $(brulcoll_OBJECTS) $(brulcoll_DEPENDENCIES) $(EXTRA_brulcoll_DEPENDENCIES) 
-	@rm -f brulcoll$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(brulcoll_OBJECTS) $(brulcoll_LDADD) $(LIBS)
+urtsicoll$(EXEEXT): $(urtsicoll_OBJECTS) $(urtsicoll_DEPENDENCIES) $(EXTRA_urtsicoll_DEPENDENCIES) 
+	@rm -f urtsicoll$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(urtsicoll_OBJECTS) $(urtsicoll_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -446,6 +448,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/common.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/confparser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/devices.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/genconn.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gncoll.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/netparser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rb.Po@am__quote@
@@ -555,6 +558,20 @@ gncoll.obj: $(top_srcdir)/common/gncoll.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/gncoll.c' object='gncoll.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o gncoll.obj `if test -f '$(top_srcdir)/common/gncoll.c'; then $(CYGPATH_W) '$(top_srcdir)/common/gncoll.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/gncoll.c'; fi`
+
+genconn.o: $(top_srcdir)/common/genconn.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT genconn.o -MD -MP -MF $(DEPDIR)/genconn.Tpo -c -o genconn.o `test -f '$(top_srcdir)/common/genconn.c' || echo '$(srcdir)/'`$(top_srcdir)/common/genconn.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/genconn.Tpo $(DEPDIR)/genconn.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/genconn.c' object='genconn.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o genconn.o `test -f '$(top_srcdir)/common/genconn.c' || echo '$(srcdir)/'`$(top_srcdir)/common/genconn.c
+
+genconn.obj: $(top_srcdir)/common/genconn.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT genconn.obj -MD -MP -MF $(DEPDIR)/genconn.Tpo -c -o genconn.obj `if test -f '$(top_srcdir)/common/genconn.c'; then $(CYGPATH_W) '$(top_srcdir)/common/genconn.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/genconn.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/genconn.Tpo $(DEPDIR)/genconn.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/genconn.c' object='genconn.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o genconn.obj `if test -f '$(top_srcdir)/common/genconn.c'; then $(CYGPATH_W) '$(top_srcdir)/common/genconn.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/genconn.c'; fi`
 
 collcmd.o: $(top_srcdir)/common/collcmd.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT collcmd.o -MD -MP -MF $(DEPDIR)/collcmd.Tpo -c -o collcmd.o `test -f '$(top_srcdir)/common/collcmd.c' || echo '$(srcdir)/'`$(top_srcdir)/common/collcmd.c

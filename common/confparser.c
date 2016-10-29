@@ -778,6 +778,7 @@ device_t *new_dev_from_conf(cfg_t *cfg, char *uid)
 	if (dev == NULL) {
 		dev = smalloc(device_t);
 		dev->uid = strdup(uid);
+		TAILQ_INIT(&dev->watchers);
 	}
 
 	/* now load the device with data from the conf file */
@@ -1040,6 +1041,8 @@ cfg_t *dump_conf(cfg_t *cfg, int flags, const char *filename)
 		cfg_opt_set_print_func(a, conf_print_speedscale);
 		a = cfg_getopt(section, "lightscale");
 		cfg_opt_set_print_func(a, conf_print_lightscale);
+		a = cfg_getopt(section, "salinescale");
+		cfg_opt_set_print_func(a, conf_print_salinescale);
 		if (flags & CONF_DUMP_DEVONLY) {
 			fprintf(fp, "device \"%s\" {\n", cfg_title(section));
 			cfg_print_indent(section, fp, 2);

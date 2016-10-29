@@ -44,6 +44,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/time.h>
+/* #define QUEUEDEBUG 1 */
 #include <sys/queue.h>
 #include <sys/wait.h>
 #ifdef HAVE_SYS_RBTREE_H
@@ -165,16 +166,16 @@ void buf_write_cb(struct bufferevent *out, void *arg)
 void buf_error_cb(struct bufferevent *ev, short what, void *arg)
 {
 	client_t *client = (client_t *)arg;
-	client_t *watch, *nextc;
+	wrap_client_t *watch, *nextc;
 	device_t *dev;
 	wrap_device_t *wrap;
-	int err, status, i;
+	int error, status, i;
 
 	if (what & BEV_EVENT_ERROR) {
-		err = bufferevent_get_openssl_error(ev);
-		if (err)
+		error = bufferevent_get_openssl_error(ev);
+		if (error)
 			LOG(LOG_ERROR,
-			    "SSL Error: %s", ERR_error_string(err, NULL));
+			    "SSL Error: %s", ERR_error_string(error, NULL));
 	}
 	LOG(LOG_NOTICE, "Closing %s connection from %s",
 	    client->name ? client->name : "generic",
@@ -209,18 +210,18 @@ void buf_error_cb(struct bufferevent *ev, short what, void *arg)
 
 	/* find all devices I'm watching, and undo.  This is nasty */
 	TAILQ_FOREACH(dev, &alldevs, next_all) {
-		TAILQ_FOREACH_SAFE(watch, &dev->watchers, next_dwatch, nextc) {
-			if (watch == client) {
-				TAILQ_REMOVE(&dev->watchers, client,
-					     next_dwatch);
+		TAILQ_FOREACH_SAFE(watch, &dev->watchers, next, nextc) {
+			if (watch->client == client) {
+				TAILQ_REMOVE(&dev->watchers, watch, next);
 				LOG(LOG_DEBUG, "Unwatching device %s",
 				    dev->uid);
+				free(watch);
 				client->watched--;
 			}
 		}
 	}
 	if (client->watched > 0)
-		LOG(LOG_ERROR, "Client is still watching %d devices",
+		LOG(LOG_ERROR, "Client is still being watched by %d devices",
 		    client->watched);
 
 	/* remove all the tailq entries on the device list */
@@ -269,6 +270,9 @@ void accept_cb(struct evconnlistener *serv, int sock, struct sockaddr *sa,
 	client->lastupd = time(NULL);
 	LOG(LOG_NOTICE, "Connection on insecure port from %s", buf);
 
+	TAILQ_INIT(&client->devices);
+	TAILQ_INIT(&client->wdevices);
+
 	bufferevent_setcb(client->ev, buf_read_cb, NULL,
 			  buf_error_cb, client);
 	bufferevent_enable(client->ev, EV_READ|EV_PERSIST);
@@ -297,6 +301,9 @@ void sslaccept_cb(struct evconnlistener *serv, int sock, struct sockaddr *sa,
 
 	client->srv_ctx = (SSL_CTX *)arg;
 	client->cli_ctx = SSL_new(client->srv_ctx);
+
+	TAILQ_INIT(&client->devices);
+	TAILQ_INIT(&client->wdevices);
 
 	client->ev = bufferevent_openssl_socket_new(base, sock,
 	    client->cli_ctx, BUFFEREVENT_SSL_ACCEPTING,

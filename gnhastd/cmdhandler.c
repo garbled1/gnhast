@@ -31,6 +31,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
+/* #define QUEUEDEBUG 1 */
 #include <sys/queue.h>
 
 #include "gnhast.h"
@@ -140,7 +141,7 @@ int cmd_update(pargs_t *args, void *arg)
 	device_t *dev;
 	char *uid=NULL;
 	client_t *client = (client_t *)arg;
-	client_t *dwatch;
+	wrap_client_t *dwatch;
 
 	/* loop through the args and find the UID */
 	for (i=0; args[i].cword != -1; i++) {
@@ -217,9 +218,9 @@ int cmd_update(pargs_t *args, void *arg)
 		run_handler_dev(dev);
 
 	/* look for clients watching us, and update them */
-	TAILQ_FOREACH(dwatch, &dev->watchers, next_dwatch) {
-		gn_update_device(dev, GNC_UPD_RRDNAME, dwatch->ev);
-		dwatch->sentdata++;
+	TAILQ_FOREACH(dwatch, &dev->watchers, next) {
+		gn_update_device(dev, GNC_UPD_RRDNAME, dwatch->client->ev);
+		dwatch->client->sentdata++;
 	}
 
 	return(0);
@@ -406,7 +407,7 @@ int cmd_register(pargs_t *args, void *arg)
 		    "one registered it!", dev->uid);
 	dev->collector = client;
 
-	if (TAILQ_EMPTY(&dev->watchers))
+	if (TAILQ_EMPTY(&dev->watchers) || new)
 		TAILQ_INIT(&dev->watchers);
 
 	/* now, update the client_t */
@@ -473,7 +474,7 @@ int cmd_register_group(pargs_t *args, void *arg)
 	if (devgrp == NULL) {
 		LOG(LOG_DEBUG, "Creating new device group for uid %s", uid);
 		if (name == NULL) {
-			LOG(LOG_ERROR, "Attempt to register new device without"
+			LOG(LOG_ERROR, "Attempt to register new group without"
 			    " name");
 			return(-1);
 		}
@@ -494,7 +495,7 @@ int cmd_register_group(pargs_t *args, void *arg)
 				    p, uid);
 			else if (!group_in_group(cgrp, devgrp)){
 				add_group_group(cgrp, devgrp);
-				LOG(LOG_DEBUG, "Adding child group %s to "
+				LOG(LOG_NOTICE, "Adding child group %s to "
 				    "group %s", cgrp->uid, uid);
 			}
 		}
@@ -512,7 +513,7 @@ int cmd_register_group(pargs_t *args, void *arg)
 				}
 			}
 			if (!found) {
-				LOG(LOG_DEBUG, "removing group %s from group "
+				LOG(LOG_NOTICE, "removing group %s from group "
 				    "%s", wrapg->group->uid, devgrp->uid);
 				remove_group_group(wrapg->group, devgrp);
 			}
@@ -805,11 +806,7 @@ int cmd_cfeed(pargs_t *args, void *arg)
 	if (dev == NULL)
 		return -1;
 
-	if (TAILQ_EMPTY(&dev->watchers))
-		TAILQ_INIT(&dev->watchers);
-	TAILQ_INSERT_TAIL(&dev->watchers, client, next_dwatch);
-
-	client->watched++;
+	add_wrapped_client(client, dev);
 
 	return 0;
 }
@@ -865,6 +862,7 @@ int cmd_client(pargs_t *args, void *arg)
 		dev->subtype = SUBTYPE_COLLECTOR;
 		dev->collector = client; /* point to self */
 		client->coll_dev = dev; /* client_t points to this dev */
+		TAILQ_INIT(&dev->watchers);
 		insert_device(dev);
 	} else {
 		/* we have an existing device that has re-connected */
@@ -1161,6 +1159,7 @@ int cmd_setalarm(pargs_t *args, void *arg)
 	char *aluid = NULL;
 	char *altext = NULL;
 	int alsev = -1;
+	uint32_t alchan = 1; /* generic channel */
 	int i;
 
 	LOG(LOG_DEBUG, "Got alarm set request");
@@ -1170,6 +1169,7 @@ int cmd_setalarm(pargs_t *args, void *arg)
 		case SC_ALUID: aluid = args[i].arg.c; break;
 		case SC_ALTEXT: altext = args[i].arg.c; break;
 		case SC_ALSEV: alsev = args[i].arg.i; break;
+		case SC_ALCHAN: alchan = args[i].arg.u; break;
 		}
 
 	if (aluid == NULL) {
@@ -1177,20 +1177,24 @@ int cmd_setalarm(pargs_t *args, void *arg)
 		return 0;
 	}
 
-	alarm = update_alarm(aluid, altext, alsev);
+	alarm = update_alarm(aluid, altext, alsev, alchan);
 
 	if (alarm == NULL) { /* the alarm has been unset, tell everyone */
 		TAILQ_FOREACH(tell, &clients, next) {
 			if (tell->alarmwatch > 0) {
 				/* send a clearing message */
-				gn_setalarm(client->ev, aluid, "", 0);
+				gn_setalarm(tell->ev, aluid, "", 0,
+					    ALL_FLAGS_SET);
 			}
 		}
 	} else {
 		TAILQ_FOREACH(tell, &clients, next)
-			if (tell->alarmwatch > 0)
-				gn_setalarm(client->ev, alarm->aluid,
-					    alarm->altext, alarm->alsev);
+			if (tell->alarmwatch <= alarm->alsev &&
+			    tell->alarmwatch != 0 &&
+			    CHECK_MASK(tell->alchan, alarm->alchan))
+				gn_setalarm(tell->ev, alarm->aluid,
+					    alarm->altext, alarm->alsev,
+					    alarm->alchan);
 	}
 
 	return 0;
@@ -1208,11 +1212,13 @@ int cmd_listen_alarms(pargs_t *args, void *arg)
 {
 	client_t *client = (client_t *)arg;
 	int alsev = 0; /* assume 0 if no arg */
+	uint32_t alchan = ALL_FLAGS_SET;
 	int i;
 
 	for (i=0; args[i].cword != -1; i++)
 		switch (args[i].cword) {
 		case SC_ALSEV: alsev = args[i].arg.i; break;
+		case SC_ALCHAN: alchan = args[i].arg.u; break;
 		}
 
 	LOG(LOG_NOTICE, "Client %s from %s asked to listen to alarm sev %d",
@@ -1220,6 +1226,7 @@ int cmd_listen_alarms(pargs_t *args, void *arg)
 	    client->addr ? client->addr : "unknown", alsev);
 
 	client->alarmwatch = alsev;
+	client->alchan = alchan;
 
 	return 0;
 }
@@ -1236,6 +1243,7 @@ int cmd_dump_alarms(pargs_t *args, void *arg)
 	client_t *tell;
 	alarm_t *alarm;
 	int alsev = 1; /* assume 1 if no arg */
+	uint32_t alchan = ALL_FLAGS_SET; /* assume if no arg */
 	char *aluid = NULL;
 	int i;
 
@@ -1243,22 +1251,28 @@ int cmd_dump_alarms(pargs_t *args, void *arg)
 		switch (args[i].cword) {
 		case SC_ALSEV: alsev = args[i].arg.i; break;
 		case SC_ALUID: aluid = args[i].arg.c; break;
+		case SC_ALCHAN: alchan = args[i].arg.u; break;
 		}
 
 	if (aluid == NULL) { /* dump everything */
 		TAILQ_FOREACH(alarm, &alarms, next) {
-			LOG(LOG_DEBUG, "alarm: %s %s %d", alarm->aluid,
-					    alarm->altext, alarm->alsev);
-			if (alarm->alsev >= alsev)
+			LOG(LOG_DEBUG, "alarm: %s %s %d %u", alarm->aluid,
+			    alarm->altext, alarm->alsev,
+			    alarm->alchan);
+			if (alarm->alsev >= alsev &&
+			    CHECK_MASK(alarm->alchan, alchan))
 				gn_setalarm(client->ev, alarm->aluid,
-					    alarm->altext, alarm->alsev);
+					    alarm->altext, alarm->alsev,
+					    alarm->alchan);
 		}
 	} else {
 		TAILQ_FOREACH(alarm, &alarms, next) {
 			if (alarm->alsev >= alsev &&
-			    strcmp(alarm->aluid, aluid) == 0) {
+			    strcmp(alarm->aluid, aluid) == 0 &&
+			    CHECK_MASK(alarm->alchan, alchan)) {
 				gn_setalarm(client->ev, alarm->aluid,
-					    alarm->altext, alarm->alsev);
+					    alarm->altext, alarm->alsev,
+					    alarm->alchan);
 			}
 		}
 	}

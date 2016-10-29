@@ -20,10 +20,25 @@ html,body {
 table {
   border-spacing:0;
   color:#FFF;
-  background:#444444;
   border-collapse:collapse;
+}
+
+table.megaswitch { 
+  border-spacing:0;
+  color:#FFF;
+  border-collapse:collapse;
+}
+
+table.listmode {
+  background:#444444;
   width:100%;
   border:5px solid #999999;
+}
+
+table.alarm { 
+  border-spacing:1
+  background:#939393;
+  border:2px solid #222222;
 }
 
 thead {
@@ -38,6 +53,20 @@ thead th {
 }
 
 thead tr {
+}
+
+tbody tr.alarm { 
+  border: 1px solid black;
+}
+
+tbody td.alarm-sev { 
+  text-align: right;
+}
+
+tbody td.alarm-txt { 
+  text-align: left;
+  font-size: 50%;
+  width: 100%;
 }
 
 tbody td.icon { 
@@ -735,6 +764,12 @@ path {
   padding: 0 12px;
 }
 
+.button.large {
+  height: 41px;
+  font-size: 25px;
+  font-weight: bold;
+}
+
 /* Scroller */
 
 /*
@@ -960,7 +995,12 @@ path {
 }
 #works li a{
 	padding-right: 0px;
+  	color: darkblue;
 }
+#works li a visited { 
+	color: darkblue;
+}
+
 #works li div { }
 #works img {
 	box-shadow: 1px 1px 2px rgba(0,0,0,0.3);
@@ -1007,6 +1047,10 @@ path {
   line-height: 1.1em;
 }
 
+.widgetcontainer.smallwidget { 
+  width: 185px;
+}
+
 .widgetcontainer p { 
   margin: 0px 0px;
   padding: 0px 0px 0px 0px;
@@ -1024,6 +1068,10 @@ path {
   position: relative;
   box-shadow: 0px 0px 3px  #0039e6;
   display: inline-block;
+}
+
+.widgetcard.smallwidget { 
+  width: 185px;
 }
 
 /* forecast widget */
@@ -1069,6 +1117,11 @@ path {
   margin-bottom: 0px;
   padding-top: 0px;
   padding-bottom: 0px;
+}
+
+.widgetcard .bottomrow { 
+  bottom: 5%;
+  position: absolute;
 }
 
 .widgetcard .title { 
@@ -1378,6 +1431,87 @@ path {
   border: 1px solid #003300;
   background: #006600;
   text-shadow: 1px 1px 0px #003300;
+}
+
+
+/* MiniSwitch */
+
+/* Yellow one for lights */
+.minilight {
+  position: relative; width: 15px; height: 15px;
+  webkit-user-select:none; -moz-user-select:none; -ms-user-select: none;
+}
+.minilight-checkbox {
+  display: none;
+}
+.minilight-label {
+  display: block; overflow: hidden; cursor: pointer;
+  border: 2px solid #999999; border-radius: 14px;
+}
+.minilight-inner {
+  display: block; width: 200%; margin-left: -100%;
+  transition: margin 0.3s ease-in 0s;
+}
+.minilight-inner:before, .minilight-inner:after {
+  display: block; float: left; width: 50%; height: 10px; padding: 0; line-height: 1px;
+  box-sizing: border-box;
+}
+.minilight-inner:before {
+  content: "";
+  padding-left: 5px;
+  background-color: #DDF253; color: #FFFFFF;
+}
+.minilight-inner:after {
+  content: "";
+  padding-right: 5px;
+  background-color: #515248; color: #999999;
+  text-align: right;
+}
+   
+.minilight-checkbox:checked + .minilight-label .minilight-inner {
+  margin-left: 0;
+}
+.minilight-checkbox:checked + .minilight-label .minilight-switch {
+  right: 0px; 
+}
+
+/* red/green one for indicators */
+.miniind {
+  position: relative; width: 15px; height: 15px;
+  webkit-user-select:none; -moz-user-select:none; -ms-user-select: none;
+}
+.miniind-checkbox {
+  display: none;
+}
+.miniind-label {
+  display: block; overflow: hidden; cursor: pointer;
+  border: 2px solid #999999; border-radius: 14px;
+}
+.miniind-inner {
+  display: block; width: 200%; margin-left: -100%;
+  transition: margin 0.3s ease-in 0s;
+}
+.miniind-inner:before, .miniind-inner:after {
+  display: block; float: left; width: 50%; height: 10px; padding: 0; line-height: 1px;
+  box-sizing: border-box;
+}
+.miniind-inner:before {
+  content: "";
+  padding-left: 5px;
+  background-color: green; color: #FFFFFF;
+}
+.miniind-inner:after {
+  content: "";
+  padding-right: 5px;
+  background-color: red; color: #999999;
+  text-align: right;
+}
+   
+.miniind-checkbox:checked + .miniind-label .miniind-inner {
+  margin-left: 0;
+}
+.miniind-checkbox:checked + .miniind-label .miniind-switch {
+  right: 0px; 
 }
 
 

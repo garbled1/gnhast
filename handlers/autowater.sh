@@ -4,8 +4,15 @@
 
 #setup values
 NC="@NETCAT@ 127.0.0.1 2920"
-WATERTRIGGER="0.45"
+WATERTRIGGER="21"
+NIGHTTRIGGER="19"
 LOGFILE="@LOCALSTATEDIR@/log/autowater.log"
+
+#Yard Maintence day.  Start and end are in 24hr format, hour only.
+# thursday, 6am->6pm
+BLACKOUT_DAY="4"
+BLACKOUT_START=6
+BLACKOUT_END=18
 
 #Zone sensors
 SENSOR[0]="EF.F49020150000-m0"
@@ -23,12 +30,25 @@ SPRINKLER_PROGRAM="MAIA-progrunning"
 SPRINKLER_PROGRAM_ENABLE="number:4"
 
 #Affected zone runs in seconds per zone
-SEN[0]="240 180   0   0   0"
-SEN[1]="  0 400 240 240   0"
-SEN[2]="  0 240 240 400   0"
-SEN[3]="  0   0   0 180 240"
+SEN[0]="900 600   0   0   0"
+SEN[1]="  0 900 600 600   0"
+SEN[2]="  0 600 600 900   0"
+SEN[3]="  0   0   0 600 900"
 
+# If this is non-null, we have a night setting
+LUX_SENSOR="26.A43328010000"
+LIGHTLEVEL=1000
+
+DAY=`date +"%u"`
+HOUR=`date +"%k" | awk '{print $1}'`
 TIME=`date +"%b %e %H:%M:%S"`
+
+# first, is it a blackout time?
+if [ "$DAY" = "$BLACKOUT_DAY" ]; then
+    if [ $HOUR -ge $BLACKOUT_START -a $HOUR -le $BLACKOUT_END ]; then
+	exit 0
+    fi
+fi
 
 # lets gather the data
 DATA=`( (for UID in ${SENSOR[*]}
@@ -48,6 +68,15 @@ do
    fi
    let n=$n+1
 done
+
+# Lets see if it's dark out, if it is, prefer watering slightly more.
+if [ -n "$LUX_SENSOR" ]; then
+    LUX=`(echo "ask uid:$LUX_SENSOR" ; echo "disconnect") | $NC | \
+	sed -e 's/.*lux://' -e 's/\.[0-9]*//'`
+    if [ $LUX -lt $LIGHTLEVEL ]; then
+	WATERTRIGGER="$NIGHTTRIGGER"
+    fi
+fi
 
 #echo Sensor0:${SENVAL[0]}
 #echo Sensor1:${SENVAL[1]}

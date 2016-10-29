@@ -103,6 +103,7 @@ argtable_t argtable[] = {
 	{"trigger", SC_TRIGGER, PTUINT},
 	{"orp", SC_ORP, PTDOUBLE},
 	{"salinity", SC_SALINITY, PTDOUBLE},
+	{"alchan", SC_ALCHAN, PTUINT},
 };
 
 /** \brief size of the args table */ 

@@ -72,6 +72,16 @@
 #define MAX(a,b)        ((/*CONSTCOND*/(a)>(b))?(a):(b))
 #endif
 
+#define SET_FLAG(xyz, p) \
+	(xyz |= (1U << (p % 32)))
+#define CLEAR_FLAG(xyz, p) \
+	(xyz &= ~(1U << (p % 32)))
+#define QUERY_FLAG(xyz, p) \
+	(xyz & (1U << (p % 32)))
+#define CHECK_MASK(xyz, p) \
+	(p & xyz)
+#define ALL_FLAGS_SET 0xFFFFFFFF
+
 /* from common.c */
 FILE *openlog(char *logf);
 void closelog(void);
@@ -94,6 +104,7 @@ int compare_command(const void *a, const void *b);
 device_t *find_device_byuid(char *uid);
 device_group_t *find_devgroup_byuid(char *uid);
 void add_wrapped_device(device_t *dev, client_t *client, int rate, int scale);
+void add_wrapped_client(client_t *client, device_t *dev);
 void insert_device(device_t *dev);
 device_group_t *new_devgroup(char *uid);
 void add_dev_group(device_t *dev, device_group_t *devgrp);
@@ -117,6 +128,6 @@ void serial_eventcb(struct bufferevent *bev, short events, void *arg);
 
 /* From alarms.c */
 alarm_t *find_alarm_by_aluid(char *aluid);
-alarm_t *update_alarm(char *aluid, char *altext, int alsev);
+alarm_t *update_alarm(char *aluid, char *altext, int alsev, uint32_t alchan);
 
 #endif /* _COMMON_H_ */

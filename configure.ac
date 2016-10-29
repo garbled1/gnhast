@@ -36,7 +36,6 @@ AC_SEARCH_LIBS([bufferevent_get_openssl_error], [event_openssl event], , AC_MSG_
 AC_CHECK_LIB(ssl, SSL_CTX_new,,AC_MSG_ERROR(["Unable to find openSSL library"]))
 AC_CHECK_LIB(crypto, RAND_poll,,AC_MSG_ERROR(["Unable to find crypto library"]))
 AC_CHECK_LIB(m, lrint,,AC_MSG_ERROR(["Unable to find math library"]))
-#AC_CHECK_LIB(rrd, rrd_create,,AC_MSG_ERROR(["Unable to find rrd library"]))
 #AC_CHECK_LIB(event_pthreads, evthread_use_pthreads,, AC_MSG_ERROR(["Unable to find libevent2 pthreads"]))
 #AC_CHECK_LIB(pthread, pthread_mutex_lock,,AC_MSG_ERROR(["Unable to find pthread library"]))
 
@@ -52,6 +51,9 @@ AC_PATH_PROG([PERL], [perl], [/usr/pkg/bin/perl],
 
 PKG_CHECK_MODULES([RRD], [librrd])
 PKG_CHECK_MODULES([GTK2], [gtk+-2.0 >= 2.0.0], [HAVE_GTK2=1], [NO_GTK2=1])
+PKG_CHECK_MODULES([LIBXML2], [libxml-2.0 >= 2.9.2])
+AC_SUBST(LIBXML2_CFLAGS)
+AC_SUBST(LIBXML2_LIBS)
 AC_SUBST(GTK2_CFLAGS)
 AC_SUBST(GTK2_LIBS)
 
@@ -86,6 +88,7 @@ AC_CONFIG_FILES([Makefile \
 		 venstarcoll/Makefile \
 		 moncoll/Makefile \
 		 jsoncgicoll/Makefile \
+		 urtsicoll/Makefile \
 		 handlers/Makefile \
 		 tools/Makefile \
 		 gtk-gnhast/Makefile \

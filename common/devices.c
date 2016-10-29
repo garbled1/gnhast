@@ -96,7 +96,7 @@ name_map_t devproto_map[] = {
 	{PROTO_SENSOR_AD2USB, "ad2usb"},
 	{PROTO_SENSOR_ICADDY, "icaddy"},
 	{PROTO_SENSOR_VENSTAR, "venstar"},
-	{PROTO_CONTROL_URSTII, "urstii"},
+	{PROTO_CONTROL_URTSI, "urtsi"},
 	{PROTO_COLLECTOR, "collector"},
 };
 
@@ -212,9 +212,27 @@ void add_wrapped_device(device_t *dev, client_t *client, int rate, int scale)
 }
 
 /**
-	\brief Insert a device into the TAILQ
-	\note keeps the table sorted
-	\return pointer to new device
+   \brief Add a wrapped client to this device
+   \param client client_t to add
+   \param dev device_t to add to
+*/
+void add_wrapped_client(client_t *client, device_t *dev)
+{
+	wrap_client_t *wrap = smalloc(wrap_client_t);
+
+	LOG(LOG_DEBUG, "adding client %s as watcher of dev %s",
+	    (client->name) ? client->name : "generic", dev->uid);
+	wrap->client = client;
+	if (TAILQ_EMPTY(&dev->watchers))
+		TAILQ_INIT(&dev->watchers);
+	TAILQ_INSERT_TAIL(&dev->watchers, wrap, next);
+	client->watched++;
+}
+
+/**
+   \brief Insert a device into the TAILQ
+   \note keeps the table sorted
+   \return pointer to new device
 */
 
 void insert_device(device_t *dev)

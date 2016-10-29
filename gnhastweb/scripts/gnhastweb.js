@@ -129,6 +129,25 @@ function fix_devedit_form(data) {
 
 }
 
+function fix_groupedit_form(data) {
+  $("div.editdevpop h2").html("Edit properties for " + data.name);
+  $("div.editdevpop h3").html(data.uid);
+  $("#gedit-uid").val(data.uid);
+  $("#gedit-name").val(data.name);
+  $("#gedit-availgroups").html("");
+  $("#gedit-groups").html("");
+
+  $.each(data.groups, function(i, item) {
+	   if (item != data.uid) {
+	     $("#gedit-availgroups").append($('<option>', { value : item , text : item }));
+	   }
+	 });
+  $.each(data.glist, function(i, item) {
+	   $("#gedit-groups").append($('<option>', { value : item , text : item }));
+	 });
+
+}
+
 /* ajax thingie for forms inspired by
    http://hayageek.com/jquery-ajax-form-submit/
 */
@@ -213,6 +232,32 @@ $(document).ready(function() {
       });
   }); /* clickfunc */
 
+  /* edit group form popup (populates the popup) */
+  $('.groupedit-link').click(function(e) {
+  var formURL = $(this).attr("data-url");
+  var uid = $(this).attr("data-uid");
+  var port = $(this).attr("data-port");
+  var host = $(this).attr("data-host");
+
+  //e.preventDefault();
+    $.ajax({
+      url: formURL,
+      dataType: "json",
+      cache: false,
+      data: {
+	port : port,
+	uid: uid,
+	gnhastd: host
+      },
+      context: this,
+      success: function(data){
+	  fix_groupedit_form(data);
+	},
+	  error: function(ts) { 
+	  console.log(ts.responseText); }
+      });
+  }); /* clickfunc */
+
   /* code for the edit device window itself */
 
   $('.editdevform').submit(function(e) { return false; });
@@ -221,6 +266,11 @@ $(document).ready(function() {
     $('#edit-remove option').each(function(i) {
       $(this).attr("selected", "selected");  
     });
+    $('#gedit-remove option').each(function(i) {
+      $(this).attr("selected", "selected");  
+    });
+    $('#gedit-groups option').attr("selected", "selected");
+    $('#edit-groups option').attr("selected", "selected");
     var form = $(this).closest("form").get();
     var postData = $(form).serializeArray();
     postData.push({name: $(this).attr("name"), value: $(this).attr("value")});
@@ -236,10 +286,10 @@ $(document).ready(function() {
       cache: false,
     });
 
-    if (inputval === "Modify Device") {
+    if (inputval === "Modify Device" || inputval === "Modify Group") {
       $("#edit-dev-post").html("Update complete");
     }
-    if (inputval === "Modify Group Membership") {
+    if (inputval === "Modify Group Membership" || inputval === "Modify Child Groups") {
       $("#edit-grp-post").html("Update complete");
     }
   }); /* submitfunc */
@@ -251,6 +301,15 @@ $(document).ready(function() {
   $('#edit-remove').click(function() {  
     return !$('#edit-groups option:selected').remove().appendTo('#edit-availgroups');
   });
+
+  /* fiddle the add/remove buttons on the edit group form */
+  $('#gedit-add').click(function() {  
+    return !$('#gedit-availgroups option:selected').remove().appendTo('#gedit-groups');
+  });  
+  $('#gedit-remove').click(function() {  
+    return !$('#gedit-groups option:selected').remove().appendTo('#gedit-availgroups');
+  });
+
 
 }); /*docready */
 
@@ -295,6 +354,7 @@ function numAbbr(num, decPlaces) {
 function fixnumber(val) {
   var num = Number(val);
 
+  //console.log("Number = %d", num);
   if (getCookie("abbreviate") == "" || getCookie("abbreviate") == "0") {
     return val.replace(/(\.[0-9][0-9])[0-9]*$/,'$1').replace(/\.00/, '');
   }
@@ -316,6 +376,64 @@ if (typeof(EventSource)=="undefined") {
   alert("Sorry!  This particular page doesn't work well with your browser.");
 }
 
+var alerts = [];
+
+function objectFindByKey(array, key, value) {
+    for (var i = 0; i < array.length; i++) {
+        if (array[i][key] === value) {
+            return i;
+        }
+    }
+    return null;
+}
+
+function Interpolate(start, end, steps, count) {
+    var s = start,
+        e = end,
+        final = s + (((e - s) / steps) * count);
+    return Math.floor(final);
+}
+
+function Color(_r, _g, _b) {
+    var r, g, b;
+    var setColors = function(_r, _g, _b) {
+        r = _r;
+        g = _g;
+        b = _b;
+    };
+
+    setColors(_r, _g, _b);
+    this.getColors = function() {
+        var colors = {
+            r: r,
+            g: g,
+            b: b
+        };
+        return colors;
+    };
+}
+
+function setcolor(sev, min, max) {
+  var red = new Color(232, 9, 26);
+  var yellow = new Color(232, 232, 12);
+  var green = new Color(6, 170, 60);
+  var half = Math.floor((max - min) / 2);
+  var start = green;
+  var end = yellow;
+
+  if (sev > half) {
+    start = yellow;
+    end = red;
+    sev = sev % (half + 1);
+  }
+  var startColors = start.getColors();
+  var endColors = end.getColors();
+  var r = Interpolate(startColors.r, endColors.r, half, sev);
+  var g = Interpolate(startColors.g, endColors.g, half, sev);
+  var b = Interpolate(startColors.b, endColors.b, half, sev);
+  return "rgb(" + r + "," + g + "," + b + ")";
+}
+
 var ssesource = new EventSource("/cgi-bin/jsoncoll.cgi");
 ssesource.onmessage = function(event) {
   var gdata = JSON.parse(event.data);
@@ -326,10 +444,79 @@ ssesource.onmessage = function(event) {
     //console.log("got line, " + obj.uid + " id:" + i);
 
     //if (document.getElementById(obj.uid) != null) {
+
+    if (obj.aluid != null) {
+      /* This is an alarm data */
+      var alarm_key = objectFindByKey(alerts, 'aluid', obj.aluid);
+      if (alarm_key == null) {
+	alerts.push(obj);
+      } else {
+	alerts[alarm_key].altext = obj.altext;
+	alerts[alarm_key].alsev = obj.alsev;
+	alerts[alarm_key].alchan = obj.alchan;
+	if (obj.alsev == 0) {
+	  /* nuke this alarm */
+	  alerts.splice(alarm_key, 1);
+	}
+      }
+      alerts.sort(function(a, b) {
+		    return a.alsev - b.alsev;
+		  });
+
+      var z = document.getElementsByClassName("alarmwidget");
+      for (k=0; k < z.length; k++) {
+	var c = z[k].getElementsByTagName('div');
+	var min = Number(c[0].getAttribute('data-min'));
+	var max = Number(c[1].getAttribute('data-max'));
+	var chan = Number(c[2].getAttribute('data-chan'));
+	var table = c[3].getElementsByTagName('table');
+	var tds = table[0].getElementsByTagName('td');
+	/* tds.length should be 22 */
+	var j = 0;
+	for (var x = 0; (x < alerts.length && j < tds.length); x++) {
+	  if (Number(alerts[x].alsev) >= min &&
+	      Number(alerts[x].alsev) <= max &&
+	      (chan & Number(alerts[x].alchan))) {
+	    tds[j].innerHTML = alerts[x].alsev;
+	    tds[j+1].innerHTML = "&nbsp;" + alerts[x].altext.substring(0, 78);
+	    tds[j].style.backgroundColor=setcolor(Number(alerts[x].alsev), min, max);
+	    j+=2;
+	  }
+	}
+	for (j; j < tds.length; j+=2) {
+	  tds[j].innerHTML = "";
+	  tds[j+1].innerHTML = "";
+	  tds[j].style.backgroundColor="gray";
+	}
+      }
+    } else { /* normal data */
+
+      /* handle the megaswitch indicators */
+
+      var z = document.getElementsByName(obj.uid + "-ind");
+      if (obj.type == "2") { /* dimmer */
+	for (k=0; k < z.length; k++) {
+	  if (obj.value == 0.0)
+	    z[k].checked = false;
+	  else
+	    z[k].checked = true;
+	}
+      } else {
+	for (k=0; k < z.length; k++) {
+	  if (obj.value == "0")
+	    z[k].checked = false;
+	  else
+	    z[k].checked = true;
+	}
+      }
+
+      /* everything else */
+
       var z = document.getElementsByName(obj.uid + "-val");
       //console.log("length of z for " + obj.uid + " is " + z);
-      if (obj.subt == "1" && (obj.type == "1" || obj.type =="3")) {
-	/* switch/switch */
+      if ((obj.subt == "1" || obj.subt == "2") &&
+	  (obj.type == "1" || obj.type == "3")) {
+	/* switch/outlet */
 	var x = document.getElementsByName(obj.uid);
 
 	for (j=0; j < x.length; j++) {
@@ -355,16 +542,16 @@ ssesource.onmessage = function(event) {
 	  }
 	}
       } else {
-	  for (k=0; k < z.length; k++) {
-	    z[k].innerHTML = fixnumber(obj.value);
-	    if (obj.subt == "3" || obj.subt == "8") { /* temp, dir */
-	      z[k].innerHTML += "<i class=\"wi wi-degrees\"></i>";
-	    } else if (obj.subt == "4" || obj.subt == "10") {
-	      z[k].innerHTML += "%";
-	    }
+	for (k=0; k < z.length; k++) {
+	  z[k].innerHTML = fixnumber(obj.value);
+	  if (obj.subt == "3" || obj.subt == "8") { /* temp, dir */
+	    z[k].innerHTML += "<i class=\"wi wi-degrees\"></i>";
+	  } else if (obj.subt == "4" || obj.subt == "10") {
+	    z[k].innerHTML += "%";
 	  }
+	}
       }
-      //}
+    }
   }
 }
 

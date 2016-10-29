@@ -1,6 +1,6 @@
 #!@PERL@
 
-#use Data::Dump qw[ pp ];
+use Data::Dump qw[ pp ];
 use IO::Socket::INET;
 use Text::ParseWords;
 # auto-flush on socket
@@ -48,6 +48,9 @@ $header = "header.html";
 	    "smnumber",
 	    "blind",
 	    "collector",
+	    "trigger",
+	    "orp",
+	    "salinity",
 	    "bool",
 	   );
 
@@ -56,11 +59,14 @@ $header = "header.html";
 	      "watt", "amps",
 	      "rain", "weather", "alarm", "number", "pct", "flow",
 	      "distance", "volume", "timer", "thmode", "thstate", "smnum",
-	      "blind", "collector");
+	      "blind", "collector", "trigger", "orp", "salinity");
 
 @sthasscale = ("", "", "", "temp", "", "", "baro", "speed", "", "", "",
 	       "", "light", "", "", "", "", "length", "", "", "",
-	       "", "length", "length", "", "", "", "", "", "", "", "");
+	       "", "length", "length", "", "", "", "", "", "", "", "",
+	       "", "", "saline");
+
+#XXX No code for salinity scales yet. (pain!)
 
 @tscale = ('F', 'C', 'K', 'R');
 @tscalenm = ("Farenheit", "Celcius", "Kelvin", "Rankine");
@@ -80,6 +86,7 @@ $header = "header.html";
 	    'length' => 0,
 	    'speed' => 0,
 	    'light' => 0,
+	    'saline' => 0,
 	  );
 
 # contents of array:
@@ -155,6 +162,12 @@ $header = "header.html";
 			     "", "fa fa-arrow-down", "fa fa-arrow-up" ],
 		"collector" => [ 'generic', "COLLECTOR", 0,
 				 "", "fa fa-shopping-bag", "" ],
+		"trigger" => [ 'generic', "TRIGGER", 1,
+			       "", "", "" ],
+		"orp" => [ 'generic', "ORP", 2,
+			   "", "", "" ],
+		"salinity" => [ 'generic', "SALINITY", 2,
+				"", "", "" ],
 	       );
 
 open(CONF, $conffile);
@@ -163,6 +176,8 @@ $conf =~ s/\"//g;
 close(CONF);
 
 @confarray = &confparse($conf);
+
+#pp @confarray;
 
 $actionurl = $confarray[0]{'gnhastweb'}{'actionurl'};
 $gnhastdhost = $confarray[0]{'gnhastd'}{'hostname'};
@@ -218,6 +233,17 @@ print "Access-Control-Allow-Origin: *\n";
 print $cookies; # if any
 print "\n";
 
+if ($in{'mode'} eq "addgroup") {	# add a new group
+  # again, we communicate with gnhast first, same as switch below
+
+  if ($in{'newgrpuid'} eq "" || $in{'newgrpname'} eq "") {
+    return;
+  }
+  $newuid = $in{'newgrpuid'};
+  $newuid =~ s/ /_/g;
+  $junk = $sock->send("regg uid:$newuid name:\"$in{'newgrpname'}\"\n");
+}
+
 if ($in{'mode'} eq "switch") {     # switch
   # we communicate with gnhast first, so the deed is done before the reload
   # happens.
@@ -243,6 +269,30 @@ if ($in{'mode'} eq "switch") {     # switch
 
   exit;
 }
+
+# code for the megaswitch.  Similar to switch, but with more communication.
+if ($in{'mode'} eq "megaswitch") { # megaswitch
+  foreach $key (keys(%in)) {
+    next if ($key eq "mode" || $key =~ /MEGA/);
+    next if ($in{$key} eq "sensor"); # we can't modify sensors
+    $dimmer = "0.0";
+    $switch = "0";
+    if (($in{'MEGA'} eq "ON" && !($in{$key} =~ /-rev/)) ||
+	($in{'MEGA'} eq "OFF" && $in{$key} =~ /-rev/)) {
+      $dimmer = "1.0";
+      $switch = "1";
+    }
+    $uid = $key;
+    $uid =~ s/ind-//;
+    if ($in{$key} =~ /dimmer/) {
+      $junk = $sock->send("chg uid:$uid dimmer:$dimmer\n");
+    } elsif ($in{$key} =~ /switch/ || $in{$key} =~ /outlet/) {
+      $junk = $sock->send("chg uid:$uid switch:$switch\n");
+    }
+  }
+  exit;
+}
+
 
 #@junk = &send_gn_cmd($sock, "client client:gnhastweb-$instance", "\n");
 $junk = $sock->send("client client:gnhastweb-$instance\n");
@@ -305,8 +355,10 @@ if ($in{'mode'} eq "editdev") {  # handle a device edit
     }
     # madness
     foreach $key (keys(%groups)) {
+      #print "looking at key $key\n";
       foreach $dev (@{$groups{$key}{'dlist'}}) {
 	if ($dev eq $in{'uid'}) {
+	  #print "dev $dev is in group\n";
 	  $ingrp = 0;
 	  foreach $grp (@groups_to_edit) {
 	    $ingrp++ if ($grp eq $key);
@@ -336,6 +388,37 @@ if ($in{'mode'} eq "editdev") {  # handle a device edit
   exit;
 }
 
+if ($in{'mode'} eq "editgroup") {  # handle a group edit
+
+  if ($in{'edit-submit'} eq "Modify Group") {
+    $modstr = "regg uid:$in{'uid'}";
+    if ($in{'name'} ne "" && $in{'name'} ne $groups{$in{'uid'}}{'name'}) {
+      $modstr .= " name:\"$in{'name'}\"";
+    }
+    $modstr .= "\n";
+    $junk = $sock->send($modstr);
+    #print "<body><html><pre>$modstr</pre></html></body>";
+  } elsif ($in{'edit-submit'} eq "Modify Child Groups") {
+    $modstr = "regg uid:$in{'uid'}";
+
+    @groups_to_edit = split("\0", $in{'newgroup'});
+    $modstr .= " glist:";
+    $first = 0;
+    foreach $grp (@groups_to_edit) {
+      $modstr .= "," if ($first > 0);
+      $modstr .= "$grp";
+      $first++;
+    }
+    $modstr .= "\n";
+
+    $junk = $sock->send($modstr);
+    print "<body><html><pre>$modstr</pre></html></body>";
+  }
+  $junk = $sock->send("disconnect\n");
+  $sock->close();
+  exit;
+}
+
 foreach $key (keys(%groups)) {
   foreach $subgroup (@{$groups{$key}{'glist'}}) {
     $groups{$subgroup}{'ischild'} = 1;
@@ -354,7 +437,7 @@ foreach $key (keys(%groups)) {
 }
 foreach $key (keys(%devices)) {
   if ($devices{$key}{'ischild'} eq undef) {
-    push @topleveldevices, $key;
+    push @uncatdevices, $key;
   }
   if ($sthasscale[$devices{$key}{'subt'}] ne "") {
     local $sc = $scales{$sthasscale[$devices{$key}{'subt'}]};
@@ -404,7 +487,8 @@ print $header;
 # Make the popups
 
 &settings_popup;
-&edit_device_popup; # for testing
+&edit_device_popup;
+&edit_group_popup;
 &graph_popup if ($graphaction ne undef);
 
 # First we built the toplevel, by hand.
@@ -415,7 +499,8 @@ print " <div id=\"Toplevel\" class=\"content\">\n";
 print "  <div class=\"scroll-pane\">\n";
 if ($listmode == 1) {
   $odd = 0;
-  print "<table><col id=valuec><col><col id=valuec><col><col id=valuec>\n";
+  print "<table class=\"listmode\">";
+  print "<col id=valuec><col><col id=valuec><col><col id=valuec>\n";
   print "<thead><tr>";
   print "<th></th><th>Type</th><th>Name</th><th>UID</th><th>Value</th></tr>\n";
   print "</thead>\n";
@@ -427,7 +512,9 @@ if ($listmode == 1) {
 for $group (sort(@toplevelgroups)) {
   &print_group($group);
 }
-
+for $dev (sort(@topleveldevices)) {
+  &print_device($dev, "");
+}
 # widgets:
 
 &print_widgets();
@@ -443,13 +530,15 @@ if ($listmode == 1) {
 print " </div></div>\n";
 
 # build an uncategorized fake group for uncategorized devices
+# the actual screen, not the button
 print " <!-- uncategorized -->\n";
 print " <div id=\"uncategorized\" class=\"panel\">\n";
 &build_topbar;
 print "  <div class=\"scroll-pane\">\n";
 if ($listmode == 1) {
   $odd = 0;
-  print "<table><col><col id=valuec><col><col id=valuec><col>\n";
+  print "<table class=\"listmode\">";
+  print "<col><col id=valuec><col><col id=valuec><col>\n";
   print "<thead><tr>";
   print "<th></th><th>Type</th><th>Name</th><th>UID</th><th>Value</th></tr>\n";
   print "</thead>\n";
@@ -459,7 +548,7 @@ if ($listmode == 1) {
 }
 # Print a back link
 &back_link;
-for $dev (sort(@topleveldevices)) {
+for $dev (sort(@uncatdevices)) {
   &print_device($dev, "");
 }
 if ($listmode == 1) {
@@ -469,7 +558,7 @@ if ($listmode == 1) {
 }
 print " </div></div>\n";
 
-# now the rest of the groups
+# now the rest of the groups (screen, not button)
 
 foreach $group (sort(keys(%groups))) {
   print " <!-- $group -->\n";
@@ -478,7 +567,8 @@ foreach $group (sort(keys(%groups))) {
   print "  <div class=\"scroll-pane\">\n";
   if ($listmode == 1) {
     $odd = 0;
-    print "<table><col><col id=valuec><col><col id=valuec><col>\n";
+    print "<table class=\"listmode\">";
+    print "<col><col id=valuec><col><col id=valuec><col>\n";
     print "<thead><tr>";
     print "<th></th><th>Type</th><th>Name</th><th>UID</th><th>Value</th></tr>\n";
     print "</thead>\n";
@@ -524,24 +614,235 @@ $sock->close();
 # subs
 
 
-
-
-
 sub print_widgets {
   local ($group) = ($_[0]);
 
   return if ($listmode > 0); # Widgets are for button mode only
 
-  foreach $widget (keys(%{$confarray[0]{'widgets'}})) {
-    if (($confarray[0]{'widgets'}{$widget}{'parent'} eq undef && $group eq undef) || ($confarray[0]{'widgets'}{$widget}{'parent'} eq $group)) {
+  foreach $widg (keys(%{$confarray[0]{'widgets'}})) {
+    ($widget, $instance) = split(/_/, $widg);
+    if (($confarray[0]{'widgets'}{$widg}{'parent'} eq undef &&
+	 $group eq undef) ||
+	($confarray[0]{'widgets'}{$widg}{'parent'} eq $group)) {
       #make the widget
+
       if ($widget eq "localweather") {
         &widget_localweather;
       } elsif ($widget eq "forecast") {
 	print "<li><div class=\"weatherwidget\"></div></li>\n";
+      } elsif ($widget eq "megaswitch") {
+	&widget_megaswitch($instance);
+      } elsif ($widget eq "data") {
+	&widget_data($instance);
+      } elsif ($widget eq "alarm") {
+	&widget_alarm($instance);
       }
     }
   }
+}
+
+sub widget_alarm {
+  local ($instance) = ($_[0]);
+
+  if ($instance eq "") {
+    $wname = "alarm";
+  } else {
+    $wname = "alarm_$instance";
+  }
+  return if ($listmode == 1);
+  return if ($confarray[0]{'widgets'} eq undef);
+  return if ($confarray[0]{'widgets'}{$wname} eq undef);
+
+  $wtitle = $confarray[0]{'widgets'}{$wname}{'name'};
+  $wtitle = "Alarms" if ($wtitle eq undef);
+  $min = 1;
+  $max = 1000;
+  $chan = 0xFFFFFFFF;
+  if ($confarray[0]{'widgets'}{$wname}{'min'} ne undef) {
+    $min = $confarray[0]{'widgets'}{$wname}{'min'};
+  }
+  if ($confarray[0]{'widgets'}{$wname}{'max'} ne undef) {
+    $max = $confarray[0]{'widgets'}{$wname}{'max'};
+  }
+  if ($confarray[0]{'widgets'}{$wname}{'channels'} ne undef) {
+    $chan = $confarray[0]{'widgets'}{$wname}{'channels'};
+  }
+
+  print "<li><div class=\"widgetcontainer\">\n";
+  print "<div class=\"widgetcard\">\n";
+  print "<div class=\"header\">$wtitle</div>\n";
+  print "<div class=\"container alarmwidget\">\n";
+  print "<div data-min=\"$min\"></div>\n";
+  print "<div data-max=\"$max\"></div>\n";
+  print "<div data-chan=\"$chan\"></div>\n";
+  print "<div class=\"row\">\n";
+
+  print "<center>";
+  print "<table width=\"363\" align=\"center\" class=\"alarm\">\n";
+  for ($i=0; $i < 11; $i++) {
+    print "<tr class=\"alarm\">\n";
+    print " <td bgcolor=\"gray\" id=\"$wname-sev-$i\" class=\"alarm-sev\">&nbsp;</td>\n";
+    print " <td bgcolor=\"gray\" id=\"$wname-txt-$i\" class=\"alarm-txt\"></td>\n";
+    print "</tr>\n";
+  }
+  print "</table></center>\n";
+  print "</div>\n";
+  print "</div></div></div></li>\n";
+}
+
+sub widget_megaswitch {
+  local ($instance) = ($_[0]);
+
+  if ($instance eq "") {
+    $wname = "megaswitch";
+  } else {
+    $wname = "megaswitch_$instance";
+  }
+  return if ($listmode == 1);
+  return if ($confarray[0]{'widgets'} eq undef);
+  return if ($confarray[0]{'widgets'}{$wname} eq undef);
+
+  $wtitle = $confarray[0]{'widgets'}{$wname}{'name'};
+  $wtitle = "MegaSwitch" if ($wtitle eq undef);
+
+  print "<li><div class=\"widgetcontainer smallwidget\">\n";
+  print "<div class=\"widgetcard smallwidget\">\n";
+  print "<div class=\"header\">$wtitle</div>\n";
+  print "<div class=\"container\">\n";
+  print "<div class=\"row\">\n";
+
+  $item = 0;
+  print "<center>";
+  print "<table width=\"140\" align=\"center\" class=\"megaswitch\">\n";
+  print "<tr>\n";
+  foreach $key (sort(keys(%{$confarray[0]{'widgets'}{$wname}}))) {
+    next if ($key eq "switch" || $key eq "name");
+    print "</tr><tr>\n" if ($item % 8 == 0 && $item != 0);
+    print "<td align=\"center\">";
+    &print_megaswitch_bit($confarray[0]{'widgets'}{$wname}{$key}, $instance,
+			  $key);
+    print "</td>";
+    $item++;
+  }
+  print "</tr></table></center>\n";
+  print "</div>\n";
+
+  # make the on/off buttons, if necc.
+  if (lc $confarray[0]{'widgets'}{$wname}{'switch'} eq lc "on" ||
+      lc $confarray[0]{'widgets'}{$wname}{'switch'} eq lc "true" ||
+      lc $confarray[0]{'widgets'}{$wname}{'switch'} eq lc "yes") {
+    print "<div class=\"row bottomrow\">\n";
+    print "<center><table><tr>";
+    foreach $onoff ("on", "off") {
+      print "<td>";
+      print "<form autocomplete=off action=\"$actionurl\" method=\"POST\"";
+      print " class=\"dimmerform\">\n";
+      print " <input type=\"hidden\" name=\"mode\" value=\"megaswitch\">\n";
+      print " <input type=\"hidden\" name=\"MEGA\" value=\"" . uc $onoff . "\">\n";
+      foreach $key (sort(keys(%{$confarray[0]{'widgets'}{$wname}}))) {
+	next if ($key eq "switch" || $key eq "name");
+	print " <input type=\"hidden\" ";
+	$uid = $confarray[0]{'widgets'}{$wname}{$key};
+	print "name=\"ind-$uid\" ";
+	if ($devices{$uid}{'devt'} == 3) {
+	  print "value=\"sensor\">\n";
+	} else {
+	  $rev = "";
+	  $rev = "-rev" if ($key =~ /reverse/);
+	  if ($devices{$uid}{'devt'} == 2) {
+	    print "value=\"dimmer$rev\">\n";
+	  } else {
+	    print "value=\"switch$rev\">\n";
+	  }
+	}
+      }
+      print " <input id=\"$wname-$onoff\" type=\"submit\" ";
+      if ($onoff eq "on") {
+	print "class=\"button green large\" ";
+      } else {
+	print "class=\"button red large\" ";
+      }
+      print "value=\"" . uc $onoff . "\" name=\"mega-$onoff\">";
+      print "</form></td>\n";
+    }
+    print "</tr></table></center></div>\n";
+  }
+
+  print "</div></div></div></li>\n";
+}
+
+sub print_megaswitch_bit {
+  local ($uid, $instance, $key) = ($_[0], $_[1], $_[2]);
+  local $subtnm = $subtype[$devices{$uid}{'subt'}];
+  local $subt = $devices{$uid}{'subt'};
+  local $data = 0;
+  local $switch = "minilight";
+
+  if ($subtnm eq "switch" && $devices{$uid}{'devt'} == 2) { # dimmer
+    $data = 1;
+    $data = 0 if ($devices{$uid}{'dimmer'} == 0.0);
+  } elsif ($subtnm eq "switch" || $subtnm eq "outlet") {
+    $data = $devices{$uid}{$ststorage[$subt]}
+  }
+  $switch = "miniind" if ($devices{$uid}{'devt'} == 3);
+
+  print "<div class=\"$switch\">\n";
+  print " <input type=\"checkbox\" name=\"$uid" . "-ind\"";
+  print "class=\"$switch-checkbox\" id=\"$uid" . "-ind.$instance\"";
+  print " checked" if ($data);
+  print " readonly>\n";
+  print " <label class=\"$switch-label\" for=\"$uid" . "-ind.$instance\">\n";
+  print "  <span class=\"$switch-inner\"></span>\n";
+  print " </label>\n";
+  print "</div>\n";
+}
+
+sub widget_data {
+  local ($instance) = ($_[0]);
+
+  if ($instance eq "" || $instance eq undef) {
+    $wname = "data";
+  } else {
+    $wname = "data_$instance";
+  }
+  return if ($listmode == 1);
+  return if ($confarray[0]{'widgets'} eq undef);
+  return if ($confarray[0]{'widgets'}{$wname} eq undef);
+  if ($confarray[0]{'widgets'}{$wname}{'size'} eq "small") {
+    print "<li><div class=\"widgetcontainer smallwidget\">\n";
+    print "<div class=\"widgetcard smallwidget\">\n";
+  } else {
+    print "<li><div class=\"widgetcontainer\">\n";
+    print "<div class=\"widgetcard\">\n";
+  }
+  if ($confarray[0]{'widgets'}{$wname}{'name'} ne undef) {
+    print "<div class=\"header\">$confarray[0]{'widgets'}{$wname}{'name'}</div>\n";
+  } else {
+    print "<div class=\"header\">Data</div>\n";
+  }
+  print "<div class=\"container\">";
+  print "<div class=\"row\">";
+  print "<div class=\"smalltext\">";
+
+  $i = 0;
+  foreach $key (sort(keys(%{$confarray[0]{'widgets'}{$wname}}))) {
+    next if ($key eq "size" || $key eq "name");
+    next if ($confarray[0]{'widgets'}{$wname}{'size'} eq "small" && $i > 5);
+    if ($i % 6 == 0 && $i != 0) {
+      print "</div>";
+      if ($i % 12 == 0 && $i != 0) {
+	print "</div>";
+	print "<div class=\"row\">";
+      }
+      print "<div class=\"smalltext\">";
+    }
+    $name = $devices{$confarray[0]{'widgets'}{$wname}{$key}}{'name'};
+    &print_widget_bit($confarray[0]{'widgets'}{$wname}{$key}, "sidetext",
+		      $name);
+    $i++;
+  }
+  print "</div></div>";
+  print "</div></div></div></li>\n";
 }
 
 sub widget_localweather {
@@ -603,6 +904,44 @@ sub print_widget_bit {
   } else {
     print "</div>\n";
   }
+}
+
+sub edit_group_popup {
+  print "<div id=\"editgroup_popup\" class=\"overlay\">\n";
+  print " <div class=\"popup editdevpop\">\n";
+  print "  <h2>Edit properties for name</h2>\n";
+  print "  <h3>uid goes here</h3>\n";
+  print "  <a class=\"close\" href=\"#\">&times;</a>\n";
+  print "  <div class=\"pcontent\">\n";
+  print "   <form autocomplete=off method=\"POST\" class=\"editdevform\" id=\"editgrpform\" action=\"$actionurl\">\n";
+  print "    <div id=\"ed-left\">\n";
+  print "     <input type=\"hidden\" name=\"mode\" value=\"editgroup\">\n";
+  print "     <label><span>Device UID:</span><input id=\"gedit-uid\" class=\"smin\" type=\"text\" name=\"uid\" value=\"none\" readonly></label>\n";
+  print "     <label><span>Name:</span><input id=\"gedit-name\" class=\"medin\" type=\"text\" name=\"name\" value=\"none\"></label>\n";
+  print "    </div><div id=\"ed-bottom\">\n";
+  print "    <br><input id=\"edit-chggroup\" type=\"submit\" class=\"button blue\" value=\"Modify Group\" name=\"edit-submit\">";
+  print "  <span class=\"redspan\" id=\"edit-dev-post\"></span><br>\n";
+  # the multi-thing
+  print "     <div id=\"ed-ag\">\n";
+  print "      <label><span>Available Groups</span></label><br>\n";
+  print "      <select multiple class=\"edit-sel\" id=\"gedit-availgroups\">\n";
+  print "      </select><br>\n";
+  print "      <a href=\"#\" id=\"gedit-add\">add &gt;&gt;</a>\n";
+  print "     </div>\n";
+  print "     <div id=\"ed-sg\">\n";
+  print "      <label><span>Selected Groups</span></label><br>\n";
+  print "      <select multiple name=\"newgroup\" class=\"edit-sel\" id=\"gedit-groups\">\n";
+  print "      </select><br>\n";
+  print "      <a href=\"#\" id=\"gedit-remove\">&lt;&lt; remove</a>\n";
+  print "     </div>\n";
+  print "    <br><input id=\"edit-chggrp\" type=\"submit\" class=\"button blue\" value=\"Modify Child Groups\" name=\"edit-submit\">";
+  print "  <span class=\"redspan\" id=\"edit-grp-post\"></span>\n";
+  print "    </div>\n";
+  print "    </div>\n";
+  print "   </form>\n";
+  print "  </div>\n";
+  print " </div>\n";
+  print "</div>\n";
 }
 
 sub edit_device_popup {
@@ -698,6 +1037,18 @@ sub settings_popup {
   print ">";
   print "    <br><input type=\"submit\" class=\"button green\" value=\"Change\" >\n";
   print "   </form>\n";
+  # lets add a create group thing here.
+  print "   <br>\n";
+  print "   <form method=\"GET\" id=\"form\" action=\"$actionurl\">\n";
+  print "    <input type=\"hidden\" name=\"mode\" value=\"addgroup\">\n";
+  print "    <h2>Add a group</h2><br>";
+  print "    <label for=\"newgrpuid\"><p>Group UID:</p></label>\n";
+  print "    <input id=\"newgrpuid\" width=\"20\" name=\"newgrpuid\"><br>\n";
+  print "    <label for=\"newgrpname\"><p>Group Name:</p></label>\n";
+  print "    <input id=\"newgrpname\" width=\"25\" name=\"newgrpname\"><br>\n";
+  print "    <input type=\"submit\" class=\"button green\" value=\"Create New Group\" >\n";
+  print "   </form>\n";
+  # end new group
   print "  </div></div></div>\n";
 }
 
@@ -753,6 +1104,9 @@ sub print_group {
     print "    <div class=\'icon\'>\n";
     print "     <i class=\"fa fa-cubes fa-3x\"></i>\n";
     print "    </div>\n";
+    print "    <div class=\'elink'\>\n";
+    print "      <a class=\"groupedit-link\" data-port=\"$gnhastdport\" data-host=\"$gnhastdhost\" data-uid=\"$uid\" data-url=\"$baseaction" . "askgjson.cgi\" href=\'#editgroup_popup\'><i class=\"fa fa-cogs\"></i></a>\n";
+    print "    </div>\n";
     print "    <div class=\'title\'>\n";
     print "     <div class=\'text\'>GROUP</div>\n";
     print "    </div>\n";
@@ -803,6 +1157,8 @@ sub print_device {
 
   local $subtnm = $subtype[$devices{$uid}{'subt'}];
   local $subt = $devices{$uid}{'subt'};
+
+  return if ($subtnm eq "collector"); # stop printing collectors.
 
   if ($listmode == 1) {
     $odd++;
@@ -1050,7 +1406,7 @@ sub confparse {
 my @stack = {};
 
 while( $raw =~ m{$FROM_CONFIG}g ){
-##    dd( \%+ );
+#    pp( \%+ );
 ##    push @stack, { %+ };
 
     my $freeze = { %+ };

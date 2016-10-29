@@ -1,28 +1,30 @@
-
 AM_CPPFLAGS = -DLOCALSTATEDIR=\"$(localstatedir)\" \
 	-DSYSCONFDIR=\"$(sysconfdir)\" \
 	-I$(top_srcdir)/common
-bin_PROGRAMS = jsoncoll.cgi
 
-jsoncoll_cgi_SOURCES = \
+bin_PROGRAMS = urtsicoll
+
+urtsicoll_SOURCES = \
 	$(top_srcdir)/common/common.c \
+	$(top_srcdir)/common/serial_common.c \
 	$(top_srcdir)/common/devices.c \
 	$(top_srcdir)/common/netparser.c \
-	$(top_srcdir)/common/gncoll.c \
 	$(top_srcdir)/common/confparser.c \
-	$(top_srcdir)/common/collcmd.c \
-	$(top_srcdir)/common/collcmd.h \
+	$(top_srcdir)/common/gncoll.c \
 	$(top_srcdir)/common/genconn.c \
 	$(top_srcdir)/common/genconn.h \
+	$(top_srcdir)/common/collcmd.c \
+	$(top_srcdir)/common/collcmd.h \
 	$(top_srcdir)/common/common.h \
 	$(top_srcdir)/common/gnhast.h \
 	$(top_srcdir)/common/confuse.h \
+	$(top_srcdir)/common/confparser.h \
 	$(top_srcdir)/common/gncoll.h \
-	$(top_srcdir)/common/alarms.c \
-	collector.c collector.h
+	urtsi.h collector.h \
+	collector.c
 
 if NEED_RBTREE
-jsoncoll_cgi_SOURCES += \
+urtsicoll_SOURCES += \
 	$(top_srcdir)/linux/bswap16.c \
 	$(top_srcdir)/linux/bswap32.c \
 	$(top_srcdir)/linux/bswap64.c \
@@ -33,4 +35,4 @@ jsoncoll_cgi_SOURCES += \
 	$(top_srcdir)/linux/time.h
 endif
 
-jsoncoll_cgi_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+urtsicoll_LDADD = $(top_builddir)/libconfuse/libconfuse.la

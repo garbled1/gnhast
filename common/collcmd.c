@@ -63,6 +63,7 @@ extern int cmd_endlgrps(pargs_t *args, void *arg);
 extern int cmd_ping(pargs_t *args, void *arg);
 extern int cmd_imalive(pargs_t *args, void *arg);
 extern int cmd_die(pargs_t *args, void *arg);
+extern int cmd_alarm(pargs_t *args, void *arg);
 extern void coll_upd_cb(device_t *dev, void *arg);
 extern void coll_chg_switch_cb(device_t *dev, int state, void *arg);
 extern void coll_chg_dimmer_cb(device_t *dev, double level, void *arg);
@@ -86,6 +87,7 @@ commands_t commands[] = {
 	{"die", cmd_die, 0},
 	{"upd", cmd_update, 0},
 	{"mod", cmd_modify, 0},
+	{"setalarm", cmd_alarm, 0},
 };
 
 /** The size of the command table */
@@ -203,6 +205,18 @@ int __attribute__((weak)) cmd_imalive(pargs_t *args, void *arg)
 */
 
 int __attribute__((weak)) cmd_die(pargs_t *args, void *arg)
+{
+	return(0);
+}
+
+/**
+   \brief Handle an alarm request (stub)
+   \param arg void pointer to connection_t
+   If the collector doesn't handle alarms, just straight up ignore the cmd.
+   Actual cmd_alarm is defined in alarms.c
+*/
+
+int __attribute__((weak)) cmd_alarm(pargs_t *args, void *arg)
 {
 	return(0);
 }

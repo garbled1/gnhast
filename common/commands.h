@@ -2,9 +2,9 @@
 #define _COMMAND_H_
 
 /*
-	\file command.h
-	\author Tim Rightnour
-	\brief Commands understood by the server
+  \file command.h
+  \author Tim Rightnour
+  \brief Commands understood by the server
 */
 
 #include "gnhast.h"
@@ -107,6 +107,7 @@ enum SC_COMMANDS {
 	SC_TRIGGER,	/**< \brief trigger */
 	SC_ORP,		/**< \brief ORP */
 	SC_SALINITY,	/**< \brief salinity */
+	SC_ALCHAN,	/**< \brief alarm channel */
 };
 
 /* commands XXX nothing uses this. why bother? */

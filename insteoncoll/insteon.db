@@ -54,3 +54,11 @@ model "2443-222" {
 	subtype = "switch"
 	defgroups = {1}
 }
+model "2663-2" {
+	name = "On/Off Outlet"
+	devcat = 0x02
+	subcat = 0x39
+	type = "switch"
+	subtype = "outlet"
+	defgroups = {1}
+}

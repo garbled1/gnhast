@@ -48,7 +48,23 @@
 #include "common.h"
 #include "confparser.h"
 
+extern void coll_alarm_cb(alarm_t *alarm, char *aluid, void *arg);
+
 TAILQ_HEAD(, _alarm_t) alarms = TAILQ_HEAD_INITIALIZER(alarms);
+
+/* STUB */
+
+/**
+   \brief Called when an alarm command occurs (stub)
+   \param alarm alarm that got updated/created
+   \param arg pointer to connection_t
+*/
+
+void __attribute__((weak)) coll_alarm_cb(alarm_t *alarm, char *aluid,
+					 void *arg)
+{
+	return;
+}
 
 /**
    \brief Search the alarmtable for an alarm maching aluid
@@ -71,20 +87,22 @@ alarm_t *find_alarm_by_aluid(char *aluid)
    \brief Fully update an alarm
    \param aluid UID of alarm to update
    \param altext body of text for alarm
-   \param sev severity of alarm. 0 deletes alarm
+   \param alsev severity of alarm. 0 deletes alarm
+   \param alchan alarm channel bitfield
    \return pointer to alarm, or NULL if nuked/bad/etc
    \note  Creates an alarm if none exists.  Updates existing if it does,
    nukes it if severity is set to zero.
 */
 
-alarm_t *update_alarm(char *aluid, char *altext, int alsev)
+alarm_t *update_alarm(char *aluid, char *altext, int alsev, uint32_t alchan)
 {
 	alarm_t *alarm;
 
 	alarm = find_alarm_by_aluid(aluid);
 
+	/* possibly a clearing event for an alarm we don't have */
 	if (alarm == NULL && alsev == 0)
-		return NULL; /* seriously?  why did you do this? */
+		return NULL;
 
 	if (alarm == NULL) { /* create a new alarm */
 		if (aluid == NULL || altext == NULL) {
@@ -96,6 +114,7 @@ alarm_t *update_alarm(char *aluid, char *altext, int alsev)
 		alarm->aluid = strdup(aluid);
 		alarm->alsev = alsev;
 		alarm->altext = strdup(altext);
+		alarm->alchan = alchan;
 		TAILQ_INSERT_TAIL(&alarms, alarm, next);
 
 		return alarm;
@@ -118,6 +137,62 @@ alarm_t *update_alarm(char *aluid, char *altext, int alsev)
 	}
 	if (alsev != -1)
 		alarm->alsev = alsev;
+	if (alchan < 1)
+		SET_FLAG(alchan, ACHAN_GENERIC);
+	alarm->alchan = alchan;
 
 	return alarm;
+}
+
+/**
+   \brief Handle an alarm command
+   \param args The list of arguments
+   \param arg void pointer to client_t of provider
+*/
+
+int cmd_alarm(pargs_t *args, void *arg)
+{
+	int i;
+	char *aluid = NULL;
+	char *altext = NULL;
+	int alsev = 0;
+	int alchan = 1; /* generic */
+	client_t *client = (client_t *)arg;
+	alarm_t *alarm;
+
+	/* loop through the args and find the UID */
+	for (i=0; args[i].cword != -1; i++) {
+		switch (args[i].cword) {
+		case SC_ALUID:
+			aluid = args[i].arg.c;
+			break;
+		}
+	}
+	if (!aluid) {
+		LOG(LOG_ERROR, "alarm without ALUID");
+		return(-1);
+	}
+
+	/* Ok, we got one, now lets update it's data */
+
+	for (i=0; args[i].cword != -1; i++) {
+		switch (args[i].cword) {
+		case SC_ALSEV:
+			alsev = args[i].arg.i;
+			break;
+		case SC_ALTEXT:
+			altext = args[i].arg.c;
+			break;
+		case SC_ALCHAN:
+			alchan = args[i].arg.u;
+			break;
+		default:
+			LOG(LOG_WARNING, "Got an unhandled argument"
+			    " in cmd_alarm() for alarm %s", aluid);
+			break;
+		}
+	}
+	alarm = update_alarm(aluid, altext, alsev, alchan);
+	coll_alarm_cb(alarm, aluid, arg); /* generic cb routine */
+	return(0);
 }

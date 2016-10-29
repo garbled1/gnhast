@@ -118,6 +118,9 @@ void run_handler_dev(device_t *dev)
 	client->addr = strdup(dev->handler);
 	client->pid = child;
 
+	TAILQ_INIT(&client->devices);
+	TAILQ_INIT(&client->wdevices);
+
 	client->ev = bufferevent_socket_new(base, sv[0],
             BEV_OPT_CLOSE_ON_FREE);
 
