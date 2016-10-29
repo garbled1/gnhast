@@ -1,6 +1,6 @@
 #!@PERL@
 
-use Data::Dump qw[ pp ];
+#use Data::Dump qw[ pp ];
 use IO::Socket::INET;
 use Text::ParseWords;
 # auto-flush on socket
@@ -512,13 +512,14 @@ if ($listmode == 1) {
 for $group (sort(@toplevelgroups)) {
   &print_group($group);
 }
-for $dev (sort(@topleveldevices)) {
-  &print_device($dev, "");
-}
+
 # widgets:
 
 &print_widgets();
 
+for $dev (sort(@topleveldevices)) {
+  &print_device($dev, "");
+}
 # fake it for the uncategorized group:
 &print_group('uncategorized');
 
@@ -937,7 +938,7 @@ sub edit_group_popup {
   print "    <br><input id=\"edit-chggrp\" type=\"submit\" class=\"button blue\" value=\"Modify Child Groups\" name=\"edit-submit\">";
   print "  <span class=\"redspan\" id=\"edit-grp-post\"></span>\n";
   print "    </div>\n";
-  print "    </div>\n";
+#  print "    </div>\n";
   print "   </form>\n";
   print "  </div>\n";
   print " </div>\n";
@@ -984,7 +985,7 @@ sub edit_device_popup {
   print "    <br><input id=\"edit-chggrp\" type=\"submit\" class=\"button blue\" value=\"Modify Group Membership\" name=\"edit-submit\">";
   print "  <span class=\"redspan\" id=\"edit-grp-post\"></span>\n";
   print "    </div>\n";
-  print "    </div>\n";
+#  print "    </div>\n";
   print "   </form>\n";
   print "  </div>\n";
   print " </div>\n";
@@ -1030,7 +1031,7 @@ sub settings_popup {
   print " <option value=2";
   print " selected" if ($listmode == 2);
   print ">Custom</option>\n";
-  print "</select></div></p>\n";
+  print "</select></div>\n";
   print "<label for=\"number\"><p>Humanize Numbers</p></label>";
   print "    <input id=\"number\" value=\"on\" type=\"checkbox\" name=\"number\" class=\"normalcheck\"";
   print " checked=\"on\"" if ($numbermode ne "");
@@ -1097,12 +1098,12 @@ sub print_group {
     print "</tr>\n";
   } else {
     print "<li>\n";
-    print " <a id=\"link-$uid\" href=\"#$uid\">\n";
     print " <div class=\'container\'>\n";
     print "  <div class=\'card group\'>\n";
     print "   <div class=\'inner\'>\n";
     print "    <div class=\'icon\'>\n";
-    print "     <i class=\"fa fa-cubes fa-3x\"></i>\n";
+    print " <a id=\"link-$uid\" href=\"#$uid\">\n";
+    print "     <i class=\"fa fa-cubes fa-3x\"></i></a>\n";
     print "    </div>\n";
     print "    <div class=\'elink'\>\n";
     print "      <a class=\"groupedit-link\" data-port=\"$gnhastdport\" data-host=\"$gnhastdhost\" data-uid=\"$uid\" data-url=\"$baseaction" . "askgjson.cgi\" href=\'#editgroup_popup\'><i class=\"fa fa-cogs\"></i></a>\n";
@@ -1115,7 +1116,6 @@ sub print_group {
     print "   </div>\n";
     print "  </div>\n";
     print " </div>\n";
-    print " </a>\n";
     print "</li>\n";
   }
 }
