@@ -2,6 +2,69 @@
 /* graph tricks.  stolen from: http://bl.ocks.org/d3noob/13a36f70a4f060b97e41
  */
 
+function make_minigraph(data, uid, gtype) {
+  var m = [0,0,2,0];
+  var w = 100;
+  var h = 17;
+
+  var gmin = 0;
+  var gmax = 10;
+
+  if (gtype == "area")
+    var gval = "-agraph";
+  if (gtype == "line")
+    var gval = "-lgraph";
+
+  data.forEach(function(element) {
+    if (element > gmax)
+      gmax = element + 1;
+    if (element < gmin)
+      gmin = element - 1;
+	       });
+
+  var x = d3.scale.linear().domain([0, data.length]).range([0, w]);
+  var y = d3.scale.linear().domain([gmin, gmax]).range([h, 0]);
+
+  //console.log("UID " + uid + "DATA:" + data);
+  var area = d3.svg.area()
+    .x(function(d, i) {
+	 return x(i);
+       })
+    .y0(h)
+    .y1(function(d, i) {
+	  return y(d);
+	});
+
+  var line = d3.svg.line()
+      // assign the X function to plot our line as we wish
+    .x(function(d,i) { 
+	 // return the X coordinate where we want to plot this datapoint
+	 return x(i); 
+       })
+    .y(function(d) { 
+	 // return the Y coordinate where we want to plot this datapoint
+	 return y(d); 
+       });
+    // Add an SVG element with the desired dimensions and margin.
+    d3.selectAll("div[name=\"" + uid + gval + "\"]").select("svg").remove();
+    var graph = d3.selectAll("div[name=\"" + uid + gval + "\"]")
+      .append("svg:svg")
+      .attr("width", w + m[1] + m[3])
+      .attr("height", h + m[0] + m[2])
+      .append("svg:g")
+      .attr("class", "svg-minigraph")
+      .attr("transform", "translate(" + m[3] + "," + m[0] + ")");
+
+    // Add the line by appending an svg:path element with the data line we created above
+    // do this AFTER the axes above so that the line is above the tick-lines
+    graph.append("svg:path").attr("d", line(data));
+    if (gtype == "area") {
+      graph.append("svg:path")
+	.attr("class", "svg-minigraph-area")
+	.attr("d", area(data));
+    }
+}
+
 function make_graph(data, uid, devname) {
 
   //console.log("WE ARE GRAPHIN: " + uid);
@@ -363,7 +426,7 @@ function fixnumber(val) {
     return val;
   }
 
-  if (val > 10000) {
+  if (val > 200000) {
     return(numAbbr(num, 4));
   }
 
@@ -377,6 +440,7 @@ if (typeof(EventSource)=="undefined") {
 }
 
 var alerts = [];
+var minigraph = {};
 
 function objectFindByKey(array, key, value) {
     for (var i = 0; i < array.length; i++) {
@@ -442,7 +506,6 @@ ssesource.onmessage = function(event) {
     var obj = gdata[i];
 
     //console.log("got line, " + obj.uid + " id:" + i);
-
     //if (document.getElementById(obj.uid) != null) {
 
     if (obj.aluid != null) {
@@ -491,8 +554,31 @@ ssesource.onmessage = function(event) {
       }
     } else { /* normal data */
 
-      /* handle the megaswitch indicators */
+      /* handle minigraphs */
+      var gph = document.getElementsByName(obj.uid + "-lgraph");
+      for (k=0; k < gph.length; k++) {
+	if (typeof minigraph[obj.uid] === "undefined") {
+	  minigraph[obj.uid] = new Array();
+	}
+	minigraph[obj.uid].push(Number(obj.value));
+	if (minigraph[obj.uid].length > 50) {
+	  minigraph[obj.uid].shift();
+	}
+	make_minigraph(minigraph[obj.uid], obj.uid, "line");
+      }
+      var gph = document.getElementsByName(obj.uid + "-agraph");
+      for (k=0; k < gph.length; k++) {
+	if (typeof minigraph[obj.uid] === "undefined") {
+	  minigraph[obj.uid] = new Array();
+	}
+	minigraph[obj.uid].push(Number(obj.value));
+	if (minigraph[obj.uid].length > 50) {
+	  minigraph[obj.uid].shift();
+	}
+	make_minigraph(minigraph[obj.uid], obj.uid, "area");
+      }
 
+      /* handle the megaswitch indicators */
       var z = document.getElementsByName(obj.uid + "-ind");
       if (obj.type == "2") { /* dimmer */
 	for (k=0; k < z.length; k++) {

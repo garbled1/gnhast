@@ -201,6 +201,17 @@ path {
     fill: none;
 }
 
+.svg-minigraph path { 
+  stroke: white;
+  stroke-width: 1;
+  position: absolute;
+  shape-rendering: crispEdges;
+}
+
+.svg-minigraph-area { 
+  fill: white;
+}
+
 .axis path,
 .axis line {
     fill: none;
@@ -1158,6 +1169,14 @@ path {
 .widgetcard .sidetext {
   font-size: 18px;
   display: block;
+}
+
+.hasgraph { 
+  width: 160px;
+}
+
+.widgetcard .minigraph { 
+  position: absolute;
 }
 
 /* Energy Button stuff */

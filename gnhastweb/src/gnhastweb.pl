@@ -839,7 +839,7 @@ sub widget_data {
     }
     $name = $devices{$confarray[0]{'widgets'}{$wname}{$key}}{'name'};
     &print_widget_bit($confarray[0]{'widgets'}{$wname}{$key}, "sidetext",
-		      $name);
+		      $name, $key);
     $i++;
   }
   print "</div></div>";
@@ -892,16 +892,31 @@ sub widget_localweather {
 }
 
 sub print_widget_bit {
-  local ($uid, $class, $title) = ($_[0], $_[1], $_[2]);
+  local ($uid, $class, $title, $key) = ($_[0], $_[1], $_[2], $_[3]);
 
-  print "<div class=\"$class\">";
+  $graph = 0;
+  $graph = 1 if ($key =~ /_lgraph/);
+  $graph = 2 if ($key =~ /_agraph/);
+
+  if ($graph > 0) {
+    print "<div class=\"$class hasgraph\">";
+  } else {
+    print "<div class=\"$class\">";
+  }
   if ($title ne undef) {
     print "<div class=\"title\">$title</div>";
   }
   if ($uid ne undef) {
+    if ($graph == 1) {
+      print "<div><div class=\"minigraph\" name=\"$uid" . "-lgraph\"></div>";
+    } elsif ($graph == 2) {
+      print "<div><div class=\"minigraph\" name=\"$uid" . "-agraph\"></div>";
+    }
     print "<div name=\"$uid" . "-val\">";
     &print_devdata($uid, $devices{$uid}{'subt'});
-    print "</div></div>\n";
+    print "</div>\n";
+    print "</div>\n" if ($graph > 0);
+    print "</div>\n";
   } else {
     print "</div>\n";
   }
