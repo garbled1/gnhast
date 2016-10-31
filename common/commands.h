@@ -108,15 +108,8 @@ enum SC_COMMANDS {
 	SC_ORP,		/**< \brief ORP */
 	SC_SALINITY,	/**< \brief salinity */
 	SC_ALCHAN,	/**< \brief alarm channel */
+	SC_SPAM,	/**< \brief spamhandler setting */
 };
-
-/* commands XXX nothing uses this. why bother? */
-
-#define C_REGISTER		1	/**< \brief Register device */
-#define C_UPDATE		2	/**< \brief Update device status */
-#define C_CHANGE		3	/**< \brief Change device status */
-#define C_NEED			4	/**< \brief Need device status upds */
-#define C_REGGROUP		5	/**< \breif Register Group */
 
 void init_argcomm(void);
 pargs_t *parse_command(char **words, int count); 

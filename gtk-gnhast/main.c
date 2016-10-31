@@ -312,6 +312,7 @@ void devconf_dump_cb(void)
 	device_t *dev;
 	cfg_t *dc;
 	char *buf;
+	int flag=0;
 
 	buf = safer_malloc(strlen(homedir) +
 			   strlen(GNHASTD_DEVICE_FILE) + 2);
@@ -321,7 +322,9 @@ void devconf_dump_cb(void)
 		dc = new_conf_from_dev(cfg, dev);
 	}
 	TLOG(LOG_NOTICE, "Writing device conf file %s", buf);
-	dump_conf(cfg, CONF_DUMP_DEVONLY, buf);
+	SET_FLAG(flag, CONF_DUMP_DEVONLY);
+	SET_FLAG(flag, CONF_DUMP_NOCOLLECTOR);
+	dump_conf(cfg, flag, buf);
 	free(buf);
 }
 
@@ -346,7 +349,7 @@ void devgroupconf_dump_cb(void)
 		dc = new_conf_from_devgrp(cfg, devgrp);
 	}
 	TLOG(LOG_NOTICE, "Writing device group conf file %s", buf);
-	dump_conf(cfg, CONF_DUMP_GROUPONLY, buf);
+	dump_conf(cfg, CONV_FLAG(CONF_DUMP_GROUPONLY), buf);
 	free(buf);
 }
 

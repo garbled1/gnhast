@@ -104,6 +104,7 @@ argtable_t argtable[] = {
 	{"orp", SC_ORP, PTDOUBLE},
 	{"salinity", SC_SALINITY, PTDOUBLE},
 	{"alchan", SC_ALCHAN, PTUINT},
+	{"spamhandler", SC_SPAM, PTINT},
 };
 
 /** \brief size of the args table */ 

@@ -1,8 +1,9 @@
 #ifndef _CONFPARSER_H_
 #define _CONFPARSER_H_
 
-#define CONF_DUMP_DEVONLY	(1<<1)
-#define CONF_DUMP_GROUPONLY	(1<<2)
+#define CONF_DUMP_DEVONLY	0
+#define CONF_DUMP_GROUPONLY	1
+#define CONF_DUMP_NOCOLLECTOR	2
 
 cfg_t *parse_conf(const char *filename);
 cfg_t *find_devconf_byuid(cfg_t *cfg, char *uid);

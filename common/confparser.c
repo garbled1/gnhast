@@ -846,10 +846,10 @@ device_t *new_dev_from_conf(cfg_t *cfg, char *uid)
 	}
 	switch (cfg_getint(devconf, "spamhandler")) {
 	case 1:
-		dev->flags |= DEVFLAG_SPAMHANDLER;
+		SET_FLAG(dev->flags, DEVFLAG_SPAMHANDLER);
 		break;
 	case 2:
-		dev->flags |= DEVFLAG_CHANGEHANDLER;
+		SET_FLAG(dev->flags, DEVFLAG_CHANGEHANDLER);
 	}
 
 	if (TAILQ_EMPTY(&dev->watchers))
@@ -1000,10 +1000,9 @@ cfg_t *dump_conf(cfg_t *cfg, int flags, const char *filename)
 	time_t t;
 	device_t *dev;
 
-	/* A bit of a hack because these are flags */
-	if (flags == CONF_DUMP_DEVONLY)
+	if (QUERY_FLAG(flags, CONF_DUMP_DEVONLY))
 		LOG(LOG_NOTICE, "Rewriting device configuration file");
-	else if (flags == CONF_DUMP_GROUPONLY)
+	else if (QUERY_FLAG(flags, CONF_DUMP_GROUPONLY))
 		LOG(LOG_NOTICE, "Rewriting group configuration file");
 	else
 		LOG(LOG_NOTICE, "Rewriting configuration file");
@@ -1015,8 +1014,11 @@ cfg_t *dump_conf(cfg_t *cfg, int flags, const char *filename)
 		return;
 	}
 	/* Make sure all changes make it in */
-	TAILQ_FOREACH(dev, &alldevs, next_all)
-		(void)new_conf_from_dev(cfg, dev);
+	TAILQ_FOREACH(dev, &alldevs, next_all) {
+		if (QUERY_FLAG(flags, CONF_DUMP_NOCOLLECTOR) &&
+		    dev->subtype != SUBTYPE_COLLECTOR)
+			(void)new_conf_from_dev(cfg, dev);
+	}
 
 	fprintf(fp, "# Config file for %s\n", getprogname());
 	fprintf(fp, "# Generated on %s", ctime(&t));
@@ -1043,7 +1045,9 @@ cfg_t *dump_conf(cfg_t *cfg, int flags, const char *filename)
 		cfg_opt_set_print_func(a, conf_print_lightscale);
 		a = cfg_getopt(section, "salinescale");
 		cfg_opt_set_print_func(a, conf_print_salinescale);
-		if (flags & CONF_DUMP_DEVONLY) {
+		if (QUERY_FLAG(flags, CONF_DUMP_DEVONLY) &&
+		    (QUERY_FLAG(flags, CONF_DUMP_NOCOLLECTOR) &&
+		     cfg_getint(section, "subtype") != SUBTYPE_COLLECTOR)) {
 			fprintf(fp, "device \"%s\" {\n", cfg_title(section));
 			cfg_print_indent(section, fp, 2);
 			fprintf(fp, "}\n");
@@ -1051,13 +1055,14 @@ cfg_t *dump_conf(cfg_t *cfg, int flags, const char *filename)
 	}
 	for (i=0; i < cfg_size(cfg, "devgroup"); i++) {
 		section = cfg_getnsec(cfg, "devgroup", i);
-		if (flags & CONF_DUMP_GROUPONLY) {
+		if (QUERY_FLAG(flags, CONF_DUMP_GROUPONLY)) {
 			fprintf(fp, "devgroup \"%s\" {\n", cfg_title(section));
 			cfg_print_indent(section, fp, 2);
 			fprintf(fp, "}\n");
 		}
 	}
-	if (!(flags & CONF_DUMP_DEVONLY) && !(flags & CONF_DUMP_GROUPONLY))
+	if (!QUERY_FLAG(flags, CONF_DUMP_DEVONLY) &&
+	    !QUERY_FLAG(flags, CONF_DUMP_GROUPONLY))
 		cfg_print(cfg, fp);
 	fclose(fp);
 }

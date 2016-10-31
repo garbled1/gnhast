@@ -74,6 +74,8 @@
 
 #define SET_FLAG(xyz, p) \
 	(xyz |= (1U << (p % 32)))
+#define CONV_FLAG(p) \
+	(1U << (p % 32))
 #define CLEAR_FLAG(xyz, p) \
 	(xyz &= ~(1U << (p % 32)))
 #define QUERY_FLAG(xyz, p) \
@@ -81,6 +83,12 @@
 #define CHECK_MASK(xyz, p) \
 	(p & xyz)
 #define ALL_FLAGS_SET 0xFFFFFFFF
+#define SET_BIT(xyz, p) \
+	(xyz |= p)
+#define CLEAR_BIT(xyz, p) \
+	(xyz &= ~(p))
+#define QUERY_BIT(xyz, p) \
+	(xyz & p)
 
 /* from common.c */
 FILE *openlog(char *logf);

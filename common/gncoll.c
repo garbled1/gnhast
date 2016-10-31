@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013
+ * Copyright (c) 2013, 2016
  *      Tim Rightnour.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -289,9 +289,16 @@ void gn_modify_device(device_t *dev, struct bufferevent *out)
 		break;
 	}
 
-	if (dev->handler)
+	if (dev->handler) {
 		evbuffer_add_printf(send, " %s:%s", ARGNM(SC_HANDLER),
 				    dev->handler);
+		if (QUERY_FLAG(dev->flags, DEVFLAG_SPAMHANDLER))
+			evbuffer_add_printf(send, " %s:1 ", ARGNM(SC_SPAM));
+		else if (QUERY_FLAG(dev->flags, DEVFLAG_CHANGEHANDLER))
+			evbuffer_add_printf(send, " %s:2 ", ARGNM(SC_SPAM));
+		else
+			evbuffer_add_printf(send, " %s:0 ", ARGNM(SC_SPAM));
+	}
 
 	if (dev->hargs && dev->nrofhargs > 0) {
 		evbuffer_add_printf(send, " %s:", ARGNM(SC_HARGS));
@@ -480,12 +487,12 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 	}
 
 	scale = GNC_GET_SCALE(what);
-	if (what & GNC_NOSCALE)
+	if (QUERY_BIT(what, GNC_NOSCALE))
 		scale = dev->scale; /* short circuit gn_maybe scale */
 	send = evbuffer_new();
 
 	/* special handling for cacti updates */
-	if (what & GNC_UPD_CACTI) {
+	if (QUERY_BIT(what, GNC_UPD_CACTI)) {
 		evbuffer_add_printf(send, "%s:", dev->rrdname);
 		if (datatype_dev(dev) == DATATYPE_UINT) {
 			get_data_dev(dev, DATALOC_DATA, &u);
@@ -507,19 +514,19 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 
 	/* fill in the details */
 	evbuffer_add_printf(send, "%s:%s ", ARGNM(SC_UID), dev->uid);
-	if (((what & GNC_UPD_NAME) || (what & GNC_UPD_FULL))
+	if ((QUERY_BIT(what, GNC_UPD_NAME) || QUERY_BIT(what, GNC_UPD_FULL))
 	    && dev->name != NULL)
 		evbuffer_add_printf(send, "%s:\"%s\" ",  ARGNM(SC_NAME),
 				    dev->name);
-	if (((what & GNC_UPD_RRDNAME) || (what & GNC_UPD_FULL))
-	    && dev->rrdname != NULL)
+	if ((QUERY_BIT(what, GNC_UPD_RRDNAME) ||
+	     QUERY_BIT(what, GNC_UPD_FULL)) && dev->rrdname != NULL)
 		evbuffer_add_printf(send, "%s:%s ",  ARGNM(SC_RRDNAME),
 				    dev->rrdname);
-	if (((what & GNC_UPD_HANDLER) || (what & GNC_UPD_FULL))
-	    && dev->handler != NULL)
+	if ((QUERY_BIT(what, GNC_UPD_HANDLER) ||
+	     QUERY_BIT(what, GNC_UPD_FULL)) && dev->handler != NULL)
 		evbuffer_add_printf(send, "%s:%s ",  ARGNM(SC_HANDLER),
 				    dev->handler);
-	if (((what & GNC_UPD_HARGS)  || (what & GNC_UPD_FULL))
+	if ((QUERY_BIT(what, GNC_UPD_HARGS) || QUERY_BIT(what, GNC_UPD_FULL))
 	    && dev->nrofhargs > 0 && dev->hargs != NULL) {
 		evbuffer_add_printf(send, "%s:",  ARGNM(SC_HARGS));
 		evbuffer_add_printf(send, "\"%s\"", dev->hargs[0]);
@@ -528,11 +535,19 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 		evbuffer_add_printf(send, " ");
 	}
 	/* do everything else */
-	if (what & GNC_UPD_FULL) {
+	if (QUERY_BIT(what, GNC_UPD_FULL)) {
 		evbuffer_add_printf(send, "%s:%d %s:%d %s:%d ",
 				    ARGNM(SC_DEVTYPE), dev->type,
 				    ARGNM(SC_PROTO), dev->proto,
 				    ARGNM(SC_SUBTYPE), dev->subtype);
+
+		if (QUERY_FLAG(dev->flags, DEVFLAG_SPAMHANDLER))
+			evbuffer_add_printf(send, "%s:1 ", ARGNM(SC_SPAM));
+		else if (QUERY_FLAG(dev->flags, DEVFLAG_CHANGEHANDLER))
+			evbuffer_add_printf(send, "%s:2 ", ARGNM(SC_SPAM));
+		else
+			evbuffer_add_printf(send, "%s:0 ", ARGNM(SC_SPAM));
+
 		if (dev->scale)
 			evbuffer_add_printf(send, "%s:%d ", ARGNM(SC_SCALE),
 					    dev->scale);
@@ -543,7 +558,8 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 	case DATATYPE_UINT:
 		get_data_dev(dev, DATALOC_DATA, &u);
 		evbuffer_add_printf(send, "%s:%d", ARGDEV(dev), u);
-		if ((what & GNC_UPD_WATER) || (what & GNC_UPD_FULL)) {
+		if (QUERY_BIT(what, GNC_UPD_WATER) ||
+		    QUERY_BIT(what, GNC_UPD_FULL)) {
 			get_data_dev(dev, DATALOC_LOWAT, &u);
 			evbuffer_add_printf(send, " %s:%d ",
 					    ARGNM(SC_LOWAT), u);
@@ -555,7 +571,8 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 	case DATATYPE_LL:
 		get_data_dev(dev, DATALOC_DATA, &ll);
 		evbuffer_add_printf(send, "%s:%jd", ARGDEV(dev), ll);
-		if ((what & GNC_UPD_WATER) || (what & GNC_UPD_FULL)) {
+		if (QUERY_BIT(what, GNC_UPD_WATER) ||
+		    QUERY_BIT(what, GNC_UPD_FULL)) {
 			get_data_dev(dev, DATALOC_LOWAT, &ll);
 			evbuffer_add_printf(send, " %s:%jd ",
 					    ARGNM(SC_LOWAT), ll);
@@ -569,7 +586,8 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 		get_data_dev(dev, DATALOC_DATA, &d);
 		evbuffer_add_printf(send, "%s:%f", ARGDEV(dev),
 				    gn_maybe_scale(dev, scale, d));
-		if ((what & GNC_UPD_WATER) || (what & GNC_UPD_FULL)) {
+		if (QUERY_BIT(what, GNC_UPD_WATER) ||
+		    QUERY_BIT(what, GNC_UPD_FULL)) {
 			get_data_dev(dev, DATALOC_LOWAT, &d);
 			evbuffer_add_printf(send, " %s:%f ",
 					    ARGNM(SC_LOWAT), d);

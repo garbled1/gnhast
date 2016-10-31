@@ -162,7 +162,7 @@ int cmd_update(pargs_t *args, void *arg)
 	}
 
 	/* check if the device was unknown at the time */
-	if (dev->flags & DEVFLAG_NODATA)
+	if (QUERY_FLAG(dev->flags, DEVFLAG_NODATA))
 		hadnodata = 1;
 
 	/* Ok, we got one, now lets update it's data */
@@ -673,6 +673,28 @@ int cmd_modify(pargs_t *args, void *arg)
 			LOG(LOG_NOTICE, "Handler args uid:%s changed to %s,"
 			    " %d arguments", dev->uid, args[i].arg.c,
 			    dev->nrofhargs);
+			break;
+		case SC_SPAM:
+			LOG(LOG_NOTICE, "Spamhandler for uid:%s changed to %d",
+			    dev->uid, args[i].arg.i);
+			switch (args[i].arg.i) {
+			case 0:
+				CLEAR_FLAG(dev->flags, DEVFLAG_SPAMHANDLER);
+				CLEAR_FLAG(dev->flags, DEVFLAG_CHANGEHANDLER);
+				break;
+			case 1:
+				SET_FLAG(dev->flags, DEVFLAG_SPAMHANDLER);
+				CLEAR_FLAG(dev->flags, DEVFLAG_CHANGEHANDLER);
+				break;
+			case 2:
+				CLEAR_FLAG(dev->flags, DEVFLAG_SPAMHANDLER);
+				SET_FLAG(dev->flags, DEVFLAG_CHANGEHANDLER);
+				break;
+			default:
+				LOG(LOG_ERROR, "Invalid spamhandler "
+				    "argument %d", args[i].arg.i);
+				break;
+			}
 			break;
 		}
 	}

@@ -297,11 +297,11 @@ enum DATATYPE_TYPES {
 #define GROUPONQ_ALL	(1<<2)
 #define GROUPONQ_REG	(1<<3)	/**< \brief temp flag to record registration */
 
-/* device flags */
+/* device flags (new method) */
 
-#define DEVFLAG_SPAMHANDLER	(1<<1)	/**< \brief do we spam the handler? */
-#define DEVFLAG_NODATA		(1<<2)	/**< \brief device has no cur data */
-#define DEVFLAG_CHANGEHANDLER	(1<<3)	/**< \brief fire when device changes */
+#define DEVFLAG_SPAMHANDLER	0  /**< \brief do we spam the handler? */
+#define DEVFLAG_NODATA		1  /**< \brief device has no cur data */
+#define DEVFLAG_CHANGEHANDLER	2  /**< \brief fire when device changes */
 
 /* Flags (new method) for alarm channels See common.h SET_FLAG macros */
 

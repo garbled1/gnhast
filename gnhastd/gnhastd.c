@@ -139,6 +139,7 @@ void devconf_dump_cb(int nada, short what, void *arg)
 	cfg_t *dc;
 	char *p, *buf;
 	int madebuf=0;
+	int flag=0;
 
 	p = cfg_getstr(cfg, "devconf");
 	if (p == NULL)
@@ -162,7 +163,9 @@ void devconf_dump_cb(int nada, short what, void *arg)
 		dc = new_conf_from_dev(cfg, dev);
 	}
 	LOG(LOG_DEBUG, "Writing device conf file %s", buf);
-	dump_conf(cfg, CONF_DUMP_DEVONLY, buf);
+	SET_FLAG(flag, CONF_DUMP_DEVONLY);
+	SET_FLAG(flag, CONF_DUMP_NOCOLLECTOR);
+	dump_conf(cfg, flag, buf);
 	if (madebuf)
 		free(buf);
 }
@@ -204,7 +207,7 @@ void devgroupconf_dump_cb(int nada, short what, void *arg)
 		dc = new_conf_from_devgrp(cfg, devgrp);
 	}
 	LOG(LOG_DEBUG, "Writing device group conf file %s", buf);
-	dump_conf(cfg, CONF_DUMP_GROUPONLY, buf);
+	dump_conf(cfg, CONV_FLAG(CONF_DUMP_GROUPONLY), buf);
 	if (madebuf)
 		free(buf);
 }

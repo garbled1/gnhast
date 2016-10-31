@@ -130,8 +130,8 @@ name_map_t devsubtype_map[] = {
 	{SUBTYPE_THMODE, "thmode"},
 	{SUBTYPE_THSTATE, "thstate"},
 	{SUBTYPE_SMNUMBER, "smnumber"},
-	{SUBTYPE_COLLECTOR, "collector"},
 	{SUBTYPE_BLIND, "blind"},
+	{SUBTYPE_COLLECTOR, "collector"},
 	{SUBTYPE_TRIGGER, "trigger"},
 	{SUBTYPE_ORP, "orp"},
 	{SUBTYPE_SALINITY, "salinity"},
@@ -249,7 +249,7 @@ void insert_device(device_t *dev)
 		dev->onq |= DEVONQ_ALL;
 	}
 	/* we have no current data for this device */
-	dev->flags |= DEVFLAG_NODATA;
+	SET_FLAG(dev->flags, DEVFLAG_NODATA);
 }
 
 /**
@@ -553,7 +553,7 @@ void store_data_dev(device_t *dev, int where, void *data)
 		store = &dev->data;
 		/* special handling, copy current to prev */
 		memcpy(&dev->last, &dev->data, sizeof(data_t));
-		dev->flags &= ~DEVFLAG_NODATA;
+		CLEAR_FLAG(dev->flags, DEVFLAG_NODATA);
 		break;
 	case DATALOC_LAST:
 		store = &dev->last;
@@ -801,28 +801,30 @@ int device_watermark(device_t *dev)
 	double lwd, hwd, dd, pdd;
 	uint32_t lwu, hwu, du, pdu;
 	int64_t lwj, hwj, dj, pdj;
-	int spam = (dev->flags & DEVFLAG_SPAMHANDLER);
-	int change = (dev->flags & DEVFLAG_CHANGEHANDLER);
 
 	/* handle a change type first, easier, also,
 	   change needs no watermarks */
-	if (change) {
+	if (QUERY_FLAG(dev->flags, DEVFLAG_CHANGEHANDLER)) {
+		LOG(LOG_DEBUG, "Watermark change type");
 		switch (datatype_dev(dev)) {
 		case DATATYPE_UINT:
 			get_data_dev(dev, DATALOC_LAST, &pdu);
 			get_data_dev(dev, DATALOC_DATA, &du);
+			LOG(LOG_DEBUG, "Watermark U: last:%d %d", pdu, du);
 			if (du != pdu)
 				return 1;
 			break;
 		case DATATYPE_LL:
 			get_data_dev(dev, DATALOC_LAST, &pdj);
 			get_data_dev(dev, DATALOC_DATA, &dj);
+			LOG(LOG_DEBUG, "Watermark L: last:%ld %ld", pdj, dj);
 			if (dj != pdj)
 				return 1;
 			break;
 		case DATATYPE_DOUBLE:
 			get_data_dev(dev, DATALOC_LAST, &pdd);
 			get_data_dev(dev, DATALOC_DATA, &dd);
+			LOG(LOG_DEBUG, "Watermark D: last:%f %f", pdd, dd);
 			if (dd != pdd)
 				return 1;
 			break;
@@ -830,15 +832,17 @@ int device_watermark(device_t *dev)
 		return 0;
 	}
 
+	LOG(LOG_DEBUG, "Watermark, fallthrough");
 	/* now handle a watermark type */
 	if (datatype_dev(dev) == DATATYPE_UINT) {
 		get_data_dev(dev, DATALOC_LOWAT, &lwu);
 		get_data_dev(dev, DATALOC_HIWAT, &hwu);
 		get_data_dev(dev, DATALOC_DATA, &du);
 		get_data_dev(dev, DATALOC_LAST, &pdu);
+		LOG(LOG_DEBUG, "Watermark U: last:%d %d hi:%d lo:%d", pdu, du, hwu, lwu);
 		if (lwu == 0 && hwu == 0)
 			return 2;
-		if (spam) {
+		if (QUERY_FLAG(dev->flags, DEVFLAG_SPAMHANDLER)) {
 			if (du < lwu)
 				return -1;
 			if (du > hwu)
@@ -856,9 +860,10 @@ int device_watermark(device_t *dev)
 		get_data_dev(dev, DATALOC_HIWAT, &hwj);
 		get_data_dev(dev, DATALOC_DATA, &dj);
 		get_data_dev(dev, DATALOC_LAST, &pdj);
+		LOG(LOG_DEBUG, "Watermark L: last:%ld %ld hi:%ld lo:%ld", pdj, dj, hwj, lwj);
 		if (lwj == 0 && hwj == 0)
 			return 2;
-		if (spam) {
+		if (QUERY_FLAG(dev->flags, DEVFLAG_SPAMHANDLER)) {
 			if (dj < lwj)
 				return -1;
 			if (dj > hwj)
@@ -874,9 +879,10 @@ int device_watermark(device_t *dev)
 		get_data_dev(dev, DATALOC_HIWAT, &hwd);
 		get_data_dev(dev, DATALOC_DATA, &dd);
 		get_data_dev(dev, DATALOC_LAST, &pdd);
+		LOG(LOG_DEBUG, "Watermark L: last:%f %f hi:%f lo:%f", pdd, dd, hwd, lwd);
 		if (lwd == 0.0 && hwd == 0.0)
 			return 2;
-		if (spam) {
+		if (QUERY_FLAG(dev->flags, DEVFLAG_SPAMHANDLER)) {
 			if (dd < lwd)
 				return -1;
 			if (dd > hwd)
