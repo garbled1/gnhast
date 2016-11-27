@@ -84,9 +84,10 @@ enum PROTO_TYPES {
 	PROTO_CAMERA_AXIS,
 	PROTO_TUXEDO,
 	PROTO_NEPTUNE_APEX,
+	PROTO_CALCULATED, /* for calculated values */
 	NROF_PROTOS,
 };
-#define PROTO_MAX PROTO_NEPTUNE_APEX
+#define PROTO_MAX PROTO_CALCULATED
 
 /***
     The following files must be updated when adding a subtype:
@@ -135,6 +136,7 @@ enum SUBTYPE_TYPES {
 	SUBTYPE_TRIGGER, /* momentary switch (ui) */
 	SUBTYPE_ORP, /* Oxidation Redux Potential (d) */
 	SUBTYPE_SALINITY, /* Salinity (d) */
+	SUBTYPE_DAYLIGHT, /* daylight (8 bit number stored in state) */
 	SUBTYPE_BOOL,
 	NROF_SUBTYPES,
 };
@@ -143,6 +145,15 @@ enum SUBTYPE_TYPES {
    add new sensor types between these */
 #define SUBTYPE_OWSRV_SENSOR_MIN SUBTYPE_TEMP
 #define SUBTYPE_OWSRV_SENSOR_MAX SUBTYPE_LUX
+
+enum DAYLIGHT_TYPES {
+	DAYL_NIGHT, /* 0 */
+	DAYL_DAY, /* 1*/
+	DAYL_SOLAR_NOON,
+	DAYL_CIVIL_TWILIGHT,
+	DAYL_NAUTICAL_TWILIGHT,
+	DAYL_ASTRO_TWILIGHT,
+};
 
 enum BLIND_TYPES {
 	BLIND_UP,

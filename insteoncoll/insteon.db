@@ -62,3 +62,12 @@ model "2663-2" {
 	subtype = "outlet"
 	defgroups = {1}
 }
+model "2475F" {
+	name = "FanLinc"
+	devcat = 0x01
+	subcat = 0x2e
+	type = "dimmer"
+	subtype = "switch"
+	defgroups = {1}
+	# hrmm, need something here.
+}

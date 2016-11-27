@@ -103,6 +103,13 @@ char *conntype[5] = {
 	"hubhttp",
 };
 
+/* used for crazy devices, stored in multimodel */
+char *quirktable[] = {
+	"none",
+	"fanlinc",
+	"dualoutlet",
+};
+
 void hubhtml_startfeed(char *url_prefix, int portnum);
 void hubhtml_readcb(evutil_socket_t fd, short what, void *arg);
 
@@ -316,8 +323,8 @@ int plmtype_connect(int plmtype, char *device, char *host, int portnum)
 				  serial_eventcb, plm_conn);
 		bufferevent_enable(plm_conn->bev, EV_READ|EV_WRITE);
 
-		ratelim = ev_token_bucket_cfg_new(2400, 100, 25, 256, &rate);
-		bufferevent_set_rate_limit(plm_conn->bev, ratelim);
+		//ratelim = ev_token_bucket_cfg_new(2400, 100, 25, 256, &rate);
+		//bufferevent_set_rate_limit(plm_conn->bev, ratelim);
 		break;
 	case PLM_TYPE_HUBPLM:
 		LOG(LOG_NOTICE, "Connecting to hub PLM");
@@ -684,6 +691,7 @@ void plm_enq_std(device_t *dev, uint8_t com1, uint8_t com2, uint8_t waitflags)
 	cmd->sendcount = 0;
 	cmd->wait = waitflags;
 	cmd->state = waitflags|CMDQ_WAITSEND;
+	cmd->uid = strdup(dev->uid);
 	SIMPLEQ_INSERT_TAIL(&cmdfifo, cmd, entries);
 }
 
@@ -719,6 +727,7 @@ void plm_enq_ext(device_t *dev, uint8_t com1, uint8_t com2, uint8_t *data,
 	cmd->sendcount = 0;
 	cmd->wait = waitflags;
 	cmd->state = waitflags|CMDQ_WAITSEND;
+	cmd->uid = strdup(dev->uid);
 	SIMPLEQ_INSERT_TAIL(&cmdfifo, cmd, entries);
 }
 
@@ -766,12 +775,16 @@ void plm_enq_stdcs(device_t *dev, uint8_t com1, uint8_t com2,
 	cmd->cmd[5] |= PLMFLAG_EXT;
 	cmd->cmd[6] = com1;
 	cmd->cmd[7] = com2;
+	/* deal with fanlincs, dual outlets by setting D1 to group */
+	if (dd->group > 0x01)
+		cmd->cmd[8] = dd->group;
 	/* smalloc is a zeroing malloc, so D1-14 are 0 */
 	cmd->cmd[21] = plm_calc_cs(com1, com2, (cmd->cmd)+8);
 	cmd->msglen = 22;
 	cmd->sendcount = 0;
 	cmd->wait = waitflags;
 	cmd->state = waitflags|CMDQ_WAITSEND;
+	cmd->uid = strdup(dev->uid);
 	SIMPLEQ_INSERT_TAIL(&cmdfifo, cmd, entries);
 }
 
@@ -786,6 +799,7 @@ void plm_enq_wait(int howlong)
 	cmd = smalloc(cmdq_t);
 	cmd->cmd[0] = CMDQ_NOPWAIT;
 	cmd->sendcount = howlong;
+	cmd->uid = NULL;
 	SIMPLEQ_INSERT_TAIL(&cmdfifo, cmd, entries);
 }
 
@@ -844,14 +858,14 @@ void plm_condense_runq(void)
 			LOG(LOG_DEBUG, "Duplicate OF:");
 			plm_print_cmd(cmd);
 			SIMPLEQ_REMOVE(&cmdfifo, chk, _cmdq_t, entries);
-			free(chk);
+			CMDQ_FREE_ENTRY(chk);
 		}
 	SIMPLEQ_FOREACH_SAFE(chk, &cmdfifo, entries, tmp)
 		if (chk != cmd && memcmp(cmd->cmd, chk->cmd, 8) == 0 &&
 		    cmd->cmd[1] == PLM_SEND) {
 			LOG(LOG_DEBUG, "Removing early command entry");
 			SIMPLEQ_REMOVE(&cmdfifo, cmd, _cmdq_t, entries);
-			free(cmd);
+			CMDQ_FREE_ENTRY(cmd);
 			return;
 		}
 }
@@ -932,7 +946,7 @@ again:
 		/* we have a sleep request */
 		if (cmd->sendcount <= 0) {
 			SIMPLEQ_REMOVE_HEAD(&cmdfifo, entries);
-			free(cmd);
+			CMDQ_FREE_ENTRY(cmd);
 			return;
 		} else {
 			cmd->sendcount -= 1;
@@ -944,7 +958,7 @@ again:
 		/* dequeue */
 		LOG(LOG_DEBUG, "dequeueing current cmd");
 		SIMPLEQ_REMOVE_HEAD(&cmdfifo, entries);		
-		free(cmd);
+		CMDQ_FREE_ENTRY(cmd);
 		goto again;
 	}
 	if ((cmd->state & CMDQ_WAITSEND) && cmd->msglen > 0) {
@@ -984,7 +998,7 @@ again:
 				/* deallocate and punt */
 				LOG(LOG_DEBUG, "Deallocating qevent");
 				SIMPLEQ_REMOVE_HEAD(&cmdfifo, entries);
-				free(cmd);
+			        CMDQ_FREE_ENTRY(cmd);
 				goto again;
 			}
 			/* otherwise, resend */
@@ -1083,7 +1097,7 @@ void plmcmdq_dequeue(void)
 	cmd = SIMPLEQ_FIRST(&cmdfifo);
 	if (cmd != NULL) {
 		SIMPLEQ_REMOVE_HEAD(&cmdfifo, entries);
-		free(cmd);
+		CMDQ_FREE_ENTRY(cmd);
 	}
 }
 
@@ -1328,7 +1342,7 @@ int plm_handle_aldb(device_t *dev, char *data)
 	aldb_t rec;
 	insteon_devdata_t *dd = (insteon_devdata_t *)dev->localdata;
 	device_group_t *devgrp;
-	char gn[16], ln[16];
+	char gn[16], ln[16], xn[20];
 	device_t *link;
 
 	memset(&rec, 0, sizeof(aldb_t));
@@ -1354,7 +1368,13 @@ int plm_handle_aldb(device_t *dev, char *data)
 
 	/* Build a device group? */
 	if (rec.lflags & ALDBLINK_MASTER) {
-		sprintf(gn, "%s-%0.2X", dev->loc, rec.group);
+		if (strlen(dev->loc) == 8)
+			sprintf(gn, "%s-%0.2X", dev->loc, rec.group);
+		else {
+			strncpy(xn, dev->loc, 8); /* don't copy group */
+			xn[8] = '\0'; /* NUL terminate */
+			sprintf(gn, "%s-%0.2X", xn, rec.group);
+		}
 		addr_to_string(ln, rec.devaddr);
 		devgrp = find_devgroup_byuid(gn);
 		if (devgrp == NULL) {
@@ -1405,7 +1425,7 @@ int plm_handle_aldb(device_t *dev, char *data)
 
 int plmbuf_get(struct evbuffer *buf, int count, char *data, int what)
 {
-	char *tmp;
+	char *tmp, dsend[256];
 	int i;
 
 	if (plmtype == PLM_TYPE_HUBHTTP) {
@@ -1429,6 +1449,14 @@ int plmbuf_get(struct evbuffer *buf, int count, char *data, int what)
 		if (data == NULL)
 			return 1;
 	}
+#if 1
+	sprintf(dsend, "BUFGET (%d):", count);
+	if (what == P_REMOVE)
+		sprintf(dsend, "%s:REMOVE:", dsend);
+	for (i=0; i < count; i++)
+		sprintf(dsend, "%s%0.2x ", dsend, data[i]);
+	LOG(LOG_DEBUG, dsend);
+#endif
 	return 0;
 }
 
@@ -1485,11 +1513,13 @@ void handle_command(struct evbuffer *evbuf, char plmcmd)
 				    data[22]);
 		}
 		plmcmdq_check_ack(data);
-		if (data[5] & PLMFLAG_EXT)
+		if (data[5] & PLMFLAG_EXT) {
 			evbuffer_drain(evbuf, 23*dmult);
-		else
+			LOG(LOG_DEBUG, "draining 23 bytes (ext)");
+		} else {
 			evbuffer_drain(evbuf, 9*dmult); /* discard echo */
-
+			LOG(LOG_DEBUG, "draining 9 bytes (ext)");
+		}
 		if (plmtype == PLM_TYPE_HUBHTTP) {
 			if (hubhtmlstate == HUBHTMLSTATE_WSEND)
 				hubhtmlstate = HUBHTMLSTATE_IDLE;

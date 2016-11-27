@@ -343,7 +343,7 @@ void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 	/* we got a response from the plm, so update the last time */
 	plm_lastupd = time(NULL);
 
-	dev = find_device_byuid(fa);
+	dev = find_device_byuid(fa); /* XXXX */
 	if (dev == NULL) {
 		LOG(LOG_ERROR, "Unknown device %s sent stdmsg", fa);
 		return;
@@ -358,6 +358,10 @@ void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 	cmd = SIMPLEQ_FIRST(&cmdfifo);
 	if (cmd != NULL && cmd->cmd[6] == STDCMD_STATUSREQ) {
 		d = (double)com2 / 255.0;
+		if (cmd->uid != NULL)
+			dev = find_device_byuid(cmd->uid);
+		if (dev == NULL)
+			return;
 		if (dev->type == DEVICE_SWITCH) {
 			s = (com2 > 0) ? 1 : 0;
 			storelog_switch(dev, s);
@@ -477,7 +481,7 @@ void plm_handle_extrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 
 	dev = find_device_byuid(fa);
 	if (dev == NULL) {
-		LOG(LOG_ERROR, "Unknown device %s sent stdmsg", fa);
+		LOG(LOG_ERROR, "Unknown device %s sent extmsg", fa);
 		return;
 	}
 
@@ -606,7 +610,7 @@ void parse_devices(cfg_t *cfg)
 	device_t *dev;
 	cfg_t *devconf;
 	int i;
-	unsigned int a, b, c;
+	unsigned int a, b, c, g;
 	insteon_devdata_t *dd;
 
 	for (i=0; i < cfg_size(cfg, "device"); i++) {
@@ -619,7 +623,12 @@ void parse_devices(cfg_t *cfg)
 			continue;
 		}
 		dd = smalloc(insteon_devdata_t);
-		sscanf(dev->loc, "%x.%x.%x", &a, &b, &c);
+		if (strlen(dev->loc) == 8)
+			sscanf(dev->loc, "%x.%x.%x", &a, &b, &c);
+		else {
+			sscanf(dev->loc, "%x.%x.%x-%x", &a, &b, &c, &g);
+			dd->group = (uint8_t)g;
+		}
 		dd->daddr[0] = (uint8_t)a;
 		dd->daddr[1] = (uint8_t)b;
 		dd->daddr[2] = (uint8_t)c;

@@ -98,6 +98,10 @@ name_map_t devproto_map[] = {
 	{PROTO_SENSOR_VENSTAR, "venstar"},
 	{PROTO_CONTROL_URTSI, "urtsi"},
 	{PROTO_COLLECTOR, "collector"},
+	{PROTO_CAMERA_AXIS, "axiscamera"},
+	{PROTO_TUXEDO, "tuxedo"},
+	{PROTO_NEPTUNE_APEX, "neptuneapex"},
+	{PROTO_CALCULATED, "calculated"},
 };
 
 name_map_t devsubtype_map[] = {
@@ -135,6 +139,7 @@ name_map_t devsubtype_map[] = {
 	{SUBTYPE_TRIGGER, "trigger"},
 	{SUBTYPE_ORP, "orp"},
 	{SUBTYPE_SALINITY, "salinity"},
+	{SUBTYPE_DAYLIGHT, "daylight"},
 	{SUBTYPE_BOOL, "bool"},
 };
 
@@ -517,6 +522,7 @@ void get_data_dev(device_t *dev, int where, void *data)
 		case SUBTYPE_SMNUMBER:
 		case SUBTYPE_COLLECTOR:
 		case SUBTYPE_BLIND:
+		case SUBTYPE_DAYLIGHT:
 			*((uint8_t *)data) = store->state;
 			break;
 		case SUBTYPE_NUMBER:
@@ -650,6 +656,7 @@ void store_data_dev(device_t *dev, int where, void *data)
 		case SUBTYPE_SMNUMBER:
 		case SUBTYPE_COLLECTOR:
 		case SUBTYPE_BLIND:
+		case SUBTYPE_DAYLIGHT:
 			store->state = *((uint8_t *)data);
 			break;
 		case SUBTYPE_NUMBER:
@@ -776,6 +783,7 @@ int datatype_dev(device_t *dev)
 	case SUBTYPE_SMNUMBER:
 	case SUBTYPE_COLLECTOR:
 	case SUBTYPE_BLIND:
+	case SUBTYPE_DAYLIGHT:
 	case SUBTYPE_TRIGGER:
 		return DATATYPE_UINT;
 		break;

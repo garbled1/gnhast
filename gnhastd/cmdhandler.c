@@ -177,6 +177,7 @@ int cmd_update(pargs_t *args, void *arg)
 		case SC_SMNUMBER:
 		case SC_COLLECTOR:
 		case SC_BLIND:
+		case SC_DAYLIGHT:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.i);
 			break;
 		case SC_LUX:
@@ -275,6 +276,7 @@ int cmd_change(pargs_t *args, void *arg)
 		case SC_SMNUMBER:
 		case SC_COLLECTOR:
 		case SC_BLIND:
+		case SC_DAYLIGHT:
 			evbuffer_add_printf(send, " %s:%d",
 					    ARGNM(args[i].cword),
 					    args[i].arg.i);

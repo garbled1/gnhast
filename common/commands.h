@@ -109,6 +109,7 @@ enum SC_COMMANDS {
 	SC_SALINITY,	/**< \brief salinity */
 	SC_ALCHAN,	/**< \brief alarm channel */
 	SC_SPAM,	/**< \brief spamhandler setting */
+	SC_DAYLIGHT,	/**< \brief daylight */
 };
 
 void init_argcomm(void);

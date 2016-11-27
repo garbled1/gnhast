@@ -119,6 +119,7 @@ typedef struct _cmdq_t {
 	uint8_t state;		/**< \brief state of entry */
 	uint8_t wait;		/**< \brief things we wait for */
 	struct timespec tp;	/**< \brief time entry got fired */
+	char *uid;		/**< \brief uid of device who initiated */
 	SIMPLEQ_ENTRY(_cmdq_t) entries;  /**< \brief FIFO queue */
 } cmdq_t;
 
@@ -132,7 +133,11 @@ typedef struct _aldb_t {
 	uint8_t ldata3;		/**< \brief unused? */
 } aldb_t;
 
-#define ALDB_MAXSIZE	32
+#define ALDB_MAXSIZE	64
+#define IQUIRK_FANLINC_LIGHT	1	/* fanlinc light */
+#define IQUIRK_FANLINC_FAN	2	/* fanlinc fan */
+#define IQUIRK_DUALOUTLET_TOP	3	/* dual on/off outlet (top) */
+#define IQUIRK_DUALOUTLET_BOT	4	/* dual on/off outlet (bottom) */
 
 typedef struct _insteon_devdata_t {
 	uint8_t daddr[3];	/**< \brief Device addr decoded */
@@ -146,6 +151,8 @@ typedef struct _insteon_devdata_t {
 	uint8_t proto;		/**< \brief protocol */
 	uint8_t ramprate;	/**< \brief ramprate */
 	uint8_t ledbright;	/**< \brief LED brightness */
+	uint8_t group;		/**< \brief group code */
+	uint8_t quirk;		/**< \brief quirk type */
 } insteon_devdata_t;
 
 #define ALDBLINK_USED	(1<<1)
@@ -174,6 +181,7 @@ typedef struct _insteon_devdata_t {
 #define CMDQ_WAITING(x) (x & CMDQ_WAITACK || x & CMDQ_WAITDATA || \
 			 x & CMDQ_WAITEXT || x & CMDQ_WAITALINK || \
 			 x & CMDQ_WAITANY || x & CMDQ_WAITALDB)
+#define CMDQ_FREE_ENTRY(x) if (x->uid != NULL) free(x->uid); free(x)
 
 #define CONN_TYPE_PLM		1
 #define CONN_TYPE_GNHASTD	2
