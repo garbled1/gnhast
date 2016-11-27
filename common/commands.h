@@ -110,6 +110,7 @@ enum SC_COMMANDS {
 	SC_ALCHAN,	/**< \brief alarm channel */
 	SC_SPAM,	/**< \brief spamhandler setting */
 	SC_DAYLIGHT,	/**< \brief daylight */
+	SC_MOONPH,	/**< \brief lunar phase */
 };
 
 void init_argcomm(void);

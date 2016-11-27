@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013
+ * Copyright (c) 2013, 2016
  *      Tim Rightnour.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -137,7 +137,8 @@ enum SUBTYPE_TYPES {
 	SUBTYPE_ORP, /* Oxidation Redux Potential (d) */
 	SUBTYPE_SALINITY, /* Salinity (d) */
 	SUBTYPE_DAYLIGHT, /* daylight (8 bit number stored in state) */
-	SUBTYPE_BOOL,
+	SUBTYPE_MOONPH, /* lunar phase (d) */
+	SUBTYPE_BOOL, /* Never actually use this one, just for submax */
 	NROF_SUBTYPES,
 };
 #define SUBTYPE_MAX SUBTYPE_BOOL

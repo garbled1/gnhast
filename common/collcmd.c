@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013
+ * Copyright (c) 2013, 2016
  *      Tim Rightnour.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -439,6 +439,7 @@ int cmd_update(pargs_t *args, void *arg)
 		case SC_COLLECTOR:
 		case SC_BLIND:
 		case SC_DAYLIGHT:
+		case SC_MOONPH:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.i);
 			break;
 		case SC_LUX:
@@ -581,6 +582,7 @@ int cmd_change(pargs_t *args, void *arg)
 		case SC_COLLECTOR:
 		case SC_BLIND:
 		case SC_DAYLIGHT:
+		case SC_MOONPH:
 			store_data_dev(dev, DATALOC_CHANGE, &args[i].arg.i);
 			state = args[i].arg.i; /* XXX */
 			break;

@@ -198,6 +198,7 @@ int cmd_update(pargs_t *args, void *arg)
 		case SC_VOLUME:
 		case SC_ORP:
 		case SC_SALINITY:
+		case SC_MOONPH:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.d);
 			break;
 		case SC_COUNT:
@@ -299,6 +300,7 @@ int cmd_change(pargs_t *args, void *arg)
 		case SC_VOLUME:
 		case SC_ORP:
 		case SC_SALINITY:
+		case SC_MOONPH:
 			evbuffer_add_printf(send, " %s:%f",
 					    ARGNM(args[i].cword),
 					    args[i].arg.d);

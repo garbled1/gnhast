@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013
+ * Copyright (c) 2013, 2016
  *      Tim Rightnour.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -140,6 +140,7 @@ name_map_t devsubtype_map[] = {
 	{SUBTYPE_ORP, "orp"},
 	{SUBTYPE_SALINITY, "salinity"},
 	{SUBTYPE_DAYLIGHT, "daylight"},
+	{SUBTYPE_MOONPH, "moonph"},
 	{SUBTYPE_BOOL, "bool"},
 };
 
@@ -467,6 +468,7 @@ void get_data_dev(device_t *dev, int where, void *data)
 			break;
 		case SUBTYPE_ORP:
 		case SUBTYPE_SALINITY:
+		case SUBTYPE_MOONPH:
 			*((double *)data) = store->d;
 			break;
 		/* old style follows */
@@ -601,6 +603,7 @@ void store_data_dev(device_t *dev, int where, void *data)
 			break;
 		case SUBTYPE_ORP:
 		case SUBTYPE_SALINITY:
+		case SUBTYPE_MOONPH:
 			store->d = *((double *)data);
 			break;
 		/* old style */

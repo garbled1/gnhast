@@ -105,7 +105,8 @@ argtable_t argtable[] = {
 	{"salinity", SC_SALINITY, PTDOUBLE},
 	{"alchan", SC_ALCHAN, PTUINT},
 	{"spamhandler", SC_SPAM, PTINT},
-	{"daylight", SC_DAYL, PTINT},
+	{"daylight", SC_DAYLIGHT, PTINT},
+	{"moonph", SC_MOONPH, PTDOUBLE},
 };
 
 /** \brief size of the args table */ 
@@ -198,6 +199,7 @@ int find_arg_bydev(device_t *dev)
 	case SUBTYPE_ORP: return find_arg_byid(SC_ORP); break;
 	case SUBTYPE_SALINITY: return find_arg_byid(SC_SALINITY); break;
 	case SUBTYPE_DAYLIGHT: return find_arg_byid(SC_DAYLIGHT); break;
+	case SUBTYPE_MOONPH: return find_arg_byid(SC_MOONPH); break;
 	}
 	return -1;
 }
