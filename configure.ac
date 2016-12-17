@@ -89,6 +89,7 @@ AC_CONFIG_FILES([Makefile \
 		 moncoll/Makefile \
 		 jsoncgicoll/Makefile \
 		 urtsicoll/Makefile \
+		 astrocoll/Makefile \
 		 handlers/Makefile \
 		 tools/Makefile \
 		 gtk-gnhast/Makefile \

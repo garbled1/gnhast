@@ -157,8 +157,8 @@ CTAGS = ctags
 CSCOPE = cscope
 DIST_SUBDIRS = libconfuse gnhastd fakecoll owsrvcoll rrdcoll brulcoll \
 	insteoncoll wmr918coll wupwscoll ad2usbcoll icaddycoll \
-	venstarcoll moncoll jsoncgicoll urtsicoll tools data gnhastweb \
-	handlers gtk-gnhast gtk-insteonedit
+	venstarcoll moncoll jsoncgicoll urtsicoll astrocoll tools data \
+	gnhastweb handlers gtk-gnhast gtk-insteonedit
 am__DIST_COMMON = $(srcdir)/Makefile.in \
 	$(top_srcdir)/common/config.h.in AUTHORS COPYING ChangeLog \
 	INSTALL NEWS README compile config.guess config.sub depcomp \
@@ -352,6 +352,7 @@ SUBDIRS = libconfuse \
 	moncoll \
 	jsoncgicoll \
 	urtsicoll \
+	astrocoll \
 	tools \
 	data \
 	gnhastweb \

@@ -734,20 +734,20 @@ void generic_build_device(cfg_t *cfg, char *uid, char *name, char *rrdname,
 	if (dev == NULL) {
 		dev = smalloc(device_t);
 		dev->uid = strdup(uid);
-		if (dumpconf != NULL) {
+		if (name != NULL)
 			dev->name = strdup(name);
+		if (rrdname != NULL)
 			dev->rrdname = strdup(rrdname);
-		}
 		dev->proto = proto;
 		dev->type = type;
 		dev->subtype = subtype;
 		if (subtype == SUBTYPE_TEMP)
 			dev->scale = tscale;
-		if (dev->loc == NULL) {
+		if (loc != NULL) {
 			dev->loc = strdup(loc);
 		}
 		(void) new_conf_from_dev(cfg, dev);
-	} else {
+	} else if (loc != NULL){
 		dev->loc = strdup(loc);
 	}
 	insert_device(dev);
