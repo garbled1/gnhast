@@ -5,6 +5,7 @@ handlerlibexecshell_SCRIPTS = \
 	timer2 \
 	functions \
 	nightlight \
+	nightlight2 \
 	autowater \
 	switchon \
 	switchoff
@@ -19,6 +20,7 @@ EXTRA_DIST = \
 	timer2.sh \
 	functions.sh \
 	nightlight.sh \
+	nightlight2.sh \
 	autowater.sh \
 	wateruse.pl \
 	switchon.sh \
