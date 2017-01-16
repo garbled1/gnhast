@@ -11,9 +11,14 @@
 #define SUNRISE_SUNSET_API	"/json?"
 #define SUNRISE_SUNSET_PORT	80
 
+#define USNO_URL	"http://api.usno.navy.mil"
+#define USNO_API	"/oneday?"
+#define USNO_PORT	80
+
 #define SUNTYPE_SS	0
 #define SUNTYPE_DEV	1
 #define SUNTYPE_INT	2
+#define SUNTYPE_USNO	3
 
 enum SS_TIMES {
 	SS_ASTRO_BEGIN, /* 0 */

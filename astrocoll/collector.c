@@ -74,8 +74,13 @@ char *dumpconf = NULL;
 int need_rereg = 0;
 int notify_fd = -1;
 int query_running = 0;
+
 char *sunrise_sunset_url = SUNRISE_SUNSET_URL;
 http_get_t *sunrise_sunset_get;
+char *usno_url = USNO_URL;
+http_get_t *usno_get;
+
+
 time_t astro_lastupd;
 int dl_cbarg[DAYL_ASTRO_TWILIGHT+1];
 int sunrise_offsets[SS_SOLAR_NOON+1]; /* used to calculate current point */
@@ -103,10 +108,12 @@ struct evhttp_connection *http_cn = NULL;
 
 #define CONN_TYPE_SUNRISE_SUNSET        1
 #define CONN_TYPE_GNHASTD       	2
+#define CONN_TYPE_USNO			3
 char *conntype[3] = {
         "none",
         "sunrise-sunset",
         "gnhastd",
+	"aa.usno.navy.mil",
 };
 
 
@@ -115,7 +122,8 @@ void cb_shutdown(int fd, short what, void *arg);
 static int conf_parse_suntype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		     void *result);
 void update_mode(device_t *dev, uint8_t mode);
-void request_cb(struct evhttp_request *req, void *arg);
+void ss_request_cb(struct evhttp_request *req, void *arg);
+void delay_feedstart_cb(int fd, short what, void *arg);
 
 /** The connection streams for our connection */
 connection_t *gnhastd_conn;
@@ -210,6 +218,10 @@ static int conf_parse_suntype(cfg_t *cfg, cfg_opt_t *opt, const char *value,
 		*(int *)result = SUNTYPE_INT;
 	else if (strcmp(value, "2") == 0)
 		*(int *)result = SUNTYPE_INT;
+	else if (strcmp(value, "usno") == 0)
+		*(int *)result = SUNTYPE_USNO;
+	else if (strcmp(value, "3") == 0)
+		*(int *)result = SUNTYPE_USNO;
 	else {
 		cfg_error(cfg, "invalid suntype value for option '%s': %s",
 		    cfg_opt_name(opt), value);
@@ -236,6 +248,9 @@ static void conf_print_suntype(cfg_opt_t *opt, unsigned int index, FILE *fp)
 		break;
 	case SUNTYPE_INT:
 		fprintf(fp, "internal");
+		break;
+	case SUNTYPE_USNO:
+		fprintf(fp, "usno");
 		break;
 	}
 }
@@ -328,7 +343,7 @@ void convert_sunrise_data(char *str, struct event *ev, int daylight, int field)
 #define JSMN_TEST_OR_FAIL(ret, str)			  \
 	if (ret == -1) {				  \
 		LOG(LOG_ERROR, "Couldn't parse %s", str); \
-		goto request_cb_out;			  \
+		goto ss_request_cb_out;			  \
       	}
 
 /**
@@ -337,7 +352,7 @@ void convert_sunrise_data(char *str, struct event *ev, int daylight, int field)
    \param arg unused
 */
 
-void request_cb(struct evhttp_request *req, void *arg)
+void ss_request_cb(struct evhttp_request *req, void *arg)
 {
 	struct evbuffer *data;
 	size_t len;
@@ -369,7 +384,7 @@ void request_cb(struct evhttp_request *req, void *arg)
 	};
 
 	if (req == NULL) {
-		LOG(LOG_ERROR, "Got NULL req in request_cb() ??");
+		LOG(LOG_ERROR, "Got NULL req in ss_request_cb() ??");
 		return;
 	}
 
@@ -391,7 +406,7 @@ void request_cb(struct evhttp_request *req, void *arg)
 	buf = safer_malloc(len+1);
 	if (evbuffer_copyout(data, buf, len) != len) {
 		LOG(LOG_ERROR, "Failed to copyout %d bytes", len);
-		goto request_cb_out;
+		goto ss_request_cb_out;
 	}
 	buf[len] = '\0'; /* just in case of stupid */
 	LOG(LOG_DEBUG, "input buf: %s", buf);
@@ -400,7 +415,7 @@ void request_cb(struct evhttp_request *req, void *arg)
 		LOG(LOG_ERROR, "Failed to parse jsom string: %d", jret);
 		/* Leave the data on the queue and punt for more */
 		/* XXX NEED switch for token error */
-		goto request_cb_out;
+		goto ss_request_cb_out;
 	} else
 		evbuffer_drain(data, len); /* toss it */
 
@@ -444,7 +459,7 @@ void request_cb(struct evhttp_request *req, void *arg)
 	}
 
 
-request_cb_out:
+ss_request_cb_out:
 	free(buf);
 	return;
 }
@@ -481,29 +496,6 @@ void build_devices(void)
 		dump_conf(cfg, 0, dumpconf);
 		exit(0);
 	}
-}
-
-/**
-   \brief Callback to start a feed
-   \param fd fd
-   \param what why did it fire?
-   \param arg pointer to http_get_t;
-*/
-
-void delay_feedstart_cb(int fd, short what, void *arg)
-{
-	struct event *evn;
-	struct timeval secs = { 0, 0 };
-	http_get_t *get = (http_get_t *)arg;
-
-	secs.tv_sec = cfg_getint(astro_c, "update");
-	evn = event_new(base, -1, EV_PERSIST, cb_http_GET, get);
-	event_add(evn, &secs);
-	LOG(LOG_NOTICE, "Starting %s updates every %d seconds",
-	    get->url_prefix, secs.tv_sec);
-
-	/* and do one now */
-	cb_http_GET(0, 0, get);
 }
 
 /**
@@ -548,13 +540,36 @@ void sunrise_sunset_startfeed(void)
 	sunrise_sunset_get = smalloc(http_get_t);
 	sunrise_sunset_get->url_prefix = sunrise_sunset_url;
 	sunrise_sunset_get->url_suffix = strdup(url_suffix);
-	sunrise_sunset_get->cb = request_cb;
+	sunrise_sunset_get->cb = ss_request_cb;
 	sunrise_sunset_get->http_port = SUNRISE_SUNSET_PORT;
 	sunrise_sunset_get->precheck = NULL;
 
 	secs.tv_sec = feed_delay;
 	ev = evtimer_new(base, delay_feedstart_cb, sunrise_sunset_get);
 	event_add(ev, &secs);
+}
+
+/**
+   \brief Callback to start a feed
+   \param fd fd
+   \param what why did it fire?
+   \param arg pointer to http_get_t;
+*/
+
+void delay_feedstart_cb(int fd, short what, void *arg)
+{
+	struct event *evn;
+	struct timeval secs = { 0, 0 };
+	http_get_t *get = (http_get_t *)arg;
+
+	secs.tv_sec = cfg_getint(astro_c, "update");
+	evn = event_new(base, -1, EV_PERSIST, cb_http_GET, get);
+	event_add(evn, &secs);
+	LOG(LOG_NOTICE, "Starting %s updates every %d seconds",
+	    get->url_prefix, secs.tv_sec);
+
+	/* and do one now */
+	cb_http_GET(0, 0, get);
 }
 
 /**
