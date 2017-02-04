@@ -51,7 +51,6 @@
 /** event base externs */
 extern struct event_base *base;
 extern struct evdns_base *dns_base;
-extern struct evhttp_connection *http_cn;
 
 static char *basic_authstring = NULL;
 static int http_use_auth = HTTP_AUTH_NONE;
@@ -222,13 +221,14 @@ void cb_http_GET(int fd, short what, void *arg)
 	    evhttp_uri_get_port(uri), getinfo->url_prefix,
 	    getinfo->url_suffix);
 
-	if (http_cn == NULL)
-		http_cn = evhttp_connection_base_new(base, dns_base,
+	if (getinfo->http_cn == NULL)
+		getinfo->http_cn = evhttp_connection_base_new(base, dns_base,
 						     evhttp_uri_get_host(uri),
 						     evhttp_uri_get_port(uri));
 	
 	req = evhttp_request_new(getinfo->cb, NULL);
-	evhttp_make_request(http_cn, req, EVHTTP_REQ_GET, getinfo->url_suffix);
+	evhttp_make_request(getinfo->http_cn, req, EVHTTP_REQ_GET,
+			    getinfo->url_suffix);
 	evhttp_add_header(req->output_headers, "Host",
 			  evhttp_uri_get_host(uri));
 	if (http_use_auth == HTTP_AUTH_BASIC && basic_authstring != NULL) {
@@ -251,6 +251,7 @@ void http_POST(char *url_prefix, char *url_suffix, int http_port,
 	struct evhttp_uri *uri;
 	struct evhttp_request *req;
 	struct evbuffer *data;
+	struct evhttp_connection *http_cn = NULL;
 	int i;
 	char buf[256];
 

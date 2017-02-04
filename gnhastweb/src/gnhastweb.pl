@@ -51,6 +51,8 @@ $header = "header.html";
 	    "trigger",
 	    "orp",
 	    "salinity",
+	    "daylight",
+	    "moonphase",
 	    "bool",
 	   );
 
@@ -59,12 +61,13 @@ $header = "header.html";
 	      "watt", "amps",
 	      "rain", "weather", "alarm", "number", "pct", "flow",
 	      "distance", "volume", "timer", "thmode", "thstate", "smnum",
-	      "blind", "collector", "trigger", "orp", "salinity");
+	      "blind", "collector", "trigger", "orp", "salinity",
+	      "daylight", "moonph");
 
 @sthasscale = ("", "", "", "temp", "", "", "baro", "speed", "", "", "",
 	       "", "light", "", "", "", "", "length", "", "", "",
 	       "", "length", "length", "", "", "", "", "", "", "", "",
-	       "", "", "saline");
+	       "", "", "saline", "", "");
 
 #XXX No code for salinity scales yet. (pain!)
 
@@ -167,6 +170,10 @@ $header = "header.html";
 		"orp" => [ 'generic', "ORP", 2,
 			   "", "", "" ],
 		"salinity" => [ 'generic', "SALINITY", 2,
+				"", "", "" ],
+		"daylight" => [ 'generic', "DAYLIGHT", 2,
+				"", "", "" ],
+		"moonph" => [ 'generic', "MOON PHASE", 2,
 				"", "", "" ],
 	       );
 

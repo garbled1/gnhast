@@ -12,6 +12,7 @@ typedef struct _http_get_t {
 	void (*cb)(struct evhttp_request *, void *);
 	int http_port;
 	int (*precheck)(struct _http_get_t *);
+	struct evhttp_connection *http_cn;
 } http_get_t;
 
 int base64_encode(const void* data_buf, size_t dataLength, char* result,

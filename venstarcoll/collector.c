@@ -104,7 +104,6 @@ extern int collector_instance;
 /** The event base */
 struct event_base *base;
 struct evdns_base *dns_base;
-struct evhttp_connection *http_cn = NULL;
 
 #define CONN_TYPE_VENSTAR        1
 #define CONN_TYPE_GNHASTD       2
@@ -448,6 +447,8 @@ void request_cb(struct evhttp_request *req, void *arg)
 	case HTTP_OK: break;
 	default:
 		LOG(LOG_ERROR, "Http request failure: %d", req->response_code);
+		if (req->evcon != NULL)
+			evhttp_connection_free(req->evcon);
 		return;
 		break;
 	}
@@ -456,8 +457,11 @@ void request_cb(struct evhttp_request *req, void *arg)
 	data = evhttp_request_get_input_buffer(req);
 	len = evbuffer_get_length(data);
 	LOG(LOG_DEBUG, "input buf len= %d", len);
-	if (len == 0)
+	if (len == 0) {
+		if (req->evcon != NULL)
+			evhttp_connection_free(req->evcon);
 		return;
+	}
 
 	buf = safer_malloc(len+1);
 	if (evbuffer_copyout(data, buf, len) != len) {
@@ -621,6 +625,8 @@ void request_cb(struct evhttp_request *req, void *arg)
 
 request_cb_out:
 	free(buf);
+	if (req->evcon != NULL)
+		evhttp_connection_free(req->evcon);
 	return;
 }
 
@@ -883,6 +889,7 @@ void venstar_startfeed(void)
 	queryinfo_get->cb = request_cb;
 	queryinfo_get->http_port = VENSTAR_HTTP_PORT;
 	queryinfo_get->precheck = NULL;
+	queryinfo_get->http_cn = NULL;
 
 	secs.tv_sec = feed_delay;
 	ev = evtimer_new(base, delay_feedstart_cb, queryinfo_get);
@@ -894,6 +901,7 @@ void venstar_startfeed(void)
 	querysensors_get->cb = request_cb;
 	querysensors_get->http_port = VENSTAR_HTTP_PORT;
 	querysensors_get->precheck = NULL;
+	querysensors_get->http_cn = NULL;
 
 	secs.tv_sec = feed_delay * 2;
 	ev = evtimer_new(base, delay_feedstart_cb, querysensors_get);
@@ -905,6 +913,7 @@ void venstar_startfeed(void)
 	queryalerts_get->cb = request_cb;
 	queryalerts_get->http_port = VENSTAR_HTTP_PORT;
 	queryalerts_get->precheck = NULL;
+	queryalerts_get->http_cn = NULL;
 
 	secs.tv_sec = feed_delay * 3;
 	ev = evtimer_new(base, delay_feedstart_cb, queryalerts_get);

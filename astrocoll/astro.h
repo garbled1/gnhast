@@ -12,7 +12,7 @@
 #define SUNRISE_SUNSET_PORT	80
 
 #define USNO_URL	"http://api.usno.navy.mil"
-#define USNO_API	"/oneday?"
+#define USNO_API	"/rstt/oneday?"
 #define USNO_PORT	80
 
 #define SUNTYPE_SS	0
@@ -30,6 +30,20 @@ enum SS_TIMES {
 	SS_NAUTICAL_END,
 	SS_ASTRO_END,
 	SS_SOLAR_NOON,
+};
+
+enum USNO_TIMES {
+	USNO_SUN_CIVIL_BEGIN,
+	USNO_SUN_SUNRISE,
+	USNO_SUN_SUNSET,
+	USNO_SUN_CIVIL_END,
+	USNO_SUN_SOLAR_NOON,
+};
+
+enum USNO_LUNAR_TIMES {
+	USNO_MOONRISE,
+	USNO_MOONSET,
+	USNO_MOON_UPPER_TRANSIT,
 };
 
 #endif /*_ASTRO_H_*/

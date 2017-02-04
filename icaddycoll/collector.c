@@ -101,7 +101,6 @@ extern int collector_instance;
 /** The event base */
 struct event_base *base;
 struct evdns_base *dns_base;
-struct evhttp_connection *http_cn = NULL;
 
 #define CONN_TYPE_ICADDY        1
 #define CONN_TYPE_GNHASTD       2
@@ -368,6 +367,8 @@ void request_cb(struct evhttp_request *req, void *arg)
 	case HTTP_OK: break;
 	default:
 		LOG(LOG_ERROR, "Http request failure: %d", req->response_code);
+		if (req->evcon != NULL)
+			evhttp_connection_free(req->evcon);
 		return;
 		break;
 	}
@@ -376,8 +377,11 @@ void request_cb(struct evhttp_request *req, void *arg)
 	data = evhttp_request_get_input_buffer(req);
 	len = evbuffer_get_length(data);
 	LOG(LOG_DEBUG, "input buf len= %d", len);
-	if (len == 0)
+	if (len == 0) {
+		if (req->evcon != NULL)
+			evhttp_connection_free(req->evcon);
 		return;
+	}
 
 	buf = safer_malloc(len+1);
 	if (evbuffer_copyout(data, buf, len) != len) {
@@ -688,6 +692,8 @@ void request_cb(struct evhttp_request *req, void *arg)
 
 request_cb_out:
 	free(buf);
+	if (req->evcon != NULL)
+		evhttp_connection_free(req->evcon);
 	return;
 }
 
@@ -725,6 +731,7 @@ void icaddy_startfeed(char *url_prefix)
 	status_get->cb = request_cb;
 	status_get->http_port = ICADDY_HTTP_PORT;
 	status_get->precheck = precheck_status;
+	status_get->http_cn = NULL;
 
 	settings_get = smalloc(http_get_t);
 	settings_get->url_prefix = url_prefix;
@@ -732,6 +739,7 @@ void icaddy_startfeed(char *url_prefix)
 	settings_get->cb = request_cb;
 	settings_get->http_port = ICADDY_HTTP_PORT;
 	settings_get->precheck = NULL;
+	settings_get->http_cn = NULL;
 
 	secs.tv_sec = cfg_getint(icaddy_c, "update");
 	ev = event_new(base, -1, EV_PERSIST, cb_http_GET, status_get);

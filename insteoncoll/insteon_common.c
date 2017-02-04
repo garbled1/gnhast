@@ -74,7 +74,6 @@ extern uint8_t plm_addr[3];
 extern int need_rereg;
 extern char *dumpconf;
 
-struct evhttp_connection *http_cn = NULL;
 struct event *hubhtml_ev;
 struct event *hubhtml_bufget_ev;
 
@@ -433,6 +432,7 @@ void hubhtml_buf_request_cb(struct evhttp_request *req, void *arg)
 	default:
 		LOG(LOG_ERROR, "Http buffstatus request failure: %d",
 		    req->response_code);
+		evhttp_connection_free(req->evcon);
 		return;
 		break;
 	}
@@ -440,8 +440,10 @@ void hubhtml_buf_request_cb(struct evhttp_request *req, void *arg)
 	data = evhttp_request_get_input_buffer(req);
 	len = evbuffer_get_length(data);
 	LOG(LOG_DEBUG, "input buf len= %d", len);
-	if (len == 0)
+	if (len == 0) {
+		evhttp_connection_free(req->evcon);
 		return;
+	}
 
 	buf = safer_malloc(len+1);
 	if (evbuffer_copyout(data, buf, len) != len) {
@@ -520,6 +522,7 @@ void hubhtml_buf_request_cb(struct evhttp_request *req, void *arg)
 
 request_cb_out:
 	free(buf);
+	evhttp_connection_free(req->evcon);
 	return;
 }
 
@@ -548,6 +551,7 @@ void hubhtml_startfeed(char *url_prefix, int portnum)
 	buffstatus_get->cb = hubhtml_buf_request_cb;
 	buffstatus_get->http_port = portnum;
 	buffstatus_get->precheck = NULL;
+	buffstatus_get->http_cn = NULL;
 
 	secs.tv_sec = 2; /* ? */
 	hubhtml_bufget_ev = event_new(base, -1, EV_PERSIST,

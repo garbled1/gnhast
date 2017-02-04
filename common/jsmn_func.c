@@ -196,6 +196,26 @@ int jtok_find_token_val(jsmntok_t *tokens, char *buf, char *match,
 }
 
 /**
+   \brief Get the size of an array
+   \param tokens array of tokens
+   \param buf parsed buffer
+   \param match array name to match
+   \param maxtoken last token
+*/
+
+int jtok_get_array_size(jsmntok_t *tokens, char *buf,
+			char *match, int maxtoken)
+{
+	int tok;
+
+	tok = jtok_find_token_val(tokens, buf, match, maxtoken);
+	if (tok < 0 || tokens[tok].type != JSMN_ARRAY)
+		return -1;
+
+	return tokens[tok].size;
+}
+
+/**
    \brief Find a specific array member inside array named match
    \param tokens array of tokens
    \param buf parsed buffer

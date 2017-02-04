@@ -10,6 +10,8 @@ int jtok_find_token(jsmntok_t *tokens, char *buf, char *match, int maxtoken);
 #ifdef JSMN_PARENT_LINKS
 int jtok_find_token_val(jsmntok_t *tokens, char *buf, char *match,
 			int maxtoken);
+int jtok_get_array_size(jsmntok_t *tokens, char *buf,
+			char *match, int maxtoken);
 int jtok_find_nth_array_member(jsmntok_t *tokens, char *buf, int nth,
 			       char *match, int maxtoken);
 int jtok_find_token_val_nth_array(jsmntok_t *tokens, char *buf, int nth,

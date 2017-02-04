@@ -84,10 +84,15 @@ http_get_t *usno_get;
 time_t astro_lastupd;
 int dl_cbarg[DAYL_DUSK_CIVIL_TWILIGHT+1];
 int sunrise_offsets[SS_SOLAR_NOON+1]; /* used to calculate current point */
+int usno_sun_offsets[USNO_SUN_SOLAR_NOON+1]; /* same */
+int usno_moon_offsets[USNO_MOON_UPPER_TRANSIT+1];
 
 /* Timer event list */
 struct event *sun_ev[SS_SOLAR_NOON+1];
 struct event *solar_noon_start_ev, *solar_noon_end_ev;
+struct event *moon_ev[USNO_MOON_UPPER_TRANSIT+1];
+struct event *lunar_noon_start_ev, *lunar_noon_end_ev;
+
 
 /* debugging */
 //_malloc_options = "AJ";
@@ -104,12 +109,11 @@ extern int collector_instance;
 /** The event base */
 struct event_base *base;
 struct evdns_base *dns_base;
-struct evhttp_connection *http_cn = NULL;
 
 #define CONN_TYPE_SUNRISE_SUNSET        1
 #define CONN_TYPE_GNHASTD       	2
 #define CONN_TYPE_USNO			3
-char *conntype[3] = {
+char *conntype[4] = {
         "none",
         "sunrise-sunset",
         "gnhastd",
@@ -146,6 +150,8 @@ cfg_opt_t astrocoll_opts[] = {
 	CFG_STR("sunrisename", "Sunrise", CFGF_NONE),
 	CFG_STR("moonphaseuid", "moonphase", CFGF_NONE),
 	CFG_STR("moonphasename", "Lunar Phase", CFGF_NONE),
+	CFG_STR("moonriseuid", "moonrise", CFGF_NONE),
+	CFG_STR("moonrisename", "Lunar Transit", CFGF_NONE),
 
 	CFG_FLOAT("latitude", 0.0, CFGF_NODEFAULT),
 	CFG_FLOAT("longitude", 0.0, CFGF_NODEFAULT),
@@ -280,6 +286,29 @@ void modify_sunrise_cb(int fd, short what, void *arg)
 	gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
 }
 
+/**
+   \brief Callback to modify sunrise device
+   \param fd fd
+   \param what why did it fire?
+   \param arg pointer to integer from DAYLIGHT_TYPES enum;
+*/
+
+void modify_moonrise_cb(int fd, short what, void *arg)
+{
+	struct event *evn;
+	struct timeval secs = { 0, 0 };
+	device_t *dev;
+	int *cbarg = (int *)arg;
+
+	dev = find_device_byuid(cfg_getstr(astro_c, "moonriseuid"));
+	if (dev == NULL)
+		LOG(LOG_FATAL, "Lost my internal moonrise device");
+
+	LOG(LOG_DEBUG, "Setting %s to %d", dev->name, *cbarg);
+	store_data_dev(dev, DATALOC_DATA, cbarg);
+	gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
+}
+
 
 /*****
   Sunrise-Sunset API Control Code
@@ -347,7 +376,7 @@ void convert_sunrise_data(char *str, struct event *ev, int daylight, int field)
       	}
 
 /**
-   \brief Callback for http request
+   \brief Callback for http request (sunrise/sunset)
    \param req request structure
    \param arg unused
 */
@@ -391,7 +420,7 @@ void ss_request_cb(struct evhttp_request *req, void *arg)
 	switch (req->response_code) {
 	case HTTP_OK: break;
 	default:
-		LOG(LOG_ERROR, "Http request failure: %d", req->response_code);
+		LOG(LOG_ERROR, "Sunrise Http request failure: %d", req->response_code);
 		return;
 		break;
 	}
@@ -464,13 +493,424 @@ ss_request_cb_out:
 	return;
 }
 
+
+/*****
+  USNO API Control Code
+*****/
+
+/**
+   \brief Set the lunar phase
+   \param fracillum as a string ("%83")
+*/
+
+void modify_moonphase(char *frac)
+{
+	device_t *dev;
+	int i;
+	double d;
+
+	dev = find_device_byuid(cfg_getstr(astro_c, "moonphaseuid"));
+	if (dev == NULL)
+		LOG(LOG_FATAL, "Lost my internal moonphase device");
+
+	if (frac == NULL)
+		return;
+
+	for (i=0; i < strlen(frac); i++)
+		if (frac[i] == '%')
+			frac[i] = '\0';
+
+	d = atof(frac);
+	d /= 100.0;
+
+	LOG(LOG_DEBUG, "Setting %s to %f", dev->name, d);
+	store_data_dev(dev, DATALOC_DATA, &d);
+	gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
+}
+
+
+
+/**
+   \brief convert a time into an event and schedule
+   \param str Time as a string, format: 12:14
+   \param ev event to schedule
+   \param daylight DAYLIGHT_TYPES enum value
+   \param field USNO_TIMES enum value
+*/
+
+void convert_usno_data(char *str, struct event *ev, int daylight, int field)
+{
+	time_t curtime, event_time;
+	double difft;
+	struct tm event_tm;
+	struct timeval secs = { 0, 0 };
+
+	curtime = time(NULL);
+
+	strptime(str, "%F %R", &event_tm);
+	event_time = mktime_z(NULL, &event_tm);
+	difft = difftime(event_time, curtime);
+	usno_sun_offsets[field] = (int)round(difft);
+	LOG(LOG_DEBUG, "Field:%d Dayl:%d offset:%f str:%s",
+	    field, daylight, difft, str);
+	/* special handling for solar noon */
+	if (field == USNO_SUN_SOLAR_NOON && (difft - 1800.0) > 0.0) {
+		secs.tv_sec = usno_sun_offsets[field] - 1800;
+		if (solar_noon_start_ev != NULL)
+			event_free(solar_noon_start_ev);
+		solar_noon_start_ev = evtimer_new(base, modify_sunrise_cb,
+					  (void*)&dl_cbarg[DAYL_SOLAR_NOON]);
+		event_add(solar_noon_start_ev, &secs);
+		LOG(LOG_DEBUG, "Create solar noon start at %d", secs.tv_sec);
+
+		secs.tv_sec = usno_sun_offsets[field] + 1800;
+		if (solar_noon_end_ev != NULL)
+			event_free(solar_noon_end_ev);
+		solar_noon_end_ev = evtimer_new(base, modify_sunrise_cb,
+				       (void*)&dl_cbarg[DAYL_DAY]);
+		event_add(solar_noon_end_ev, &secs);
+		LOG(LOG_DEBUG, "Create solar noon end at %d", secs.tv_sec);
+	}
+	if (difft > 0.0 && field != USNO_SUN_SOLAR_NOON) {
+		secs.tv_sec = usno_sun_offsets[field];
+		if (ev != NULL)
+			event_free(ev); /* clear old one */
+		ev = evtimer_new(base, modify_sunrise_cb,
+				(void*)&dl_cbarg[daylight]);
+		event_add(ev, &secs);
+		LOG(LOG_DEBUG, "Create event %d start at %d", daylight,
+		    secs.tv_sec);
+	}
+}
+
+/**
+   \brief convert a time into an event and schedule, for lunar
+   \param str Time as a string, format: 12:14
+   \param ev event to schedule
+   \param daylight DAYLIGHT_TYPES enum value
+   \param field USNO_TIMES enum value
+*/
+
+void convert_usno_moondata(char *str, struct event *ev, int daylight,
+			   int field)
+{
+	time_t curtime, event_time;
+	double difft;
+	struct tm event_tm;
+	struct timeval secs = { 0, 0 };
+
+	curtime = time(NULL);
+
+	strptime(str, "%F %R", &event_tm);
+	event_time = mktime_z(NULL, &event_tm);
+	difft = difftime(event_time, curtime);
+	usno_moon_offsets[field] = (int)round(difft);
+	LOG(LOG_DEBUG, "Moon Field:%d Dayl:%d offset:%f str:%s",
+	    field, daylight, difft, str);
+	/* special handling for lunar noon */
+	if (field == USNO_MOON_UPPER_TRANSIT && (difft - 1800.0) > 0.0) {
+		secs.tv_sec = usno_moon_offsets[field] - 1800;
+		if (lunar_noon_start_ev != NULL)
+			event_free(lunar_noon_start_ev);
+		lunar_noon_start_ev = evtimer_new(base, modify_moonrise_cb,
+					   (void*)&dl_cbarg[DAYL_SOLAR_NOON]);
+		event_add(lunar_noon_start_ev, &secs);
+		LOG(LOG_DEBUG, "Create lunar noon start at %d", secs.tv_sec);
+
+		secs.tv_sec = usno_moon_offsets[field] + 1800;
+		if (lunar_noon_end_ev != NULL)
+			event_free(lunar_noon_end_ev);
+		lunar_noon_end_ev = evtimer_new(base, modify_moonrise_cb,
+				       (void*)&dl_cbarg[DAYL_DAY]);
+		event_add(lunar_noon_end_ev, &secs);
+		LOG(LOG_DEBUG, "Create lunar noon end at %d", secs.tv_sec);
+	}
+	if (difft > 0.0 && field != USNO_MOON_UPPER_TRANSIT) {
+		secs.tv_sec = usno_moon_offsets[field];
+		if (ev != NULL)
+			event_free(ev); /* clear old one */
+		ev = evtimer_new(base, modify_moonrise_cb,
+				(void*)&dl_cbarg[daylight]);
+		event_add(ev, &secs);
+		LOG(LOG_DEBUG, "Create lunar event %d start at %d", daylight,
+		    secs.tv_sec);
+	}
+}
+
+#define JSMN_TEST_OR_FAIL2(ret, str)			  \
+	if (ret == -1) {				  \
+		LOG(LOG_ERROR, "Couldn't parse %s", str); \
+		goto usno_request_cb_out;		  \
+      	}
+
+/**
+   \brief Callback for http request (usno)
+   \param req request structure
+   \param arg unused
+*/
+
+void usno_request_cb(struct evhttp_request *req, void *arg)
+{
+	struct evbuffer *data;
+	size_t len;
+	char *buf, *str, dbuf[256], datestr[256];
+	jsmn_parser jp;
+	jsmntok_t token[255];
+	int jret, i, j, k, datamemb, year, month, day, sm;
+	struct tm tms;
+	char *apiwords[USNO_SUN_SOLAR_NOON+1] = {
+		"BC", "R", "S", "EC", "U",
+	};
+	int apidayl[USNO_SUN_SOLAR_NOON+1] = {
+		DAYL_DAWN_CIVIL_TWILIGHT,
+		DAYL_DAY,
+		DAYL_DUSK_CIVIL_TWILIGHT,
+		DAYL_NIGHT,
+		DAYL_SOLAR_NOON,
+	};
+	char *moonwords[USNO_MOON_UPPER_TRANSIT+1] = {
+		"R", "S", "U",
+	};
+	int moondayl[USNO_MOON_UPPER_TRANSIT+1] = {
+		DAYL_DAY,
+		DAYL_NIGHT,
+		DAYL_SOLAR_NOON,
+	};
+
+
+	if (req == NULL) {
+		LOG(LOG_ERROR, "Got NULL req in usno_request_cb() ??");
+		return;
+	}
+
+	switch (req->response_code) {
+	case HTTP_OK: break;
+	default:
+		LOG(LOG_ERROR, "USNO Http request failure: %d", req->response_code);
+		return;
+		break;
+	}
+	jsmn_init(&jp);
+
+	data = evhttp_request_get_input_buffer(req);
+	len = evbuffer_get_length(data);
+	LOG(LOG_DEBUG, "input buf len= %d", len);
+	if (len == 0)
+		return;
+
+	buf = safer_malloc(len+1);
+	if (evbuffer_copyout(data, buf, len) != len) {
+		LOG(LOG_ERROR, "Failed to copyout %d bytes", len);
+		goto usno_request_cb_out;
+	}
+	buf[len] = '\0'; /* just in case of stupid */
+	LOG(LOG_DEBUG, "input buf: %s", buf);
+	jret = jsmn_parse(&jp, buf, len, token, 255);
+	if (jret < 0) {
+		LOG(LOG_ERROR, "Failed to parse jsom string: %d", jret);
+		/* Leave the data on the queue and punt for more */
+		/* XXX NEED switch for token error */
+		goto usno_request_cb_out;
+	} else
+		evbuffer_drain(data, len); /* toss it */
+
+	/* flush the offsets */
+	for (i=0; i <= USNO_SUN_SOLAR_NOON; i++)
+		usno_sun_offsets[i] = -86401; /* over a day */
+	for (i=0; i <= USNO_MOON_UPPER_TRANSIT; i++)
+		usno_moon_offsets[i] = -86401; /* over a day */
+
+	/* Now start parsing */
+
+	/* first, locate the year/month/day items */
+
+	i = jtok_find_token_val(token, buf, "year", jret);
+	JSMN_TEST_OR_FAIL2(i, "year");
+	year = jtok_int(&token[i], buf);
+	i = jtok_find_token_val(token, buf, "month", jret);
+	JSMN_TEST_OR_FAIL2(i, "month");
+	month = jtok_int(&token[i], buf);
+	i = jtok_find_token_val(token, buf, "day", jret);
+	JSMN_TEST_OR_FAIL2(i, "day");
+	day = jtok_int(&token[i], buf);
+	LOG(LOG_DEBUG, "Date: %d-%d-%d", year, month, day);
+
+	/* now find the sundata */
+
+	/* if we are just using usno for lunar data, skip ahead */
+	sm = cfg_getint(astro_c, "sunmethod");
+	if (sm != SUNTYPE_USNO)
+		goto usno_moon;
+
+	datamemb = jtok_get_array_size(token, buf, "sundata", jret);
+	if (datamemb == -1)
+		goto usno_request_cb_out;
+
+	for (j=USNO_SUN_CIVIL_BEGIN;  j <= USNO_SUN_SOLAR_NOON; j++) {
+		for (k=0; k < datamemb; k++) {
+			i = jtok_find_token_val_nth_array(token, buf, k, 
+							  "sundata", "phen",
+							  jret);
+			JSMN_TEST_OR_FAIL2(i, "phen");
+			str = jtok_string(&token[i], buf);
+			if (strcmp(str, apiwords[j]) == 0) {
+				LOG(LOG_DEBUG, "Found phen %s", apiwords[j]);
+				i = jtok_find_token_val_nth_array(token, buf,
+				    k, "sundata", "time", jret);
+				JSMN_TEST_OR_FAIL2(i, "time");
+				str = jtok_string(&token[i], buf);
+				LOG(LOG_DEBUG, "Found time for phen %s : %s",
+				    apiwords[j], str);
+				sprintf(datestr, "%d-%d-%d %s", year, month,
+					day, str);
+				convert_usno_data(datestr, sun_ev[j],
+						  apidayl[j], j);
+				free(str);
+			} else
+				free(str);
+		}
+	}
+
+	/* we might have future data, lets see */
+	datamemb = jtok_get_array_size(token, buf, "nextsundata", jret);
+	if (datamemb == -1)
+		goto usno_skip_nextsun;
+
+	/* mktime auto-adjusts for insanity, so day+1 actually works */
+	sprintf(datestr, "%d-%d-%d 00:00", year, month, day+1);
+	strptime(datestr, "%F %R", &tms);
+	mktime_z(NULL, &tms);
+	strftime_z(NULL, dbuf, 256, "%F", &tms);
+	LOG(LOG_DEBUG, "Day +1 == %s", dbuf);
+
+	for (j=USNO_SUN_CIVIL_BEGIN;  j <= USNO_SUN_SOLAR_NOON; j++) {
+		for (k=0; k < datamemb; k++) {
+			i = jtok_find_token_val_nth_array(token, buf, k, 
+			    "nextsundata", "phen", jret);
+			JSMN_TEST_OR_FAIL2(i, "phen");
+			str = jtok_string(&token[i], buf);
+			if (strcmp(str, apiwords[j]) == 0) {
+				LOG(LOG_DEBUG, "Found nextphen %s", apiwords[j]);
+				i = jtok_find_token_val_nth_array(token, buf,
+				    k, "sundata", "time", jret);
+				JSMN_TEST_OR_FAIL2(i, "time");
+				str = jtok_string(&token[i], buf);
+				LOG(LOG_DEBUG, "Found nexttime for phen %s : %s",
+				    apiwords[j], str);
+				sprintf(datestr, "%s %s", dbuf, str);
+				convert_usno_data(datestr, sun_ev[j],
+						  apidayl[j], j);
+				free(str);
+			} else
+				free(str);
+		}
+	}
+
+usno_skip_nextsun:
+	/* if we got this far everything is a-ok */
+	astro_lastupd = time(NULL);
+
+	/* lets do an upd, just for funsies */
+	if (usno_sun_offsets[USNO_SUN_SOLAR_NOON] > -1800 &&
+	    usno_sun_offsets[USNO_SUN_SOLAR_NOON] < 1800) {
+		modify_sunrise_cb(0, 0, &dl_cbarg[DAYL_SOLAR_NOON]);
+	} else {
+		/* we skip solar noon here */
+		for (j=USNO_SUN_CIVIL_BEGIN;  j < USNO_SUN_CIVIL_END; j++) {
+			if (usno_sun_offsets[j] >= 0) {
+				LOG(LOG_DEBUG, "Sunrise: j=%d offset=%d",
+				    j, usno_sun_offsets[j]);
+				if (j > 0)
+					j--;
+				else
+					j = USNO_SUN_CIVIL_END;
+				LOG(LOG_DEBUG, "Sunrise: Picked: %s j=%d "
+				    "apidayl=%d", apiwords[j], j, apidayl[j]);
+				modify_sunrise_cb(0, 0, &dl_cbarg[apidayl[j]]);
+				break;
+			}
+		}
+	}
+	LOG(LOG_DEBUG, "Hi");
+
+usno_moon:
+
+	/* Lets get the moon data! */
+
+	datamemb = jtok_get_array_size(token, buf, "moondata", jret);
+	if (datamemb == -1)
+		goto usno_request_cb_out;
+
+	for (j=USNO_MOONRISE;  j <= USNO_MOON_UPPER_TRANSIT; j++) {
+		for (k=0; k < datamemb; k++) {
+		i = jtok_find_token_val_nth_array(token, buf, k, 
+						  "moondata", "phen", jret);
+			JSMN_TEST_OR_FAIL2(i, "phen");
+			str = jtok_string(&token[i], buf);
+			if (strcmp(str, moonwords[j]) == 0) {
+				LOG(LOG_DEBUG, "Found phen %s", moonwords[j]);
+				i = jtok_find_token_val_nth_array(token, buf,
+				    k, "moondata", "time", jret);
+				JSMN_TEST_OR_FAIL2(i, "time");
+				str = jtok_string(&token[i], buf);
+				LOG(LOG_DEBUG, "Found time for phen %s : %s",
+				    moonwords[j], str);
+				sprintf(datestr, "%d-%d-%d %s", year, month,
+					day, str);
+				convert_usno_moondata(datestr, moon_ev[j],
+						      moondayl[j], j);
+				free(str);
+			} else
+				free(str);
+		}
+	}
+	/* if we got this far everything is a-ok */
+	astro_lastupd = time(NULL);
+
+	/* lets do an upd, just for funsies */
+	if (usno_moon_offsets[USNO_MOON_UPPER_TRANSIT] > -1800 &&
+	    usno_moon_offsets[USNO_MOON_UPPER_TRANSIT] < 1800) {
+		modify_moonrise_cb(0, 0, &dl_cbarg[DAYL_SOLAR_NOON]);
+	} else {
+		/* we skip solar noon here */
+		if (usno_moon_offsets[USNO_MOONRISE] <= 0 &&
+		    usno_moon_offsets[USNO_MOONSET] <= 0) {
+			LOG(LOG_DEBUG, "Moon is down");
+			modify_moonrise_cb(0, 0, &dl_cbarg[DAYL_NIGHT]);
+		} else if (usno_moon_offsets[USNO_MOONRISE] <= 0 &&
+			   usno_moon_offsets[USNO_MOONSET] >= 0) {
+			LOG(LOG_DEBUG, "Moon is up");
+			modify_moonrise_cb(0, 0, &dl_cbarg[DAYL_DAY]);
+		} else {
+			LOG(LOG_DEBUG, "Assuming moon down");
+			modify_moonrise_cb(0, 0, &dl_cbarg[DAYL_NIGHT]);
+		}
+	}
+
+	/* Locate the phase of the moon */
+	i = jtok_find_token_val(token, buf, "fracillum", jret);
+	JSMN_TEST_OR_FAIL2(i, "fracillum");
+	str = jtok_string(&token[i], buf);
+	modify_moonphase(str);
+	free(str);
+
+
+	LOG(LOG_DEBUG, "Hi2");
+
+
+usno_request_cb_out:
+	free(buf);
+	return;
+}
+
+
 /**
    \brief Build the astro devices
 */
 
 void build_devices(void)
 {
-	char *suid, *muid, *sname, *mname;
+	char *suid, *muid, *sname, *mname, *mtuid, *mtname;
 	device_t *dev;
 
 	suid = cfg_getstr(astro_c, "sunriseuid");
@@ -479,6 +919,8 @@ void build_devices(void)
 	muid = cfg_getstr(astro_c, "moonphaseuid");
 	mname = cfg_getstr(astro_c, "moonphasename");
 
+	mtuid = cfg_getstr(astro_c, "moonriseuid");
+	mtname = cfg_getstr(astro_c, "moonrisename");
 
 	generic_build_device(cfg, suid, sname, "sunrise",
 			     PROTO_CALCULATED,
@@ -488,6 +930,11 @@ void build_devices(void)
 	generic_build_device(cfg, muid, mname, "moonph",
 			     PROTO_CALCULATED, DEVICE_SENSOR,
 			     SUBTYPE_MOONPH, NULL, 0, gnhastd_conn->bev);
+
+	generic_build_device(cfg, mtuid, mtname, "moonrise",
+			     PROTO_CALCULATED,
+			     DEVICE_SENSOR, SUBTYPE_DAYLIGHT, NULL, 0,
+			     gnhastd_conn->bev);
 
 	/* are we dumping the conf file? */
 	if (dumpconf != NULL) {
@@ -499,7 +946,7 @@ void build_devices(void)
 }
 
 /**
-   \brief Start the feed
+   \brief Start the feed for the sunrise/sunset API
    We have to delay start the feeds, otherwise we could overwhelm the
    website.  Therefore this routine does a silly double jump thingie.
 */
@@ -510,16 +957,6 @@ void sunrise_sunset_startfeed(void)
 	struct timeval secs = { 0, 0 };
 	int feed_delay, update;
 	char url_suffix[512];
-
-	dl_cbarg[DAYL_NIGHT] = DAYL_NIGHT;
-	dl_cbarg[DAYL_DAY] = DAYL_DAY;
-	dl_cbarg[DAYL_SOLAR_NOON] = DAYL_SOLAR_NOON;
-	dl_cbarg[DAYL_DAWN_ASTRO_TWILIGHT] = DAYL_DAWN_ASTRO_TWILIGHT;
-	dl_cbarg[DAYL_DAWN_NAUTICAL_TWILIGHT] = DAYL_DAWN_NAUTICAL_TWILIGHT;
-	dl_cbarg[DAYL_DAWN_CIVIL_TWILIGHT] = DAYL_DAWN_CIVIL_TWILIGHT;
-	dl_cbarg[DAYL_DUSK_CIVIL_TWILIGHT] = DAYL_DUSK_CIVIL_TWILIGHT;
-	dl_cbarg[DAYL_DUSK_NAUTICAL_TWILIGHT] = DAYL_DUSK_NAUTICAL_TWILIGHT;
-	dl_cbarg[DAYL_DUSK_ASTRO_TWILIGHT] = DAYL_DUSK_ASTRO_TWILIGHT;
 
 	if (sunrise_sunset_url == NULL)
 		LOG(LOG_FATAL, "Sunrise-sunset URL is NULL");
@@ -546,11 +983,58 @@ void sunrise_sunset_startfeed(void)
 	sunrise_sunset_get->cb = ss_request_cb;
 	sunrise_sunset_get->http_port = SUNRISE_SUNSET_PORT;
 	sunrise_sunset_get->precheck = NULL;
+	sunrise_sunset_get->http_cn = NULL;
 
 	secs.tv_sec = feed_delay;
 	ev = evtimer_new(base, delay_feedstart_cb, sunrise_sunset_get);
 	event_add(ev, &secs);
 }
+
+/**
+   \brief Start the feed for the usno API
+   We have to delay start the feeds, otherwise we could overwhelm the
+   website.  Therefore this routine does a silly double jump thingie.
+*/
+
+void usno_startfeed(void)
+{
+	struct event *ev;
+	struct timeval secs = { 0, 0 };
+	int feed_delay, update;
+	char url_suffix[512];
+
+	if (usno_url == NULL)
+		LOG(LOG_FATAL, "USNO URL is NULL");
+
+	query_running = 1;
+
+	update = cfg_getint(astro_c, "update");
+	if (update < 3600) {
+		update = 3600; /* 1 hour */
+		cfg_setint(astro_c, "update", update);
+		LOG(LOG_WARNING, "Update is too fast, adjusting to %d",
+		    update);
+	}
+	feed_delay = 5;
+
+	sprintf(url_suffix, "%sdate=today&coords=%f,%f&tz=0",
+		USNO_API,
+		cfg_getfloat(astro_c, "latitude"),
+		cfg_getfloat(astro_c, "longitude"));
+
+	usno_get = smalloc(http_get_t);
+	usno_get->url_prefix = usno_url;
+	usno_get->url_suffix = strdup(url_suffix);
+	usno_get->cb = usno_request_cb;
+	usno_get->http_port = USNO_PORT;
+	usno_get->precheck = NULL;
+	usno_get->http_cn = NULL;
+
+	secs.tv_sec = feed_delay;
+	ev = evtimer_new(base, delay_feedstart_cb, usno_get);
+	event_add(ev, &secs);
+}
+
 
 /**
    \brief Callback to start a feed
@@ -586,7 +1070,7 @@ int main(int argc, char **argv)
 {
 	extern char *optarg;
 	extern int optind;
-	int ch, fd, sm;
+	int ch, fd, sm, i;
 	char *buf;
 	struct event *ev;
 	struct timeval secs = {0, 0};
@@ -666,9 +1150,32 @@ int main(int argc, char **argv)
 
 	build_devices();
 	LOG(LOG_DEBUG, "method = %d SS=%d", cfg_getint(astro_c, "sunmethod"), SUNTYPE_SS);
+
+	/* Setup the callback arguments array */
+	dl_cbarg[DAYL_NIGHT] = DAYL_NIGHT;
+	dl_cbarg[DAYL_DAY] = DAYL_DAY;
+	dl_cbarg[DAYL_SOLAR_NOON] = DAYL_SOLAR_NOON;
+	dl_cbarg[DAYL_DAWN_ASTRO_TWILIGHT] = DAYL_DAWN_ASTRO_TWILIGHT;
+	dl_cbarg[DAYL_DAWN_NAUTICAL_TWILIGHT] = DAYL_DAWN_NAUTICAL_TWILIGHT;
+	dl_cbarg[DAYL_DAWN_CIVIL_TWILIGHT] = DAYL_DAWN_CIVIL_TWILIGHT;
+	dl_cbarg[DAYL_DUSK_CIVIL_TWILIGHT] = DAYL_DUSK_CIVIL_TWILIGHT;
+	dl_cbarg[DAYL_DUSK_NAUTICAL_TWILIGHT] = DAYL_DUSK_NAUTICAL_TWILIGHT;
+	dl_cbarg[DAYL_DUSK_ASTRO_TWILIGHT] = DAYL_DUSK_ASTRO_TWILIGHT;
+
+	/* initialize the events to NULL */
+	for (i=0; i <= SS_SOLAR_NOON; i++)
+		sun_ev[i] = NULL;
+	for (i=0; i <= USNO_MOON_UPPER_TRANSIT; i++)
+		moon_ev[i] = NULL;
+	solar_noon_start_ev = solar_noon_end_ev = NULL;
+	lunar_noon_start_ev = lunar_noon_end_ev = NULL;
+		
 	sm = cfg_getint(astro_c, "sunmethod");
 	if (sm == SUNTYPE_SS)
 		sunrise_sunset_startfeed();
+
+	/* we do this either way, because moon */
+	usno_startfeed();
 
 	/* setup signal handlers */
 	ev = evsignal_new(base, SIGHUP, cb_sighup, conffile);
