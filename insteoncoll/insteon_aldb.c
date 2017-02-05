@@ -183,9 +183,10 @@ void print_aldb(device_t *dev)
 	for (i = 0; i < dd->aldblen && i < ALDB_MAXSIZE; i++) {
 		addr_to_string(da, dd->aldb[i].devaddr);
 		LOG(LOG_NOTICE, "Link %s GRP: %0.2X OnLvl: %0.2X Ramp: %0.2X "
-		    "D3: %0.2X Flg: %0.2X", da, dd->aldb[i].group,
+		    "D3: %0.2X Flg: %0.2X %s", da, dd->aldb[i].group,
 		    dd->aldb[i].ldata1, dd->aldb[i].ldata2,
-		    dd->aldb[i].ldata3, dd->aldb[i].lflags);
+		    dd->aldb[i].ldata3, dd->aldb[i].lflags,
+		    (ALINK_IS_MASTER(dd->aldb[i].lflags)) ? "MAST" : "RESP");
 	}
 }
 
@@ -311,9 +312,10 @@ void plm_handle_aldb_record_resp(uint8_t *data)
 
 	memcpy(devaddr, data+4, 3);
 	addr_to_string(im, devaddr);
-	LOG(LOG_NOTICE, "ALINK Record: dev: %s Group: %0.2X LinkFlags: %0.2X "
-	    "link1: %0.2X link2: %0.2X link3: %0.2X",
-	    im, data[3], data[2], data[7], data[8], data[9]);
+	LOG(LOG_NOTICE, "ALINK Record: dev: %s Group: %0.2X LF: %0.2X "
+	    "l1: %0.2X l2: %0.2X l3: %0.2X %s",
+	    im, data[3], data[2], data[7], data[8], data[9],
+	    (ALINK_IS_MASTER(data[2])) ? "MAST" : "RESP");
 
 	/* allocate space */
 	if (plmaldbsize == 0) {

@@ -260,6 +260,7 @@ void plm_queue_empty_cb(void *arg)
 				plm_enq_std(dev, STDCMD_LINKMODE, 0x01,
 					    CMDQ_WAITACK|CMDQ_WAITDATA);
 				/* Link the PLM to the device as a master */
+				LOG(LOG_NOTICE, "Link as master");
 				plm_all_link(0x01, 0x75);
 				//plm_all_link(0xFF, 0x75);
 			}
@@ -268,6 +269,7 @@ void plm_queue_empty_cb(void *arg)
 	case MODE_LINK_ALL_C:
 		TAILQ_FOREACH(dev, &alldevs, next_all) {
 			/* Now link the PLM as a responder on group 1 */
+			LOG(LOG_NOTICE, "Link as responder on group 1");
 			plm_all_link(0x00, 0x01);
 			plm_enq_std(dev, STDCMD_LINKMODE, 0x01,
 				    CMDQ_WAITACK|CMDQ_WAITDATA);
