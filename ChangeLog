@@ -6,10 +6,13 @@
 		daylight - Simple daylight state
 		moonphase - Phase of moon in %full
 
+	Added Collectors:
+	      astrocoll - Gather daylight/moonlight data from various sources
+	
 	New Features:
 
 	owsrvcoll - Add support for moisture and wetness Hobby Boards sensors.
-	
+	insteroncoll - Rewrite how we pull data off the PLM and process.
 	
 0.4 - Release Version
 	Added Collectors:
