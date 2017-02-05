@@ -134,7 +134,7 @@ int mode;
 #define MODE_GET_DEV_INFO	4
 
 extern SIMPLEQ_HEAD(fifohead, _cmdq_t) cmdfifo;
-
+extern SIMPLEQ_HEAD(workhead, _workq_t) workfifo;
 
 usage(void)
 {
@@ -517,7 +517,8 @@ main(int argc, char *argv[])
 	char *conffile = SYSCONFDIR "/" INSTEONCOLL_CONF_FILE;
 	struct ev_token_bucket_cfg *ratelim;
 	struct timeval rate = { 1, 0 };
-	struct timeval runq = { 0, 500 };
+	struct timeval runq = { 0, 5000 };
+	struct timeval workq = { 1, 50 };
 	struct event *ev;
 	device_t *dev;
 	insteon_devdata_t *dd;
@@ -595,6 +596,7 @@ main(int argc, char *argv[])
 
 	/* Initialize the command fifo */
 	SIMPLEQ_INIT(&cmdfifo);
+	SIMPLEQ_INIT(&workfifo);
 
 	//cfg = parse_conf(conffile);
 
@@ -628,6 +630,8 @@ main(int argc, char *argv[])
 	/* setup runq */
 	ev = event_new(base, -1, EV_PERSIST, plm_runq, plm_conn);
 	event_add(ev, &runq);
+	ev = event_new(base, -1, EV_PERSIST, plm_run_workq, plm_conn);
+	event_add(ev, &workq);
 
 	/* loopit */
 	event_base_dispatch(base);

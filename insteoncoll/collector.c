@@ -125,7 +125,7 @@ char *dumpconf = NULL;
 extern time_t plm_lastupd;
 
 extern SIMPLEQ_HEAD(fifohead, _cmdq_t) cmdfifo;
-
+extern SIMPLEQ_HEAD(workhead, _workq_t) workfifo;
 
 usage(void)
 {
@@ -676,7 +676,8 @@ int
 main(int argc, char *argv[])
 {
 	int c, fd;
-	struct timeval runq = { 0, 500 };
+	struct timeval runq = { 0, 5000 };
+	struct timeval workq = { 1, 50 };
 	struct timeval rescan = { 60, 0 };
 	struct event *ev;
 
@@ -710,6 +711,7 @@ main(int argc, char *argv[])
 
 	/* Initialize the command fifo */
 	SIMPLEQ_INIT(&cmdfifo);
+	SIMPLEQ_INIT(&workfifo);
 
 	plm_lastupd = time(NULL);
 
@@ -746,10 +748,13 @@ main(int argc, char *argv[])
 			     cfg_getint(icoll_c, "hubport"));
 
 	plm_getinfo();
+	plm_getconf();
 
 	/* setup runq */
 	ev = event_new(base, -1, EV_PERSIST, plm_runq, plm_conn);
 	event_add(ev, &runq);
+	ev = event_new(base, -1, EV_PERSIST, plm_run_workq, plm_conn);
+	event_add(ev, &workq);
 
 	ev = event_new(base, -1, EV_PERSIST, plm_rescan, plm_conn);
 	rescan.tv_sec = cfg_getint(icoll_c, "rescan");

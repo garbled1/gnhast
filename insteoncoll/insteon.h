@@ -69,6 +69,13 @@
 #define PLMFLAGSET_STD3HOPS	(PLMFLAG_MAXHOP1|PLMFLAG_MAXHOP2|PLMFLAG_REMHOP1|PLMFLAG_REMHOP2)
 #define PLMFLAGSET_EXT3HOPS	(PLMFLAGSET_STD3HOPS|PLMFLAG_EXT)
 
+/* Config bits */
+#define PLMCONF_BUSYNAK	(1<<3> /* 1: hub, nak if busy */
+#define PLMCONF_DEADMAN	(1<<4) /* 1: disable 240ms timeout between bytes */
+#define PLMCONF_LED	(1<<5) /* 1: disable automatic LED operation */
+#define PLMCONF_MONITOR	(1<<6) /* 1: Monitor mode (promisc) */
+#define PLMCONF_LINK	(1<<7) /* 1: Disable autolink on SET button push */
+
 /* Command defines */
 /*	STD Standard direct commands
 	GRP Standard group commands
@@ -122,6 +129,16 @@ typedef struct _cmdq_t {
 	char *uid;		/**< \brief uid of device who initiated */
 	SIMPLEQ_ENTRY(_cmdq_t) entries;  /**< \brief FIFO queue */
 } cmdq_t;
+
+/**
+   \brief A work queue for incoming data
+*/
+struct _workq_t;
+typedef struct _workq_t {
+	uint8_t cmd[30];	/**< \brief Body of command */
+	SIMPLEQ_ENTRY(_workq_t) entries; /**< \brief FIFO queue */
+} workq_t;
+
 
 typedef struct _aldb_t {
 	uint16_t addr;		/**< \brief address of record */
@@ -236,18 +253,19 @@ void plmcmdq_flush(void);
 void plmcmdq_check_recv(char *fromaddr, char *toaddr, uint8_t cmd1,
 			int whatkind);
 void plm_getinfo(void);
+void plm_getconf(void);
 void plm_getplm_aldb(int fl);
 void plm_req_aldb(device_t *dev);
 void plm_switch_on(device_t *dev, uint8_t level);
 void plm_switch_off(device_t *dev);
 void plm_all_link(uint8_t linkcode, uint8_t group);
 void plm_handle_getinfo(uint8_t *data);
-int plm_handle_aldb(device_t *dev, char *data);
+int plm_handle_aldb(device_t *dev, uint8_t *data);
 void plm_handle_stdrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 			uint8_t com1, uint8_t com2);
 void plm_handle_extrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 			uint8_t com1, uint8_t com2, uint8_t *ext);
 void plm_readcb(struct bufferevent *bev, void *arg);
-
+void plm_run_workq(int fd, short what, void *arg);
 
 #endif /*_INSTEON_H_*/

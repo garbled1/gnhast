@@ -128,7 +128,7 @@ int mode;
 char *listfile = NULL;
 int nrofdevslist = 0;
 extern SIMPLEQ_HEAD(fifohead, _cmdq_t) cmdfifo;
-
+extern SIMPLEQ_HEAD(workhead, _workq_t) workfifo;
 
 usage(void)
 {
@@ -488,12 +488,13 @@ main(int argc, char *argv[])
 	char *idbfile = SYSCONFDIR "/" INSTEON_DB_FILE;
 	char *conffile = SYSCONFDIR "/" INSTEONCOLL_CONF_FILE;
 	struct termios tio;
-	struct timeval runq = { 0, 500 };
+	struct timeval runq = { 0, 5000 };
+	struct timeval workq = { 1, 50 };
 	struct event *ev;
 	cfg_t *icoll;
 	cfg_opt_t *a;
 
-	while ((c = getopt(argc, argv, "df:h:m:n:s:u:P:")) != -1)
+	while ((c = getopt(argc, argv, "df:h:m:n:s:U:P:")) != -1)
 		switch (c) {
 		case 'd':
 			debugmode = 1;
@@ -513,7 +514,7 @@ main(int argc, char *argv[])
 		case 's':
 			device = optarg;
 			break;
-		case 'u':
+		case 'U':
 			hubhtml_username = strdup(optarg);
 			break;
 		case 'P':
@@ -535,6 +536,7 @@ main(int argc, char *argv[])
 
 	/* Initialize the command fifo */
 	SIMPLEQ_INIT(&cmdfifo);
+	SIMPLEQ_INIT(&workfifo);
 
 	cfg = parse_conf(conffile);
 	if (cfg == NULL)
@@ -583,6 +585,8 @@ main(int argc, char *argv[])
 	/* setup runq */
 	ev = event_new(base, -1, EV_PERSIST, plm_runq, plm_conn);
 	event_add(ev, &runq);
+	ev = event_new(base, -1, EV_PERSIST, plm_run_workq, plm_conn);
+	event_add(ev, &workq);
 
 	/* loopit */
 	event_base_dispatch(base);

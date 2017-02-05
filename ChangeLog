@@ -3,10 +3,13 @@
 		trigger - momentary switches
 		ORP - oxidation redux potential
 		salinity - Salinity (ppt)
+		daylight - Simple daylight state
+		moonphase - Phase of moon in %full
 
 	New Features:
 
 	owsrvcoll - Add support for moisture and wetness Hobby Boards sensors.
+	
 	
 0.4 - Release Version
 	Added Collectors:

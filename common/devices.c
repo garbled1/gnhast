@@ -278,6 +278,7 @@ device_group_t *new_devgroup(char *uid)
 		TAILQ_INSERT_TAIL(&allgroups, devgrp, next_all);
 		devgrp->onq |= GROUPONQ_ALL;
 	}
+	return devgrp;
 }
 
 /**
