@@ -131,7 +131,8 @@ am_jsoncoll_cgi_OBJECTS = common.$(OBJEXT) devices.$(OBJEXT) \
 	collcmd.$(OBJEXT) genconn.$(OBJEXT) alarms.$(OBJEXT) \
 	collector.$(OBJEXT) $(am__objects_1)
 jsoncoll_cgi_OBJECTS = $(am_jsoncoll_cgi_OBJECTS)
-jsoncoll_cgi_DEPENDENCIES = $(top_builddir)/libconfuse/libconfuse.la
+jsoncoll_cgi_DEPENDENCIES =  \
+	$(top_builddir)/libconfuse/libgnconfuse.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -342,7 +343,7 @@ jsoncoll_cgi_SOURCES = $(top_srcdir)/common/common.c \
 	$(top_srcdir)/common/confuse.h $(top_srcdir)/common/gncoll.h \
 	$(top_srcdir)/common/alarms.c collector.c collector.h \
 	$(am__append_1)
-jsoncoll_cgi_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+jsoncoll_cgi_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la
 all: all-am
 
 .SUFFIXES:

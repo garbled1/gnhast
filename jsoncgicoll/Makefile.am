@@ -33,4 +33,4 @@ jsoncoll_cgi_SOURCES += \
 	$(top_srcdir)/linux/time.h
 endif
 
-jsoncoll_cgi_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+jsoncoll_cgi_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la

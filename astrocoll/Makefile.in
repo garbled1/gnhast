@@ -140,7 +140,7 @@ am_astrocoll_OBJECTS = common.$(OBJEXT) devices.$(OBJEXT) \
 	http_func.$(OBJEXT) jsmn_func.$(OBJEXT) collector.$(OBJEXT) \
 	$(am__objects_1)
 astrocoll_OBJECTS = $(am_astrocoll_OBJECTS)
-astrocoll_DEPENDENCIES = $(top_builddir)/libconfuse/libconfuse.la
+astrocoll_DEPENDENCIES = $(top_builddir)/libconfuse/libgnconfuse.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -389,7 +389,7 @@ confexampledir = $(datarootdir)/gnhast/examples
 dist_confexample_DATA = \
 	astrocoll.conf
 
-astrocoll_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+astrocoll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la
 all: all-am
 
 .SUFFIXES:

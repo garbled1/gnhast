@@ -36,4 +36,4 @@ gnhastd_SOURCES += \
 endif
 
 #gnhastd_LDADD = -L$(top_srcdir)/libconfuse -lconfuse
-gnhastd_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+gnhastd_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la

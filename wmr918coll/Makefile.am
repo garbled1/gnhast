@@ -33,4 +33,4 @@ wmr918coll_SOURCES += \
 	$(top_srcdir)/linux/time.h
 endif
 
-wmr918coll_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+wmr918coll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la

@@ -133,7 +133,7 @@ am_urtsicoll_OBJECTS = common.$(OBJEXT) serial_common.$(OBJEXT) \
 	gncoll.$(OBJEXT) genconn.$(OBJEXT) collcmd.$(OBJEXT) \
 	collector.$(OBJEXT) $(am__objects_1)
 urtsicoll_OBJECTS = $(am_urtsicoll_OBJECTS)
-urtsicoll_DEPENDENCIES = $(top_builddir)/libconfuse/libconfuse.la
+urtsicoll_DEPENDENCIES = $(top_builddir)/libconfuse/libgnconfuse.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -346,7 +346,7 @@ urtsicoll_SOURCES = $(top_srcdir)/common/common.c \
 	$(top_srcdir)/common/confparser.h \
 	$(top_srcdir)/common/gncoll.h urtsi.h collector.h collector.c \
 	$(am__append_1)
-urtsicoll_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+urtsicoll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la
 all: all-am
 
 .SUFFIXES:

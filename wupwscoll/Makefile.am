@@ -39,4 +39,4 @@ dist_confexample_DATA = \
 	wunderground.conf \
 	pwsweather.conf
 
-wupwscoll_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+wupwscoll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la

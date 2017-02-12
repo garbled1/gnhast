@@ -45,4 +45,4 @@ confexampledir = $(datarootdir)/gnhast/examples
 dist_confexample_DATA = \
 	astrocoll.conf
 
-astrocoll_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+astrocoll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la

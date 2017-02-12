@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2002,2003,2007 Martin Hedenfalk <martin@bzero.se>
  *
- * Permission to use, copy, modify, and distribute this software for any
+ * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
@@ -15,18 +15,25 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <assert.h>
+#include <errno.h>
+
 #ifdef HAVE_CONFIG_H
-# include "config.h"
+# include <config.h>
 #endif
 
-#include <assert.h>
+#ifndef HAVE_UNISTD_H
+# define YY_NO_UNISTD_H
+#else
+# include <unistd.h>			/* isatty() */
+#endif
 
 #ifdef HAVE_STRING_H
 # include <string.h>
 #endif
-#include "confuse.h"
 
-#include <errno.h>
+/* Defines isatty() for non UNIX systems */
+#include "confuse.h"
 
 #if defined(ENABLE_NLS) && defined(HAVE_GETTEXT)
 # include <libintl.h>
@@ -182,11 +189,8 @@ static YY_BUFFER_STATE string_scan_state = 0;
 <dq_str>\\.  {
     qputc(yytext[1]);
 }
-<dq_str>[^\\\"\n]+  {
-    char *yptr = yytext;
-    while(*yptr) {
-        qputc(*yptr++);
-    }
+<dq_str>[^\\\"\n]  {
+    qputc(yytext[0]);
 }
 
     /* single-quoted string ('...') */
@@ -288,9 +292,10 @@ int cfg_lexer_include(cfg_t *cfg, const char *filename)
 {
     char *xfilename;
 
-    if(cfg_include_stack_ptr >= MAX_INCLUDE_DEPTH) {
+    if (cfg_include_stack_ptr >= MAX_INCLUDE_DEPTH) 
+    {
         cfg_error(cfg, _("includes nested too deeply"));
-        return 1;
+        return CFG_PARSE_ERROR;
     }
 
     cfg_include_stack[cfg_include_stack_ptr].state = YY_CURRENT_BUFFER;
@@ -298,21 +303,31 @@ int cfg_lexer_include(cfg_t *cfg, const char *filename)
     cfg_include_stack[cfg_include_stack_ptr].line = cfg->line;
     cfg_include_stack_ptr++;
 
-    xfilename = cfg_tilde_expand(filename);
+    if (cfg->path)
+    {
+	if ((xfilename = cfg_searchpath(cfg->path, filename)) == NULL)
+	{
+	    cfg_error(cfg, "%s: Not found on searchpath", xfilename);
+	    return CFG_PARSE_ERROR;
+	}
+    }
+    else xfilename = cfg_tilde_expand(filename);
 
     cfg_yyin = fopen(xfilename, "r");
 
-    if(!cfg_yyin) {
+    if (!cfg_yyin) 
+      {
         cfg_error(cfg, "%s: %s", xfilename, strerror(errno));
         free(xfilename);
-        return 1;
-    }
+        return CFG_PARSE_ERROR;
+      }
 
     cfg->filename = xfilename;
     cfg->line = 1;
 
     yy_switch_to_buffer(yy_create_buffer(cfg_yyin, YY_BUF_SIZE));
-    return 0;
+
+    return CFG_SUCCESS;
 }
 
 /* write a character to the quoted string buffer, and reallocate as

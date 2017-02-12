@@ -44,4 +44,4 @@ confexampledir = $(datarootdir)/gnhast/examples
 dist_confexample_DATA = \
 	icaddy.conf
 
-icaddycoll_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+icaddycoll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la

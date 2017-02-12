@@ -135,7 +135,7 @@ am_gtk_gnhast_OBJECTS = common.$(OBJEXT) devices.$(OBJEXT) \
 	support.$(OBJEXT) interface.$(OBJEXT) callbacks.$(OBJEXT) \
 	$(am__objects_1)
 gtk_gnhast_OBJECTS = $(am_gtk_gnhast_OBJECTS)
-gtk_gnhast_DEPENDENCIES = $(top_builddir)/libconfuse/libconfuse.la
+gtk_gnhast_DEPENDENCIES = $(top_builddir)/libconfuse/libgnconfuse.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -351,7 +351,7 @@ gtk_gnhast_SOURCES = $(top_srcdir)/common/common.c \
 	main.c gtk-gnhast.h collector.h support.c support.h \
 	interface.c interface.h callbacks.c callbacks.h \
 	$(am__append_1)
-gtk_gnhast_LDADD = @GTK2_LIBS@ $(top_builddir)/libconfuse/libconfuse.la
+gtk_gnhast_LDADD = @GTK2_LIBS@ $(top_builddir)/libconfuse/libgnconfuse.la
 all: all-am
 
 .SUFFIXES:

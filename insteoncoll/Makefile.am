@@ -61,6 +61,6 @@ endif
 
 dist_sysconf_DATA = insteon.db
 
-insteon_discover_LDADD = $(top_builddir)/libconfuse/libconfuse.la
-insteon_aldb_LDADD = $(top_builddir)/libconfuse/libconfuse.la
-insteoncoll_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+insteon_discover_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la
+insteon_aldb_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la
+insteoncoll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la

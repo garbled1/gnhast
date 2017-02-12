@@ -32,4 +32,4 @@ fakecoll_SOURCES += \
 	$(top_srcdir)/linux/time.h
 endif
 
-fakecoll_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+fakecoll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la

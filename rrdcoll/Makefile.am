@@ -33,4 +33,4 @@ rrdcoll_SOURCES += \
 	$(top_srcdir)/linux/time.h
 endif
 
-rrdcoll_LDADD = @RRD_LIBS@ $(top_builddir)/libconfuse/libconfuse.la
+rrdcoll_LDADD = @RRD_LIBS@ $(top_builddir)/libconfuse/libgnconfuse.la

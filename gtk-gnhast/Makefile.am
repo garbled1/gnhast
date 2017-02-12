@@ -41,4 +41,4 @@ gtk_gnhast_SOURCES += \
         $(top_srcdir)/linux/time.h
 endif
 
-gtk_gnhast_LDADD = @GTK2_LIBS@ $(top_builddir)/libconfuse/libconfuse.la
+gtk_gnhast_LDADD = @GTK2_LIBS@ $(top_builddir)/libconfuse/libgnconfuse.la

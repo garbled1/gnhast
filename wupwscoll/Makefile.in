@@ -134,7 +134,7 @@ am_wupwscoll_OBJECTS = common.$(OBJEXT) devices.$(OBJEXT) \
 	gncoll.$(OBJEXT) collcmd.$(OBJEXT) collector.$(OBJEXT) \
 	$(am__objects_1)
 wupwscoll_OBJECTS = $(am_wupwscoll_OBJECTS)
-wupwscoll_DEPENDENCIES = $(top_builddir)/libconfuse/libconfuse.la
+wupwscoll_DEPENDENCIES = $(top_builddir)/libconfuse/libgnconfuse.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -378,7 +378,7 @@ dist_confexample_DATA = \
 	wunderground.conf \
 	pwsweather.conf
 
-wupwscoll_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+wupwscoll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la
 all: all-am
 
 .SUFFIXES:

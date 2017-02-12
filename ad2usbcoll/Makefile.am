@@ -39,7 +39,7 @@ ad2usbcoll_SOURCES += \
 	$(top_srcdir)/linux/time.h
 endif
 
-ad2usbcoll_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+ad2usbcoll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la
 
 mk_rfx_ad2usb: mk_rfx_ad2usb.sh
 	cat < mk_rfx_ad2usb.sh > mk_rfx_ad2usb

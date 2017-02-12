@@ -131,7 +131,7 @@ am_fakecoll_OBJECTS = common.$(OBJEXT) devices.$(OBJEXT) \
 	collcmd.$(OBJEXT) genconn.$(OBJEXT) collector.$(OBJEXT) \
 	$(am__objects_1)
 fakecoll_OBJECTS = $(am_fakecoll_OBJECTS)
-fakecoll_DEPENDENCIES = $(top_builddir)/libconfuse/libconfuse.la
+fakecoll_DEPENDENCIES = $(top_builddir)/libconfuse/libgnconfuse.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -341,7 +341,7 @@ fakecoll_SOURCES = $(top_srcdir)/common/common.c \
 	$(top_srcdir)/common/common.h $(top_srcdir)/common/gnhast.h \
 	$(top_srcdir)/common/confuse.h $(top_srcdir)/common/gncoll.h \
 	collector.c collector.h $(am__append_1)
-fakecoll_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+fakecoll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la
 all: all-am
 
 .SUFFIXES:

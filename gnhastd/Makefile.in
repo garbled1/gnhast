@@ -133,7 +133,7 @@ am_gnhastd_OBJECTS = common.$(OBJEXT) devices.$(OBJEXT) \
 	alarms.$(OBJEXT) netloop.$(OBJEXT) cmdhandler.$(OBJEXT) \
 	script_handler.$(OBJEXT) gnhastd.$(OBJEXT) $(am__objects_1)
 gnhastd_OBJECTS = $(am_gnhastd_OBJECTS)
-gnhastd_DEPENDENCIES = $(top_builddir)/libconfuse/libconfuse.la
+gnhastd_DEPENDENCIES = $(top_builddir)/libconfuse/libgnconfuse.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -347,7 +347,7 @@ gnhastd_SOURCES = $(top_srcdir)/common/common.c \
 	gnhastd.c $(am__append_1)
 
 #gnhastd_LDADD = -L$(top_srcdir)/libconfuse -lconfuse
-gnhastd_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+gnhastd_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la
 all: all-am
 
 .SUFFIXES:

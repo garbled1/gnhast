@@ -1,7 +1,8 @@
 
 AC_INIT([gnhast], 0.5)
 AM_INIT_AUTOMAKE
-LT_INIT([disable-shared])
+LT_INIT
+#LT_INIT([disable-shared])
 AC_PROG_CC
 
 AC_CONFIG_HEADERS(common/config.h)
@@ -19,7 +20,7 @@ AC_DEFUN([AC_LIBTOOL_CXX], [:])
 AC_DEFUN([AC_LIBTOOL_F77], [:])
 AC_PROG_CC
 AM_PROG_LEX
-AC_DISABLE_SHARED
+#AC_DISABLE_SHARED
 
 # Checks for header files.
 AC_HEADER_STDC

@@ -36,4 +36,4 @@ confexampledir = $(datarootdir)/gnhast/examples
 dist_confexample_DATA = \
 	moncoll.conf
 
-moncoll_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+moncoll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la

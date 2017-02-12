@@ -47,4 +47,4 @@ gtk_insteonedit_SOURCES += \
         $(top_srcdir)/linux/time.h
 endif
 
-gtk_insteonedit_LDADD = @GTK2_LIBS@ $(top_builddir)/libconfuse/libconfuse.la
+gtk_insteonedit_LDADD = @GTK2_LIBS@ $(top_builddir)/libconfuse/libgnconfuse.la

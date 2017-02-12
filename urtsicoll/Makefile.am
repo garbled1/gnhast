@@ -35,4 +35,4 @@ urtsicoll_SOURCES += \
 	$(top_srcdir)/linux/time.h
 endif
 
-urtsicoll_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+urtsicoll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la

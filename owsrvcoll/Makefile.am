@@ -33,4 +33,4 @@ owsrvcoll_SOURCES += \
 	$(top_srcdir)/linux/time.h
 endif
 
-owsrvcoll_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+owsrvcoll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la

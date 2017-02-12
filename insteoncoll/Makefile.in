@@ -135,7 +135,8 @@ am__objects_2 = bswap16.$(OBJEXT) bswap32.$(OBJEXT) bswap64.$(OBJEXT) \
 am_insteon_aldb_OBJECTS = $(am__objects_1) insteon_aldb.$(OBJEXT) \
 	$(am__objects_3)
 insteon_aldb_OBJECTS = $(am_insteon_aldb_OBJECTS)
-insteon_aldb_DEPENDENCIES = $(top_builddir)/libconfuse/libconfuse.la
+insteon_aldb_DEPENDENCIES =  \
+	$(top_builddir)/libconfuse/libgnconfuse.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -162,7 +163,7 @@ am_insteon_discover_OBJECTS = $(am__objects_1) \
 	insteon_discover.$(OBJEXT) $(am__objects_3)
 insteon_discover_OBJECTS = $(am_insteon_discover_OBJECTS)
 insteon_discover_DEPENDENCIES =  \
-	$(top_builddir)/libconfuse/libconfuse.la
+	$(top_builddir)/libconfuse/libgnconfuse.la
 am__insteoncoll_SOURCES_DIST = $(top_srcdir)/common/common.c \
 	$(top_srcdir)/common/common.h $(top_srcdir)/common/devices.c \
 	$(top_srcdir)/common/confparser.c \
@@ -184,7 +185,7 @@ am__insteoncoll_SOURCES_DIST = $(top_srcdir)/common/common.c \
 am_insteoncoll_OBJECTS = $(am__objects_1) collector.$(OBJEXT) \
 	$(am__objects_3)
 insteoncoll_OBJECTS = $(am_insteoncoll_OBJECTS)
-insteoncoll_DEPENDENCIES = $(top_builddir)/libconfuse/libconfuse.la
+insteoncoll_DEPENDENCIES = $(top_builddir)/libconfuse/libgnconfuse.la
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -448,9 +449,9 @@ insteon_discover_SOURCES = $(ALLCOMMON_SRC) insteon_discover.c \
 insteoncoll_SOURCES = $(ALLCOMMON_SRC) collector.c $(am__append_2)
 insteon_aldb_SOURCES = $(ALLCOMMON_SRC) insteon_aldb.c $(am__append_3)
 dist_sysconf_DATA = insteon.db
-insteon_discover_LDADD = $(top_builddir)/libconfuse/libconfuse.la
-insteon_aldb_LDADD = $(top_builddir)/libconfuse/libconfuse.la
-insteoncoll_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+insteon_discover_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la
+insteon_aldb_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la
+insteoncoll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la
 all: all-am
 
 .SUFFIXES:

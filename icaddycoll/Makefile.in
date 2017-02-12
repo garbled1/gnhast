@@ -141,7 +141,7 @@ am_icaddycoll_OBJECTS = common.$(OBJEXT) devices.$(OBJEXT) \
 	genconn.$(OBJEXT) jsmn.$(OBJEXT) collector.$(OBJEXT) \
 	$(am__objects_1)
 icaddycoll_OBJECTS = $(am_icaddycoll_OBJECTS)
-icaddycoll_DEPENDENCIES = $(top_builddir)/libconfuse/libconfuse.la
+icaddycoll_DEPENDENCIES = $(top_builddir)/libconfuse/libgnconfuse.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -390,7 +390,7 @@ confexampledir = $(datarootdir)/gnhast/examples
 dist_confexample_DATA = \
 	icaddy.conf
 
-icaddycoll_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+icaddycoll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la
 all: all-am
 
 .SUFFIXES:

@@ -131,7 +131,7 @@ am_rrdcoll_OBJECTS = common.$(OBJEXT) devices.$(OBJEXT) \
 	netparser.$(OBJEXT) confparser.$(OBJEXT) gncoll.$(OBJEXT) \
 	collcmd.$(OBJEXT) collector.$(OBJEXT) $(am__objects_1)
 rrdcoll_OBJECTS = $(am_rrdcoll_OBJECTS)
-rrdcoll_DEPENDENCIES = $(top_builddir)/libconfuse/libconfuse.la
+rrdcoll_DEPENDENCIES = $(top_builddir)/libconfuse/libgnconfuse.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -343,7 +343,7 @@ rrdcoll_SOURCES = $(top_srcdir)/common/common.c \
 	$(top_srcdir)/common/confparser.h \
 	$(top_srcdir)/common/gncoll.h $(top_srcdir)/common/collcmd.h \
 	collector.c $(am__append_1)
-rrdcoll_LDADD = @RRD_LIBS@ $(top_builddir)/libconfuse/libconfuse.la
+rrdcoll_LDADD = @RRD_LIBS@ $(top_builddir)/libconfuse/libgnconfuse.la
 all: all-am
 
 .SUFFIXES:

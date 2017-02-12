@@ -33,4 +33,4 @@ brulcoll_SOURCES += \
 	$(top_srcdir)/linux/time.h
 endif
 
-brulcoll_LDADD = $(top_builddir)/libconfuse/libconfuse.la
+brulcoll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la

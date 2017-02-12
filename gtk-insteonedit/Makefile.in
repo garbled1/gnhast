@@ -142,7 +142,7 @@ am_gtk_insteonedit_OBJECTS = common.$(OBJEXT) devices.$(OBJEXT) \
 	callbacks.$(OBJEXT) $(am__objects_1)
 gtk_insteonedit_OBJECTS = $(am_gtk_insteonedit_OBJECTS)
 gtk_insteonedit_DEPENDENCIES =  \
-	$(top_builddir)/libconfuse/libconfuse.la
+	$(top_builddir)/libconfuse/libgnconfuse.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -363,7 +363,7 @@ gtk_insteonedit_SOURCES = $(top_srcdir)/common/common.c \
 	$(top_srcdir)/insteoncoll/insteon_common.c main.c \
 	gtk-insteonedit.h support.c support.h interface.c interface.h \
 	callbacks.c callbacks.h $(am__append_1)
-gtk_insteonedit_LDADD = @GTK2_LIBS@ $(top_builddir)/libconfuse/libconfuse.la
+gtk_insteonedit_LDADD = @GTK2_LIBS@ $(top_builddir)/libconfuse/libgnconfuse.la
 all: all-am
 
 .SUFFIXES:
