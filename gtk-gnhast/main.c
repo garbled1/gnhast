@@ -182,6 +182,7 @@ int cmd_endlgrps(pargs_t *args, void *arg)
 void attempt_connect(char *server, int port)
 {
 	gnhastd_conn = smalloc(connection_t);
+	gnhastd_conn->cname = strdup(COLLECTOR_NAME);
 	gnhastd_conn->port = port;
 	gnhastd_conn->type = CONN_TYPE_GNHASTD;
 	gnhastd_conn->host = server;

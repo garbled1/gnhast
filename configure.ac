@@ -97,6 +97,7 @@ AC_CONFIG_FILES([Makefile \
 		 gtk-insteonedit/Makefile \
 		 data/Makefile \
 		 gnhastweb/Makefile \
-		 libconfuse/Makefile])
+		 libconfuse/Makefile \
+		 common/Makefile])
 
 AC_OUTPUT

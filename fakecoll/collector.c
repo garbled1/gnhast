@@ -374,6 +374,7 @@ int main(int argc, char **argv)
 	}
 
 	gnhastd_conn = smalloc(connection_t);
+	gnhastd_conn->cname = strdup(COLLECTOR_NAME);
 	if (port != -1)
 		gnhastd_conn->port = port;
 	else

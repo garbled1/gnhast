@@ -399,6 +399,7 @@ int main(int argc, char **argv)
 		maybe_dump_conf(motors);
 
 	gnhastd_conn = smalloc(connection_t);
+	gnhastd_conn->cname = strdup(COLLECTOR_NAME);
 	gnhastd_conn->port = cfg_getint(gnhastd_c, "port");
 	gnhastd_conn->type = CONN_TYPE_GNHASTD;
 	gnhastd_conn->host = cfg_getstr(gnhastd_c, "hostname");
@@ -417,6 +418,7 @@ int main(int argc, char **argv)
 			    CS8|CREAD|CLOCAL);
 
 	urtsi_conn = smalloc(connection_t);
+	urtsi_conn->cname = strdup(COLLECTOR_NAME);
 	urtsi_conn->bev = bufferevent_socket_new(base, fd,
 						  BEV_OPT_CLOSE_ON_FREE);
 	urtsi_conn->type = CONN_TYPE_URTSI;

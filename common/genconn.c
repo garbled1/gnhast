@@ -55,7 +55,6 @@
 #include "genconn.h"
 #include "collcmd.h"
 #include "gnhast.h"
-#include "collector.h"
 
 extern struct event_base *base;
 extern struct evdns_base *dns_base;
@@ -141,7 +140,7 @@ void generic_connect_server_cb(int nada, short what, void *arg)
 	gnhastd_bev = conn->bev;
 
 	if (need_rereg) {
-		gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
+		gn_client_name(gnhastd_conn->bev, conn->cname);
 	}
 }
 

@@ -17,6 +17,7 @@ typedef struct _connection_t {
 	time_t lastdata;
 	int shutdown;
 	int connected;
+	char *cname; 		 /**< \brief Collector name */
 } connection_t;
 
 void generic_collector_health_cb(int nada, short what, void *arg);

@@ -1139,6 +1139,7 @@ int main(int argc, char **argv)
 
 	/* Setup */
 	gnhastd_conn = smalloc(connection_t);
+	gnhastd_conn->cname = strdup(COLLECTOR_NAME);
 	gnhastd_conn->port = cfg_getint(gnhastd_c, "port");
 	gnhastd_conn->type = CONN_TYPE_GNHASTD;
 	gnhastd_conn->host = cfg_getstr(gnhastd_c, "hostname");

@@ -4,6 +4,7 @@ GTKINSTDIR = gtk-insteonedit
 endif
 
 SUBDIRS = libconfuse \
+	common \
 	gnhastd \
 	fakecoll \
 	owsrvcoll \

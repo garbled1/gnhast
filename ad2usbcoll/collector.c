@@ -768,6 +768,7 @@ int main(int argc, char **argv)
 	zonefaults = safer_malloc(sizeof(int) * zones);
 
 	gnhastd_conn = smalloc(connection_t);
+	gnhastd_conn->cname = strdup(COLLECTOR_NAME);
 	gnhastd_conn->port = cfg_getint(gnhastd_c, "port");
 	gnhastd_conn->type = CONN_TYPE_GNHASTD;
 	gnhastd_conn->host = cfg_getstr(gnhastd_c, "hostname");
@@ -786,6 +787,7 @@ int main(int argc, char **argv)
 			    CS8|CREAD|CLOCAL);
 
 	ad2usb_conn = smalloc(connection_t);
+	ad2usb_conn->cname = strdup(COLLECTOR_NAME);
 	ad2usb_conn->bev = bufferevent_socket_new(base, fd,
 						  BEV_OPT_CLOSE_ON_FREE);
 	ad2usb_conn->type = CONN_TYPE_AD2USB;

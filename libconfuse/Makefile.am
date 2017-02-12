@@ -1,5 +1,5 @@
 lib_LTLIBRARIES	         = libgnconfuse.la
-include_HEADERS     	 = $(top_srcdir)/common/confuse.h
+pkginclude_HEADERS     	 = $(top_srcdir)/common/confuse.h
 libgnconfuse_la_SOURCES  = confuse.c compat.h lexer.l
 libgnconfuse_la_CPPFLAGS = -D_GNU_SOURCE -DBUILDING_DLL
 libgnconfuse_la_LIBADD   = $(LTLIBINTL)

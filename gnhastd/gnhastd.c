@@ -42,6 +42,7 @@
 #include "gnhast.h"
 #include "gnhastd.h"
 #include "common.h"
+#include "genconn.h"
 #include "confparser.h"
 
 /* Globals */
@@ -53,7 +54,12 @@ struct event_base *base;	/**< The primary event base */
 extern TAILQ_HEAD(, _device_t) alldevs;
 extern TAILQ_HEAD(, _client_t) clients;
 extern TAILQ_HEAD(, _device_group_t) allgroups;
-
+/* Satisfy libgnhast */
+char *conffile;
+int need_rereg;
+struct evdns_base *dns_base;
+connection_t *gnhastd_conn;
+char *conntype[1];
 
 /* debugging */
 /*_malloc_options = "AJ";*/

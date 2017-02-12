@@ -14416,7 +14416,7 @@ fi
 fi
 
 
-ac_config_files="$ac_config_files Makefile gnhastd/Makefile fakecoll/Makefile owsrvcoll/Makefile rrdcoll/Makefile brulcoll/Makefile insteoncoll/Makefile wmr918coll/Makefile wupwscoll/Makefile ad2usbcoll/Makefile icaddycoll/Makefile venstarcoll/Makefile moncoll/Makefile jsoncgicoll/Makefile urtsicoll/Makefile astrocoll/Makefile handlers/Makefile tools/Makefile gtk-gnhast/Makefile gtk-insteonedit/Makefile data/Makefile gnhastweb/Makefile libconfuse/Makefile"
+ac_config_files="$ac_config_files Makefile gnhastd/Makefile fakecoll/Makefile owsrvcoll/Makefile rrdcoll/Makefile brulcoll/Makefile insteoncoll/Makefile wmr918coll/Makefile wupwscoll/Makefile ad2usbcoll/Makefile icaddycoll/Makefile venstarcoll/Makefile moncoll/Makefile jsoncgicoll/Makefile urtsicoll/Makefile astrocoll/Makefile handlers/Makefile tools/Makefile gtk-gnhast/Makefile gtk-insteonedit/Makefile data/Makefile gnhastweb/Makefile libconfuse/Makefile common/Makefile"
 
 
 cat >confcache <<\_ACEOF
@@ -15463,6 +15463,7 @@ do
     "data/Makefile") CONFIG_FILES="$CONFIG_FILES data/Makefile" ;;
     "gnhastweb/Makefile") CONFIG_FILES="$CONFIG_FILES gnhastweb/Makefile" ;;
     "libconfuse/Makefile") CONFIG_FILES="$CONFIG_FILES libconfuse/Makefile" ;;
+    "common/Makefile") CONFIG_FILES="$CONFIG_FILES common/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac
