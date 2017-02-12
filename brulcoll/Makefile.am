@@ -5,13 +5,6 @@ AM_CPPFLAGS = -DLOCALSTATEDIR=\"$(localstatedir)\" \
 bin_PROGRAMS = brulcoll
 
 brulcoll_SOURCES = \
-	$(top_srcdir)/common/common.c \
-	$(top_srcdir)/common/serial_common.c \
-	$(top_srcdir)/common/devices.c \
-	$(top_srcdir)/common/netparser.c \
-	$(top_srcdir)/common/confparser.c \
-	$(top_srcdir)/common/gncoll.c \
-	$(top_srcdir)/common/collcmd.c \
 	$(top_srcdir)/common/collcmd.h \
 	$(top_srcdir)/common/common.h \
 	$(top_srcdir)/common/gnhast.h \
@@ -23,14 +16,12 @@ brulcoll_SOURCES = \
 
 if NEED_RBTREE
 brulcoll_SOURCES += \
-	$(top_srcdir)/linux/bswap16.c \
-	$(top_srcdir)/linux/bswap32.c \
-	$(top_srcdir)/linux/bswap64.c \
-	$(top_srcdir)/linux/rb.c \
 	$(top_srcdir)/linux/queue.h \
 	$(top_srcdir)/linux/endian.h \
 	$(top_srcdir)/linux/rbtree.h \
 	$(top_srcdir)/linux/time.h
 endif
 
-brulcoll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la
+brulcoll_LDADD = \
+	$(top_builddir)/libconfuse/libgnconfuse.la \
+	$(top_builddir)/common/libgnhast.la

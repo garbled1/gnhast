@@ -5,31 +5,18 @@ AM_CPPFLAGS = -DLOCALSTATEDIR=\"$(localstatedir)\" \
 bin_PROGRAMS = insteon_discover insteoncoll insteon_aldb
 
 ALLCOMMON_SRC = \
-	$(top_srcdir)/common/common.c \
 	$(top_srcdir)/common/common.h \
-	$(top_srcdir)/common/devices.c \
-	$(top_srcdir)/common/confparser.c \
 	$(top_srcdir)/common/confparser.h \
 	$(top_srcdir)/common/gnhast.h \
 	$(top_srcdir)/common/confuse.h \
 	$(top_srcdir)/common/genconn.h \
-	$(top_srcdir)/common/gncoll.c \
 	$(top_srcdir)/common/gncoll.h \
-	$(top_srcdir)/common/serial_common.c \
-	$(top_srcdir)/common/netparser.c \
-	$(top_srcdir)/common/collcmd.c \
 	$(top_srcdir)/common/collcmd.h \
-	$(top_srcdir)/common/http_func.c \
 	$(top_srcdir)/common/http_func.h \
-	$(top_srcdir)/common/genconn.c \
 	insteon.h collector.h \
 	insteon_common.c 
 
 RBTREE_SRCS = \
-	$(top_srcdir)/linux/bswap16.c \
-	$(top_srcdir)/linux/bswap32.c \
-	$(top_srcdir)/linux/bswap64.c \
-	$(top_srcdir)/linux/rb.c \
 	$(top_srcdir)/linux/queue.h \
 	$(top_srcdir)/linux/endian.h \
 	$(top_srcdir)/linux/rbtree.h \
@@ -61,6 +48,9 @@ endif
 
 dist_sysconf_DATA = insteon.db
 
-insteon_discover_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la
-insteon_aldb_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la
-insteoncoll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la
+insteon_discover_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la \
+	$(top_builddir)/common/libgnhast.la
+insteon_aldb_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la \
+	$(top_builddir)/common/libgnhast.la
+insteoncoll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la \
+	$(top_builddir)/common/libgnhast.la

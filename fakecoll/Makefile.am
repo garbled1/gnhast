@@ -5,14 +5,7 @@ AM_CPPFLAGS = -DLOCALSTATEDIR=\"$(localstatedir)\" \
 bin_PROGRAMS = fakecoll
 
 fakecoll_SOURCES = \
-	$(top_srcdir)/common/common.c \
-	$(top_srcdir)/common/devices.c \
-	$(top_srcdir)/common/netparser.c \
-	$(top_srcdir)/common/gncoll.c \
-	$(top_srcdir)/common/confparser.c \
-	$(top_srcdir)/common/collcmd.c \
 	$(top_srcdir)/common/collcmd.h \
-	$(top_srcdir)/common/genconn.c \
 	$(top_srcdir)/common/genconn.h \
 	$(top_srcdir)/common/common.h \
 	$(top_srcdir)/common/gnhast.h \
@@ -22,14 +15,12 @@ fakecoll_SOURCES = \
 
 if NEED_RBTREE
 fakecoll_SOURCES += \
-	$(top_srcdir)/linux/bswap16.c \
-	$(top_srcdir)/linux/bswap32.c \
-	$(top_srcdir)/linux/bswap64.c \
-	$(top_srcdir)/linux/rb.c \
 	$(top_srcdir)/linux/queue.h \
 	$(top_srcdir)/linux/endian.h \
 	$(top_srcdir)/linux/rbtree.h \
 	$(top_srcdir)/linux/time.h
 endif
 
-fakecoll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la
+fakecoll_LDADD = \
+	$(top_builddir)/libconfuse/libgnconfuse.la \
+	$(top_builddir)/common/libgnhast.la

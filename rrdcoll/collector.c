@@ -76,6 +76,7 @@ int need_rereg = 0;
 int secure = 0;
 int usecache = 0;
 time_t rrd_lastupd;
+char *conntype[1]; /* unused, to satisfy libgnhast only */
 
 #define RRDCOLL_CONFIG_FILE	"rrdcoll.conf"
 #define RRDCOLL_LOG_FILE	"rrdcoll.log"

@@ -90,10 +90,6 @@ build_triplet = @build@
 host_triplet = @host@
 bin_PROGRAMS = fakecoll$(EXEEXT)
 @NEED_RBTREE_TRUE@am__append_1 = \
-@NEED_RBTREE_TRUE@	$(top_srcdir)/linux/bswap16.c \
-@NEED_RBTREE_TRUE@	$(top_srcdir)/linux/bswap32.c \
-@NEED_RBTREE_TRUE@	$(top_srcdir)/linux/bswap64.c \
-@NEED_RBTREE_TRUE@	$(top_srcdir)/linux/rb.c \
 @NEED_RBTREE_TRUE@	$(top_srcdir)/linux/queue.h \
 @NEED_RBTREE_TRUE@	$(top_srcdir)/linux/endian.h \
 @NEED_RBTREE_TRUE@	$(top_srcdir)/linux/rbtree.h \
@@ -111,27 +107,17 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am__fakecoll_SOURCES_DIST = $(top_srcdir)/common/common.c \
-	$(top_srcdir)/common/devices.c \
-	$(top_srcdir)/common/netparser.c $(top_srcdir)/common/gncoll.c \
-	$(top_srcdir)/common/confparser.c \
-	$(top_srcdir)/common/collcmd.c $(top_srcdir)/common/collcmd.h \
-	$(top_srcdir)/common/genconn.c $(top_srcdir)/common/genconn.h \
-	$(top_srcdir)/common/common.h $(top_srcdir)/common/gnhast.h \
-	$(top_srcdir)/common/confuse.h $(top_srcdir)/common/gncoll.h \
-	collector.c collector.h $(top_srcdir)/linux/bswap16.c \
-	$(top_srcdir)/linux/bswap32.c $(top_srcdir)/linux/bswap64.c \
-	$(top_srcdir)/linux/rb.c $(top_srcdir)/linux/queue.h \
-	$(top_srcdir)/linux/endian.h $(top_srcdir)/linux/rbtree.h \
-	$(top_srcdir)/linux/time.h
-@NEED_RBTREE_TRUE@am__objects_1 = bswap16.$(OBJEXT) bswap32.$(OBJEXT) \
-@NEED_RBTREE_TRUE@	bswap64.$(OBJEXT) rb.$(OBJEXT)
-am_fakecoll_OBJECTS = common.$(OBJEXT) devices.$(OBJEXT) \
-	netparser.$(OBJEXT) gncoll.$(OBJEXT) confparser.$(OBJEXT) \
-	collcmd.$(OBJEXT) genconn.$(OBJEXT) collector.$(OBJEXT) \
-	$(am__objects_1)
+am__fakecoll_SOURCES_DIST = $(top_srcdir)/common/collcmd.h \
+	$(top_srcdir)/common/genconn.h $(top_srcdir)/common/common.h \
+	$(top_srcdir)/common/gnhast.h $(top_srcdir)/common/confuse.h \
+	$(top_srcdir)/common/gncoll.h collector.c collector.h \
+	$(top_srcdir)/linux/queue.h $(top_srcdir)/linux/endian.h \
+	$(top_srcdir)/linux/rbtree.h $(top_srcdir)/linux/time.h
+am__objects_1 =
+am_fakecoll_OBJECTS = collector.$(OBJEXT) $(am__objects_1)
 fakecoll_OBJECTS = $(am_fakecoll_OBJECTS)
-fakecoll_DEPENDENCIES = $(top_builddir)/libconfuse/libgnconfuse.la
+fakecoll_DEPENDENCIES = $(top_builddir)/libconfuse/libgnconfuse.la \
+	$(top_builddir)/common/libgnhast.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -332,16 +318,15 @@ AM_CPPFLAGS = -DLOCALSTATEDIR=\"$(localstatedir)\" \
 	-DSYSCONFDIR=\"$(sysconfdir)\" \
 	-I$(top_srcdir)/common
 
-fakecoll_SOURCES = $(top_srcdir)/common/common.c \
-	$(top_srcdir)/common/devices.c \
-	$(top_srcdir)/common/netparser.c $(top_srcdir)/common/gncoll.c \
-	$(top_srcdir)/common/confparser.c \
-	$(top_srcdir)/common/collcmd.c $(top_srcdir)/common/collcmd.h \
-	$(top_srcdir)/common/genconn.c $(top_srcdir)/common/genconn.h \
-	$(top_srcdir)/common/common.h $(top_srcdir)/common/gnhast.h \
-	$(top_srcdir)/common/confuse.h $(top_srcdir)/common/gncoll.h \
-	collector.c collector.h $(am__append_1)
-fakecoll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la
+fakecoll_SOURCES = $(top_srcdir)/common/collcmd.h \
+	$(top_srcdir)/common/genconn.h $(top_srcdir)/common/common.h \
+	$(top_srcdir)/common/gnhast.h $(top_srcdir)/common/confuse.h \
+	$(top_srcdir)/common/gncoll.h collector.c collector.h \
+	$(am__append_1)
+fakecoll_LDADD = \
+	$(top_builddir)/libconfuse/libgnconfuse.la \
+	$(top_builddir)/common/libgnhast.la
+
 all: all-am
 
 .SUFFIXES:
@@ -435,18 +420,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bswap16.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bswap32.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bswap64.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/collcmd.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/collector.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/common.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/confparser.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/devices.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/genconn.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gncoll.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/netparser.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rb.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -468,160 +442,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
-
-common.o: $(top_srcdir)/common/common.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT common.o -MD -MP -MF $(DEPDIR)/common.Tpo -c -o common.o `test -f '$(top_srcdir)/common/common.c' || echo '$(srcdir)/'`$(top_srcdir)/common/common.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/common.Tpo $(DEPDIR)/common.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/common.c' object='common.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o common.o `test -f '$(top_srcdir)/common/common.c' || echo '$(srcdir)/'`$(top_srcdir)/common/common.c
-
-common.obj: $(top_srcdir)/common/common.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT common.obj -MD -MP -MF $(DEPDIR)/common.Tpo -c -o common.obj `if test -f '$(top_srcdir)/common/common.c'; then $(CYGPATH_W) '$(top_srcdir)/common/common.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/common.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/common.Tpo $(DEPDIR)/common.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/common.c' object='common.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o common.obj `if test -f '$(top_srcdir)/common/common.c'; then $(CYGPATH_W) '$(top_srcdir)/common/common.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/common.c'; fi`
-
-devices.o: $(top_srcdir)/common/devices.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT devices.o -MD -MP -MF $(DEPDIR)/devices.Tpo -c -o devices.o `test -f '$(top_srcdir)/common/devices.c' || echo '$(srcdir)/'`$(top_srcdir)/common/devices.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/devices.Tpo $(DEPDIR)/devices.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/devices.c' object='devices.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o devices.o `test -f '$(top_srcdir)/common/devices.c' || echo '$(srcdir)/'`$(top_srcdir)/common/devices.c
-
-devices.obj: $(top_srcdir)/common/devices.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT devices.obj -MD -MP -MF $(DEPDIR)/devices.Tpo -c -o devices.obj `if test -f '$(top_srcdir)/common/devices.c'; then $(CYGPATH_W) '$(top_srcdir)/common/devices.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/devices.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/devices.Tpo $(DEPDIR)/devices.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/devices.c' object='devices.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o devices.obj `if test -f '$(top_srcdir)/common/devices.c'; then $(CYGPATH_W) '$(top_srcdir)/common/devices.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/devices.c'; fi`
-
-netparser.o: $(top_srcdir)/common/netparser.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT netparser.o -MD -MP -MF $(DEPDIR)/netparser.Tpo -c -o netparser.o `test -f '$(top_srcdir)/common/netparser.c' || echo '$(srcdir)/'`$(top_srcdir)/common/netparser.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/netparser.Tpo $(DEPDIR)/netparser.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/netparser.c' object='netparser.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o netparser.o `test -f '$(top_srcdir)/common/netparser.c' || echo '$(srcdir)/'`$(top_srcdir)/common/netparser.c
-
-netparser.obj: $(top_srcdir)/common/netparser.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT netparser.obj -MD -MP -MF $(DEPDIR)/netparser.Tpo -c -o netparser.obj `if test -f '$(top_srcdir)/common/netparser.c'; then $(CYGPATH_W) '$(top_srcdir)/common/netparser.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/netparser.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/netparser.Tpo $(DEPDIR)/netparser.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/netparser.c' object='netparser.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o netparser.obj `if test -f '$(top_srcdir)/common/netparser.c'; then $(CYGPATH_W) '$(top_srcdir)/common/netparser.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/netparser.c'; fi`
-
-gncoll.o: $(top_srcdir)/common/gncoll.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT gncoll.o -MD -MP -MF $(DEPDIR)/gncoll.Tpo -c -o gncoll.o `test -f '$(top_srcdir)/common/gncoll.c' || echo '$(srcdir)/'`$(top_srcdir)/common/gncoll.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/gncoll.Tpo $(DEPDIR)/gncoll.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/gncoll.c' object='gncoll.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o gncoll.o `test -f '$(top_srcdir)/common/gncoll.c' || echo '$(srcdir)/'`$(top_srcdir)/common/gncoll.c
-
-gncoll.obj: $(top_srcdir)/common/gncoll.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT gncoll.obj -MD -MP -MF $(DEPDIR)/gncoll.Tpo -c -o gncoll.obj `if test -f '$(top_srcdir)/common/gncoll.c'; then $(CYGPATH_W) '$(top_srcdir)/common/gncoll.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/gncoll.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/gncoll.Tpo $(DEPDIR)/gncoll.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/gncoll.c' object='gncoll.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o gncoll.obj `if test -f '$(top_srcdir)/common/gncoll.c'; then $(CYGPATH_W) '$(top_srcdir)/common/gncoll.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/gncoll.c'; fi`
-
-confparser.o: $(top_srcdir)/common/confparser.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT confparser.o -MD -MP -MF $(DEPDIR)/confparser.Tpo -c -o confparser.o `test -f '$(top_srcdir)/common/confparser.c' || echo '$(srcdir)/'`$(top_srcdir)/common/confparser.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/confparser.Tpo $(DEPDIR)/confparser.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/confparser.c' object='confparser.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o confparser.o `test -f '$(top_srcdir)/common/confparser.c' || echo '$(srcdir)/'`$(top_srcdir)/common/confparser.c
-
-confparser.obj: $(top_srcdir)/common/confparser.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT confparser.obj -MD -MP -MF $(DEPDIR)/confparser.Tpo -c -o confparser.obj `if test -f '$(top_srcdir)/common/confparser.c'; then $(CYGPATH_W) '$(top_srcdir)/common/confparser.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/confparser.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/confparser.Tpo $(DEPDIR)/confparser.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/confparser.c' object='confparser.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o confparser.obj `if test -f '$(top_srcdir)/common/confparser.c'; then $(CYGPATH_W) '$(top_srcdir)/common/confparser.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/confparser.c'; fi`
-
-collcmd.o: $(top_srcdir)/common/collcmd.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT collcmd.o -MD -MP -MF $(DEPDIR)/collcmd.Tpo -c -o collcmd.o `test -f '$(top_srcdir)/common/collcmd.c' || echo '$(srcdir)/'`$(top_srcdir)/common/collcmd.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/collcmd.Tpo $(DEPDIR)/collcmd.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/collcmd.c' object='collcmd.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o collcmd.o `test -f '$(top_srcdir)/common/collcmd.c' || echo '$(srcdir)/'`$(top_srcdir)/common/collcmd.c
-
-collcmd.obj: $(top_srcdir)/common/collcmd.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT collcmd.obj -MD -MP -MF $(DEPDIR)/collcmd.Tpo -c -o collcmd.obj `if test -f '$(top_srcdir)/common/collcmd.c'; then $(CYGPATH_W) '$(top_srcdir)/common/collcmd.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/collcmd.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/collcmd.Tpo $(DEPDIR)/collcmd.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/collcmd.c' object='collcmd.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o collcmd.obj `if test -f '$(top_srcdir)/common/collcmd.c'; then $(CYGPATH_W) '$(top_srcdir)/common/collcmd.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/collcmd.c'; fi`
-
-genconn.o: $(top_srcdir)/common/genconn.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT genconn.o -MD -MP -MF $(DEPDIR)/genconn.Tpo -c -o genconn.o `test -f '$(top_srcdir)/common/genconn.c' || echo '$(srcdir)/'`$(top_srcdir)/common/genconn.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/genconn.Tpo $(DEPDIR)/genconn.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/genconn.c' object='genconn.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o genconn.o `test -f '$(top_srcdir)/common/genconn.c' || echo '$(srcdir)/'`$(top_srcdir)/common/genconn.c
-
-genconn.obj: $(top_srcdir)/common/genconn.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT genconn.obj -MD -MP -MF $(DEPDIR)/genconn.Tpo -c -o genconn.obj `if test -f '$(top_srcdir)/common/genconn.c'; then $(CYGPATH_W) '$(top_srcdir)/common/genconn.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/genconn.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/genconn.Tpo $(DEPDIR)/genconn.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/common/genconn.c' object='genconn.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o genconn.obj `if test -f '$(top_srcdir)/common/genconn.c'; then $(CYGPATH_W) '$(top_srcdir)/common/genconn.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/common/genconn.c'; fi`
-
-bswap16.o: $(top_srcdir)/linux/bswap16.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT bswap16.o -MD -MP -MF $(DEPDIR)/bswap16.Tpo -c -o bswap16.o `test -f '$(top_srcdir)/linux/bswap16.c' || echo '$(srcdir)/'`$(top_srcdir)/linux/bswap16.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/bswap16.Tpo $(DEPDIR)/bswap16.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/linux/bswap16.c' object='bswap16.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o bswap16.o `test -f '$(top_srcdir)/linux/bswap16.c' || echo '$(srcdir)/'`$(top_srcdir)/linux/bswap16.c
-
-bswap16.obj: $(top_srcdir)/linux/bswap16.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT bswap16.obj -MD -MP -MF $(DEPDIR)/bswap16.Tpo -c -o bswap16.obj `if test -f '$(top_srcdir)/linux/bswap16.c'; then $(CYGPATH_W) '$(top_srcdir)/linux/bswap16.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/linux/bswap16.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/bswap16.Tpo $(DEPDIR)/bswap16.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/linux/bswap16.c' object='bswap16.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o bswap16.obj `if test -f '$(top_srcdir)/linux/bswap16.c'; then $(CYGPATH_W) '$(top_srcdir)/linux/bswap16.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/linux/bswap16.c'; fi`
-
-bswap32.o: $(top_srcdir)/linux/bswap32.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT bswap32.o -MD -MP -MF $(DEPDIR)/bswap32.Tpo -c -o bswap32.o `test -f '$(top_srcdir)/linux/bswap32.c' || echo '$(srcdir)/'`$(top_srcdir)/linux/bswap32.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/bswap32.Tpo $(DEPDIR)/bswap32.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/linux/bswap32.c' object='bswap32.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o bswap32.o `test -f '$(top_srcdir)/linux/bswap32.c' || echo '$(srcdir)/'`$(top_srcdir)/linux/bswap32.c
-
-bswap32.obj: $(top_srcdir)/linux/bswap32.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT bswap32.obj -MD -MP -MF $(DEPDIR)/bswap32.Tpo -c -o bswap32.obj `if test -f '$(top_srcdir)/linux/bswap32.c'; then $(CYGPATH_W) '$(top_srcdir)/linux/bswap32.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/linux/bswap32.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/bswap32.Tpo $(DEPDIR)/bswap32.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/linux/bswap32.c' object='bswap32.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o bswap32.obj `if test -f '$(top_srcdir)/linux/bswap32.c'; then $(CYGPATH_W) '$(top_srcdir)/linux/bswap32.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/linux/bswap32.c'; fi`
-
-bswap64.o: $(top_srcdir)/linux/bswap64.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT bswap64.o -MD -MP -MF $(DEPDIR)/bswap64.Tpo -c -o bswap64.o `test -f '$(top_srcdir)/linux/bswap64.c' || echo '$(srcdir)/'`$(top_srcdir)/linux/bswap64.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/bswap64.Tpo $(DEPDIR)/bswap64.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/linux/bswap64.c' object='bswap64.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o bswap64.o `test -f '$(top_srcdir)/linux/bswap64.c' || echo '$(srcdir)/'`$(top_srcdir)/linux/bswap64.c
-
-bswap64.obj: $(top_srcdir)/linux/bswap64.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT bswap64.obj -MD -MP -MF $(DEPDIR)/bswap64.Tpo -c -o bswap64.obj `if test -f '$(top_srcdir)/linux/bswap64.c'; then $(CYGPATH_W) '$(top_srcdir)/linux/bswap64.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/linux/bswap64.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/bswap64.Tpo $(DEPDIR)/bswap64.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/linux/bswap64.c' object='bswap64.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o bswap64.obj `if test -f '$(top_srcdir)/linux/bswap64.c'; then $(CYGPATH_W) '$(top_srcdir)/linux/bswap64.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/linux/bswap64.c'; fi`
-
-rb.o: $(top_srcdir)/linux/rb.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rb.o -MD -MP -MF $(DEPDIR)/rb.Tpo -c -o rb.o `test -f '$(top_srcdir)/linux/rb.c' || echo '$(srcdir)/'`$(top_srcdir)/linux/rb.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/rb.Tpo $(DEPDIR)/rb.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/linux/rb.c' object='rb.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rb.o `test -f '$(top_srcdir)/linux/rb.c' || echo '$(srcdir)/'`$(top_srcdir)/linux/rb.c
-
-rb.obj: $(top_srcdir)/linux/rb.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rb.obj -MD -MP -MF $(DEPDIR)/rb.Tpo -c -o rb.obj `if test -f '$(top_srcdir)/linux/rb.c'; then $(CYGPATH_W) '$(top_srcdir)/linux/rb.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/linux/rb.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/rb.Tpo $(DEPDIR)/rb.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$(top_srcdir)/linux/rb.c' object='rb.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rb.obj `if test -f '$(top_srcdir)/linux/rb.c'; then $(CYGPATH_W) '$(top_srcdir)/linux/rb.c'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/linux/rb.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

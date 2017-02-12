@@ -6,35 +6,21 @@ AM_CPPFLAGS = -DLOCALSTATEDIR=\"$(localstatedir)\" \
 bin_PROGRAMS = astrocoll
 
 astrocoll_SOURCES = \
-	$(top_srcdir)/common/common.c \
 	$(top_srcdir)/common/common.h \
-	$(top_srcdir)/common/devices.c \
-	$(top_srcdir)/common/netparser.c \
-	$(top_srcdir)/common/confparser.c \
 	$(top_srcdir)/common/confparser.h \
-	$(top_srcdir)/common/gncoll.c \
 	$(top_srcdir)/common/gncoll.h \
-	$(top_srcdir)/common/collcmd.c \
 	$(top_srcdir)/common/collcmd.h \
-	$(top_srcdir)/common/genconn.c \
 	$(top_srcdir)/common/genconn.h \
 	$(top_srcdir)/common/gnhast.h \
 	$(top_srcdir)/common/confuse.h \
-	$(top_srcdir)/jsmn/jsmn.c \
 	$(top_srcdir)/jsmn/jsmn.h \
-	$(top_srcdir)/common/http_func.c \
 	$(top_srcdir)/common/http_func.h \
-	$(top_srcdir)/common/jsmn_func.c \
 	$(top_srcdir)/common/jsmn_func.h \
 	astro.h collector.h \
 	collector.c
 
 if NEED_RBTREE
 astrocoll_SOURCES += \
-	$(top_srcdir)/linux/bswap16.c \
-	$(top_srcdir)/linux/bswap32.c \
-	$(top_srcdir)/linux/bswap64.c \
-	$(top_srcdir)/linux/rb.c \
 	$(top_srcdir)/linux/queue.h \
 	$(top_srcdir)/linux/endian.h \
 	$(top_srcdir)/linux/rbtree.h \
@@ -45,4 +31,6 @@ confexampledir = $(datarootdir)/gnhast/examples
 dist_confexample_DATA = \
 	astrocoll.conf
 
-astrocoll_LDADD = $(top_builddir)/libconfuse/libgnconfuse.la
+astrocoll_LDADD = \
+	$(top_builddir)/libconfuse/libgnconfuse.la \
+	$(top_builddir)/common/libgnhast.la
