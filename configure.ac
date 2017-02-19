@@ -32,9 +32,9 @@ AC_CHECK_HEADERS([arpa/inet.h fcntl.h netdb.h netinet/in.h \
 # Checks for libraries.
 AC_SEARCH_LIBS([event_base_new], [event_core event], , AC_MSG_ERROR(["Unable to find libevent 2 core"]))
 AC_SEARCH_LIBS([evdns_base_new], [event_extra event], , AC_MSG_ERROR(["Unable to find libevent2 extra"]))
-AC_SEARCH_LIBS([bufferevent_get_openssl_error], [event_openssl event], , AC_MSG_ERROR(["Unable to find libevent2 openssl"]))
+AC_SEARCH_LIBS([bufferevent_get_openssl_error], [event_openssl event], , AC_MSG_ERROR(["Unable to find libevent2 openssl"]), [-lssl -lcrypto])
 
-AC_CHECK_LIB(ssl, SSL_CTX_new,,AC_MSG_ERROR(["Unable to find openSSL library"]))
+AC_CHECK_LIB(ssl, SSL_CTX_new,,AC_MSG_ERROR(["Unable to find openSSL library"]), [-lcrypto])
 AC_CHECK_LIB(crypto, RAND_poll,,AC_MSG_ERROR(["Unable to find crypto library"]))
 AC_CHECK_LIB(m, lrint,,AC_MSG_ERROR(["Unable to find math library"]))
 #AC_CHECK_LIB(event_pthreads, evthread_use_pthreads,, AC_MSG_ERROR(["Unable to find libevent2 pthreads"]))
@@ -74,6 +74,27 @@ AC_CHECK_FUNC(getprogname, , AC_CHECK_LIB(bsd, getprogname,, AC_MSG_ERROR(["No l
 AM_CONDITIONAL([NEED_RBTREE], [test "x$HAVE_RBTREE" = x])
 AM_CONDITIONAL([HAVE_GTK2], [test "$HAVE_GTK2" = 1])
 AC_CHECK_FUNC(clock_gettime, , AC_CHECK_LIB(rt, clock_gettime,, AC_MSG_ERROR(["No librt"])))
+
+# Enable debugging via mudflap.  This option will cause most libraries
+# to be built as archives which are statically linked into the applications.
+# All code, as far as possible, is compiled instrumented to catch all
+# the bugs valgrind is able to catch.
+use_mudflap=no
+AC_ARG_ENABLE([mudflap],
+AS_HELP_STRING([--enable-mudflap],
+[build binaries with mudflap instrumentation]), [dnl
+if test "x$enable_mudflap" = xyes; then
+  # Check whether the compiler support -fmudflap.
+  old_CFLAGS="$CFLAGS"
+  AC_MSG_NOTICE([Turning On Mudflap])
+  CFLAGS="$CFLAGS -fmudflap"
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[]])],[use_mudflap=yes],[use_mudflap=fail])
+  CFLAGS="$old_CFLAGS"
+fi])
+if test "$use_mudflap" = fail; then
+  AC_MSG_FAILURE([--enable-mudflap requires a compiler which understands this option])
+fi
+AM_CONDITIONAL(MUDFLAP, test "$use_mudflap" = yes)
 
 AC_CONFIG_FILES([Makefile \
 		 gnhastd/Makefile \

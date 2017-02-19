@@ -1076,7 +1076,9 @@ cfg_t *dump_conf(cfg_t *cfg, int flags, const char *filename)
 
 cfg_t *parse_conf(const char *filename)
 {
-	cfg_t *cfg = cfg_init(options, CFGF_NONE);
+	cfg_t *cfg;
+
+	cfg = cfg_init(options, CFGF_NONE);
 
 	cfg_set_validate_func(cfg, "device|rrdname", conf_validate_rrdname);
 
@@ -1084,10 +1086,12 @@ cfg_t *parse_conf(const char *filename)
 	case CFG_FILE_ERROR:
 		LOG(LOG_WARNING, "Config file %s could not be read: %s",
 			filename, strerror(errno));
+		return NULL;
 	case CFG_SUCCESS:
+		LOG(LOG_DEBUG, "Read config file %s", filename);
 		break;
 	case CFG_PARSE_ERROR:
-		return 0;
+		return NULL;
 	}
 
 	return cfg;

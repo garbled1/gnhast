@@ -3,6 +3,10 @@ GTKGNHASTDIR = gtk-gnhast
 GTKINSTDIR = gtk-insteonedit
 endif
 
+if MUDFLAP
+CFLAGS+=-fmudflap -static
+endif
+
 SUBDIRS = libconfuse \
 	common \
 	gnhastd \

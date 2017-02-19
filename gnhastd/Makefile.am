@@ -1,8 +1,12 @@
 AM_CPPFLAGS = -DLOCALSTATEDIR=\"$(localstatedir)\" \
 	-DSYSCONFDIR=\"$(sysconfdir)\" \
 	-I$(top_srcdir)/common
-AM_LDFLAGS = -rdynamic
+#AM_LDFLAGS = -rdynamic
 bin_PROGRAMS = gnhastd
+#if MUDFLAP
+#CFLAGS+=-fmudflap -static
+#LDFLAGS+=-static
+#endif
 
 gnhastd_SOURCES = \
 	$(top_srcdir)/common/confuse.h \

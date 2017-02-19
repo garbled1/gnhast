@@ -633,6 +633,8 @@ ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
 LIBOBJS
+MUDFLAP_FALSE
+MUDFLAP_TRUE
 HAVE_GTK2_FALSE
 HAVE_GTK2_TRUE
 NEED_RBTREE_FALSE
@@ -777,6 +779,7 @@ enable_dependency_tracking
 with_gnu_ld
 with_sysroot
 enable_libtool_lock
+enable_mudflap
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1425,6 +1428,7 @@ Optional Features:
   --disable-dependency-tracking
                           speeds up one-time build
   --disable-libtool-lock  avoid locking (might break parallel builds)
+  --enable-mudflap        build binaries with mudflap instrumentation
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -13424,7 +13428,7 @@ for ac_lib in '' event_openssl event; do
     ac_res="none required"
   else
     ac_res=-l$ac_lib
-    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
+    LIBS="-l$ac_lib -lssl -lcrypto $ac_func_search_save_LIBS"
   fi
   if ac_fn_c_try_link "$LINENO"; then :
   ac_cv_search_bufferevent_get_openssl_error=$ac_res
@@ -13460,7 +13464,7 @@ if ${ac_cv_lib_ssl_SSL_CTX_new+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   ac_check_lib_save_LIBS=$LIBS
-LIBS="-lssl  $LIBS"
+LIBS="-lssl -lcrypto $LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -14416,6 +14420,55 @@ fi
 fi
 
 
+# Enable debugging via mudflap.  This option will cause most libraries
+# to be built as archives which are statically linked into the applications.
+# All code, as far as possible, is compiled instrumented to catch all
+# the bugs valgrind is able to catch.
+use_mudflap=no
+# Check whether --enable-mudflap was given.
+if test "${enable_mudflap+set}" = set; then :
+  enableval=$enable_mudflap; if test "x$enable_mudflap" = xyes; then
+  # Check whether the compiler support -fmudflap.
+  old_CFLAGS="$CFLAGS"
+  { $as_echo "$as_me:${as_lineno-$LINENO}: Turning On Mudflap" >&5
+$as_echo "$as_me: Turning On Mudflap" >&6;}
+  CFLAGS="$CFLAGS -fmudflap"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  use_mudflap=yes
+else
+  use_mudflap=fail
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  CFLAGS="$old_CFLAGS"
+fi
+fi
+
+if test "$use_mudflap" = fail; then
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "--enable-mudflap requires a compiler which understands this option
+See \`config.log' for more details" "$LINENO" 5; }
+fi
+ if test "$use_mudflap" = yes; then
+  MUDFLAP_TRUE=
+  MUDFLAP_FALSE='#'
+else
+  MUDFLAP_TRUE='#'
+  MUDFLAP_FALSE=
+fi
+
+
 ac_config_files="$ac_config_files Makefile gnhastd/Makefile fakecoll/Makefile owsrvcoll/Makefile rrdcoll/Makefile brulcoll/Makefile insteoncoll/Makefile wmr918coll/Makefile wupwscoll/Makefile ad2usbcoll/Makefile icaddycoll/Makefile venstarcoll/Makefile moncoll/Makefile jsoncgicoll/Makefile urtsicoll/Makefile astrocoll/Makefile handlers/Makefile tools/Makefile gtk-gnhast/Makefile gtk-insteonedit/Makefile data/Makefile gnhastweb/Makefile libconfuse/Makefile common/Makefile"
 
 
@@ -14566,6 +14619,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${HAVE_GTK2_TRUE}" && test -z "${HAVE_GTK2_FALSE}"; then
   as_fn_error $? "conditional \"HAVE_GTK2\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${MUDFLAP_TRUE}" && test -z "${MUDFLAP_FALSE}"; then
+  as_fn_error $? "conditional \"MUDFLAP\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 

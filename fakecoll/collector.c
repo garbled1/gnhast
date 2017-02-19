@@ -56,6 +56,7 @@
 #include "collcmd.h"
 #include "genconn.h"
 #include "gncoll.h"
+#include "confparser.h"
 #include "collector.h"
 
 /* There is a bunch of extraneous stuff in this example that really isn't
@@ -301,6 +302,7 @@ int main(int argc, char **argv)
 	extern int optind;
 	int ch, port = -1;
 	char *gnhastdserver = NULL;
+	char *pidfile;
 
 	/* process command line arguments */
 	while ((ch = getopt(argc, argv, "?c:dfl:s:p:")) != -1)
@@ -354,6 +356,7 @@ int main(int argc, char **argv)
 	if (!debugmode)
 		logfile = openlog(cfg_getstr(cfg, "logfile"));
 
+	pidfile = cfg_getstr(cfg, "pidfile");
 	writepidfile(cfg_getstr(cfg, "pidfile"));
 
 	/* Now, parse the details of connecting to the gnhastd server */

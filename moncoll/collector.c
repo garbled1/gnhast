@@ -55,6 +55,7 @@
 #include "collcmd.h"
 #include "genconn.h"
 #include "gncoll.h"
+#include "confparser.h"
 #include "collector.h"
 
 /* internal stuffs here */
