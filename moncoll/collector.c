@@ -64,6 +64,7 @@
 #define PID_RATE	60 /* reread pid files every 60 seconds */
 #define RESTART_RATE	10 /* 10 seconds for restart runs */
 int restart_event_running = 0;
+uint32_t alchan = 0; /* alarm channel (set in main) */
 extern int errno;
 
 /** our logfile */
@@ -100,6 +101,8 @@ typedef struct _moncol_t {
 	int instance;
 	int alive;
 	int kill_attempts;
+	int passes;
+	int restarts;
 	TAILQ_ENTRY(_moncol_t) next;
 } moncol_t;
 
@@ -192,6 +195,7 @@ void setup_monitors(cfg_t *cfg)
 	moncol_t *mon;
 	int i;
 	struct evbuffer *send;
+	char cbuf[512];
 
 	LOG(LOG_NOTICE, "Starting monitor setup");
 	for (i = 0; i < cfg_size(cfg, "monitored"); i++) {
@@ -205,6 +209,8 @@ void setup_monitors(cfg_t *cfg)
 		mon->pid = -1;
 		mon->alive = -1;
 		mon->kill_attempts = 0;
+		mon->passes = 0;
+		mon->restarts = 0;
 		mon->instance = cfg_getint(mconf, "instance");
 		TAILQ_INSERT_TAIL(&collectors, mon, next);
 
@@ -216,6 +222,10 @@ void setup_monitors(cfg_t *cfg)
 				    ARGNM(SC_RATE), FEED_RATE);
 		bufferevent_write_buffer(gnhastd_conn->bev, send);
 		evbuffer_free(send);
+		/* send a clearing event for monitored collectors */
+		snprintf(cbuf, 512, "MONC-%d_%s-%d",
+			 collector_instance, mon->name, mon->instance);
+		gn_setalarm(gnhastd_conn->bev, cbuf, "nada", 0, alchan);
 		LOG(LOG_NOTICE, "Setup monitoring for %s", mon->name);
 	}
 }
@@ -232,15 +242,30 @@ void cb_restart_collectors(int fd, short what, void *arg)
 	moncol_t *mon;
 	struct event *ev;
 	struct timeval secs = { 0, 0 };
-	char cbuf[512];
+	char cbuf[512], dbuf[512];
 
 	TAILQ_FOREACH(mon, &collectors, next) {
-		if (mon->alive)
+		mon->passes++;
+		LOG(LOG_DEBUG, "%s pass:%d restarts:%d", mon->name,
+		    mon->passes, mon->restarts);
+		if (mon->alive) {
+			if (mon->passes > 60) {
+				mon->passes = 0;
+				mon->restarts = 0;
+			}
+			if (mon->passes > 10 && mon->restarts == 0) {/*unset */
+				snprintf(cbuf, 512, "MONC-%d_%s-%d",
+					 collector_instance, mon->name,
+					 mon->instance);
+				gn_setalarm(gnhastd_conn->bev, cbuf, "nada",
+					    0, alchan);
+			}
 			continue;
-
+		}
 		/* If not alive, try to kill it */
 		if (mon->pid < 1 || (
 			    kill(mon->pid, SIGTERM) && errno == ESRCH)) {
+			mon->restarts++;
 			/* no such pid, restart it */
 			mon->kill_attempts = 0;
 			LOG(LOG_NOTICE, "Restarting down collector %s",
@@ -272,6 +297,15 @@ void cb_restart_collectors(int fd, short what, void *arg)
 				    mon->name);
 				kill(mon->pid, SIGKILL);
 			}
+		}
+		if (mon->passes > 10) {
+			snprintf(cbuf, 512, "MONC-%d_%s-%d",
+				 collector_instance, mon->name, mon->instance);
+			snprintf(dbuf, 512, "Collector %s is restarting too "
+				"fast", mon->uid);
+			if (mon->restarts >= 5)
+				gn_setalarm(gnhastd_conn->bev, cbuf, dbuf,
+					    mon->restarts*5, alchan);
 		}
 	}
 }
@@ -374,6 +408,8 @@ int main(int argc, char **argv)
 		if (daemon(0, 0) == -1)
 			LOG(LOG_FATAL, "Failed to daemonize: %s",
 			    strerror(errno));
+
+	SET_FLAG(alchan, ACHAN_GNHAST);
 
 	/* Initialize the event system */
 	base = event_base_new();

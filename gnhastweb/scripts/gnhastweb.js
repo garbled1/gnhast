@@ -753,7 +753,7 @@ return icon;
 
 $(document).ready(function() {  
   getWeather(); //Get the initial weather.
-  setInterval(getWeather, 600000); //Update the weather every 10 minutes.
+  setInterval(getWeather, 1200000); //Update the weather every 20 minutes.
 });
 
 function getWeather() {
