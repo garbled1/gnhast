@@ -103,7 +103,7 @@ cfg_opt_t gnhastd_opts[] = {
 
 cfg_opt_t alarmcoll_opts[] = {
 	CFG_INT("instance", 1, CFGF_NONE),
-	CFG_INT("update", 20, CFGF_NONE),
+	CFG_INT("update", 60, CFGF_NONE),
 	CFG_STR("alarmlist", SYSCONFDIR "/alarmlist.csv", CFGF_NONE),
 	CFG_END(),
 };
