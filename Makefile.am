@@ -24,6 +24,7 @@ SUBDIRS = libconfuse \
 	jsoncgicoll \
 	urtsicoll \
 	astrocoll \
+	alarmcoll \
 	tools \
 	data \
 	gnhastweb \

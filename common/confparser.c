@@ -1086,7 +1086,7 @@ cfg_t *parse_conf(const char *filename)
 	case CFG_FILE_ERROR:
 		LOG(LOG_WARNING, "Config file %s could not be read: %s",
 			filename, strerror(errno));
-		return NULL;
+		return cfg;
 	case CFG_SUCCESS:
 		LOG(LOG_DEBUG, "Read config file %s", filename);
 		break;

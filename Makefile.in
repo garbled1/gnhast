@@ -159,7 +159,8 @@ CSCOPE = cscope
 DIST_SUBDIRS = libconfuse common gnhastd fakecoll owsrvcoll rrdcoll \
 	brulcoll insteoncoll wmr918coll wupwscoll ad2usbcoll \
 	icaddycoll venstarcoll moncoll jsoncgicoll urtsicoll astrocoll \
-	tools data gnhastweb handlers gtk-gnhast gtk-insteonedit
+	alarmcoll tools data gnhastweb handlers gtk-gnhast \
+	gtk-insteonedit
 am__DIST_COMMON = $(srcdir)/Makefile.in AUTHORS COPYING ChangeLog \
 	INSTALL NEWS README compile config.guess config.sub depcomp \
 	install-sh ltmain.sh missing ylwrap
@@ -354,6 +355,7 @@ SUBDIRS = libconfuse \
 	jsoncgicoll \
 	urtsicoll \
 	astrocoll \
+	alarmcoll \
 	tools \
 	data \
 	gnhastweb \

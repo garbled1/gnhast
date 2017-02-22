@@ -145,6 +145,17 @@ void __attribute__((weak)) coll_upd_cb(device_t *dev, void *arg)
 }
 
 /**
+   \brief Called when a register command occurs (stub)
+   \param dev device that got registered
+   \param arg pointer to connection_t
+*/
+
+void __attribute__((weak)) coll_register_cb(device_t *dev, void *arg)
+{
+	return;
+}
+
+/**
    \brief Called when an chg command occurs (stub)
    \param dev device that got updated
    \param arg pointer to connection_t
@@ -299,6 +310,7 @@ int cmd_register(pargs_t *args, void *arg)
 	if (new)
 		insert_device(dev);
 
+	coll_register_cb(dev, arg);
 	return(0);
 }
 

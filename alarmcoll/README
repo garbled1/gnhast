@@ -1,0 +1,47 @@
+Format of the alarmlist.csv file:
+
+Field 1: uid of monitored device
+Field 2: Monitoring type (see below)
+Field 3: Severity of Alarm (1-100 is good, 100 being end of planet)
+Field 4: Channel of Alarm (see below)
+Field 5: alarm uid, must be unique and per-alarm
+Field 6: Value to compare against
+Field 7: OPTIONAL.  Jitter type max seconds of no change.
+
+Monitoring types:
+>  Fire if device is higher than field 6
+<  Fire if device is lower than field 6
+=  Fire if device is equal to field 6
+J  Jitter.  Field 6 ignored. Fire if value does not change in Field 7 seconds.
+
+Channels:  (see common/gnhast.h ACHAN_*
+#define ACHAN_GENERIC   0       /**< \brief Generic default channel */
+#define ACHAN_POWER     1       /**< \brief Power related */
+#define ACHAN_LIGHTS    2       /**< \brief Lights and switches */
+#define ACHAN_SECURE    3       /**< \brief Security/alarm panel */
+#define ACHAN_WEATHER   4       /**< \brief Weather related */
+#define ACHAN_AC        5       /**< \brief Air conditioning */
+#define ACHAN_YARD      6       /**< \brief Lawn/yard */
+#define ACHAN_GNHAST    7       /**< \brief Gnhast/collectors */
+#define ACHAN_SYSTEM    8       /**< \brief Underlying OS stuff */
+#define ACHAN_EMERG     9       /**< \brief Emergency Alerts */
+#define ACHAN_MESSAGING 10      /**< \brief Text messaging facility */
+
+24-31 are user defined, so use them for whatever you want.
+
+Example:
+
+TempSensor,0,1,1,AC_tsensebad,"The freezer is broke",80.0
+
+If the temp sensor TempSensor goes above 80 degrees (in the native format)
+set an alarm of type POWER with a severity of 1.
+
+Dimmer,J,3,1,AC_dimmerJ,"The dimmer is not moving",0.0,300
+
+If the device "Dimmer" does not change for 300 seconds or more, set an alarm
+of type POWER with a severity of 5
+
+Switch,=,10,1,AC_switchon,"The switch is ON",1
+
+If the device "Switch" is set to "1" (on) set an alarm of type POWER with a
+severity of 10.
