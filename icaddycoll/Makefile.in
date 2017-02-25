@@ -350,6 +350,7 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AM_CPPFLAGS = -DLOCALSTATEDIR=\"$(localstatedir)\" \
 	-DSYSCONFDIR=\"$(sysconfdir)\" \
+	-DJSMN_PARENT_LINKS=1 -DJSMN_TOKEN_LINKS=1 \
 	-I$(top_srcdir)/common -I$(top_srcdir)/jsmn
 
 icaddycoll_SOURCES = $(top_srcdir)/common/common.h \

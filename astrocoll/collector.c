@@ -264,6 +264,20 @@ static void conf_print_suntype(cfg_opt_t *opt, unsigned int index, FILE *fp)
 /**** Device calculation routines ****/
 
 /**
+   \brief Print the time with offset
+   \param offset
+   \return char * of current time
+*/
+
+static inline char *print_time(time_t offset)
+{
+	time_t now;
+
+	now = time(NULL) + offset;
+	return asctime(localtime(&now));
+}
+
+/**
    \brief Callback to modify sunrise device
    \param fd fd
    \param what why did it fire?
@@ -281,7 +295,7 @@ void modify_sunrise_cb(int fd, short what, void *arg)
 	if (dev == NULL)
 		LOG(LOG_FATAL, "Lost my internal sunrise device");
 
-	LOG(LOG_DEBUG, "Setting %s to %d", dev->name, *cbarg);
+	LOG(LOG_NOTICE, "Setting %s to %d", dev->name, *cbarg);
 	store_data_dev(dev, DATALOC_DATA, cbarg);
 	gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
 }
@@ -304,11 +318,10 @@ void modify_moonrise_cb(int fd, short what, void *arg)
 	if (dev == NULL)
 		LOG(LOG_FATAL, "Lost my internal moonrise device");
 
-	LOG(LOG_DEBUG, "Setting %s to %d", dev->name, *cbarg);
+	LOG(LOG_NOTICE, "Setting %s to %d", dev->name, *cbarg);
 	store_data_dev(dev, DATALOC_DATA, cbarg);
 	gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
 }
-
 
 /*****
   Sunrise-Sunset API Control Code
@@ -331,9 +344,8 @@ void convert_sunrise_data(char *str, struct event *ev, int daylight, int field)
 
 	curtime = time(NULL);
 
+	memset(&event_tm, 0, sizeof(event_tm));
 	strptime(str, "%FT%T%z", &event_tm);
-	//event_tm.tm_gmtoff = 0; /* API is in GMT */
-	//event_tm.tm_isdst = 0;
 	event_time = mktime_z(NULL, &event_tm);
 	difft = difftime(event_time, curtime);
 	sunrise_offsets[field] = (int)round(difft);
@@ -347,7 +359,8 @@ void convert_sunrise_data(char *str, struct event *ev, int daylight, int field)
 		solar_noon_start_ev = evtimer_new(base, modify_sunrise_cb,
 					  (void*)&dl_cbarg[DAYL_SOLAR_NOON]);
 		event_add(solar_noon_start_ev, &secs);
-		LOG(LOG_DEBUG, "Create solar noon start at %d", secs.tv_sec);
+		LOG(LOG_NOTICE, "Create solar noon start at %s",
+		    print_time(secs.tv_sec));
 
 		secs.tv_sec = sunrise_offsets[field] + 1800;
 		if (solar_noon_end_ev != NULL)
@@ -355,7 +368,8 @@ void convert_sunrise_data(char *str, struct event *ev, int daylight, int field)
 		solar_noon_end_ev = evtimer_new(base, modify_sunrise_cb,
 				       (void*)&dl_cbarg[DAYL_DAY]);
 		event_add(solar_noon_end_ev, &secs);
-		LOG(LOG_DEBUG, "Create solar noon end at %d", secs.tv_sec);
+		LOG(LOG_NOTICE, "Create solar noon end at %s",
+		    print_time(secs.tv_sec));
 	}
 	if (difft > 0.0 && field != SS_SOLAR_NOON) {
 		secs.tv_sec = sunrise_offsets[field];
@@ -364,8 +378,8 @@ void convert_sunrise_data(char *str, struct event *ev, int daylight, int field)
 		ev = evtimer_new(base, modify_sunrise_cb,
 				(void*)&dl_cbarg[daylight]);
 		event_add(ev, &secs);
-		LOG(LOG_DEBUG, "Create event %d start at %d", daylight,
-		    secs.tv_sec);
+		LOG(LOG_NOTICE, "Create event %d start at %s", daylight,
+		    print_time(secs.tv_sec));
 	}
 }
 
@@ -523,7 +537,7 @@ void modify_moonphase(char *frac)
 	d = atof(frac);
 	d /= 100.0;
 
-	LOG(LOG_DEBUG, "Setting %s to %f", dev->name, d);
+	LOG(LOG_NOTICE, "Setting %s to %f", dev->name, d);
 	store_data_dev(dev, DATALOC_DATA, &d);
 	gn_update_device(dev, GNC_NOSCALE, gnhastd_conn->bev);
 }
@@ -547,6 +561,7 @@ void convert_usno_data(char *str, struct event *ev, int daylight, int field)
 
 	curtime = time(NULL);
 
+	memset(&event_tm, 0, sizeof(event_tm));
 	strptime(str, "%F %R", &event_tm);
 	event_time = mktime_z(NULL, &event_tm);
 	difft = difftime(event_time, curtime);
@@ -561,7 +576,8 @@ void convert_usno_data(char *str, struct event *ev, int daylight, int field)
 		solar_noon_start_ev = evtimer_new(base, modify_sunrise_cb,
 					  (void*)&dl_cbarg[DAYL_SOLAR_NOON]);
 		event_add(solar_noon_start_ev, &secs);
-		LOG(LOG_DEBUG, "Create solar noon start at %d", secs.tv_sec);
+		LOG(LOG_NOTICE, "Create solar noon start at %s",
+		    print_time(secs.tv_sec));
 
 		secs.tv_sec = usno_sun_offsets[field] + 1800;
 		if (solar_noon_end_ev != NULL)
@@ -569,7 +585,8 @@ void convert_usno_data(char *str, struct event *ev, int daylight, int field)
 		solar_noon_end_ev = evtimer_new(base, modify_sunrise_cb,
 				       (void*)&dl_cbarg[DAYL_DAY]);
 		event_add(solar_noon_end_ev, &secs);
-		LOG(LOG_DEBUG, "Create solar noon end at %d", secs.tv_sec);
+		LOG(LOG_NOTICE, "Create solar noon end at %s",
+		    print_time(secs.tv_sec));
 	}
 	if (difft > 0.0 && field != USNO_SUN_SOLAR_NOON) {
 		secs.tv_sec = usno_sun_offsets[field];
@@ -578,8 +595,8 @@ void convert_usno_data(char *str, struct event *ev, int daylight, int field)
 		ev = evtimer_new(base, modify_sunrise_cb,
 				(void*)&dl_cbarg[daylight]);
 		event_add(ev, &secs);
-		LOG(LOG_DEBUG, "Create event %d start at %d", daylight,
-		    secs.tv_sec);
+		LOG(LOG_NOTICE, "Create event %d start at %s", daylight,
+		    print_time(secs.tv_sec));
 	}
 }
 
@@ -601,6 +618,7 @@ void convert_usno_moondata(char *str, struct event *ev, int daylight,
 
 	curtime = time(NULL);
 
+	memset(&event_tm, 0, sizeof(event_tm));
 	strptime(str, "%F %R", &event_tm);
 	event_time = mktime_z(NULL, &event_tm);
 	difft = difftime(event_time, curtime);
@@ -615,7 +633,8 @@ void convert_usno_moondata(char *str, struct event *ev, int daylight,
 		lunar_noon_start_ev = evtimer_new(base, modify_moonrise_cb,
 					   (void*)&dl_cbarg[DAYL_SOLAR_NOON]);
 		event_add(lunar_noon_start_ev, &secs);
-		LOG(LOG_DEBUG, "Create lunar noon start at %d", secs.tv_sec);
+		LOG(LOG_NOTICE, "Create lunar noon start at %s",
+		    print_time(secs.tv_sec));
 
 		secs.tv_sec = usno_moon_offsets[field] + 1800;
 		if (lunar_noon_end_ev != NULL)
@@ -623,7 +642,8 @@ void convert_usno_moondata(char *str, struct event *ev, int daylight,
 		lunar_noon_end_ev = evtimer_new(base, modify_moonrise_cb,
 				       (void*)&dl_cbarg[DAYL_DAY]);
 		event_add(lunar_noon_end_ev, &secs);
-		LOG(LOG_DEBUG, "Create lunar noon end at %d", secs.tv_sec);
+		LOG(LOG_NOTICE, "Create lunar noon end at %s",
+		    print_time(secs.tv_sec));
 	}
 	if (difft > 0.0 && field != USNO_MOON_UPPER_TRANSIT) {
 		secs.tv_sec = usno_moon_offsets[field];
@@ -632,8 +652,8 @@ void convert_usno_moondata(char *str, struct event *ev, int daylight,
 		ev = evtimer_new(base, modify_moonrise_cb,
 				(void*)&dl_cbarg[daylight]);
 		event_add(ev, &secs);
-		LOG(LOG_DEBUG, "Create lunar event %d start at %d", daylight,
-		    secs.tv_sec);
+		LOG(LOG_NOTICE, "Create lunar event %d start at %s", daylight,
+		    print_time(secs.tv_sec));
 	}
 }
 
@@ -893,9 +913,6 @@ usno_moon:
 	str = jtok_string(&token[i], buf);
 	modify_moonphase(str);
 	free(str);
-
-
-	LOG(LOG_DEBUG, "Hi2");
 
 
 usno_request_cb_out:

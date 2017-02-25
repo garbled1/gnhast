@@ -190,7 +190,7 @@ void coll_upd_cb(device_t *dev, void *arg)
 {
 	data_t data;
 	watch_t *watch;
-	int datatype, fired=0, set=0;
+	int datatype, fired=0;
 	time_t now;
 
 	/* the only thing we talk to is gnhastd */
@@ -199,7 +199,13 @@ void coll_upd_cb(device_t *dev, void *arg)
 	watch = (watch_t *)dev->localdata;
 	datatype = datatype_dev(dev);
 	/* XXX brutal hack until I fix datatype of switches */
-	if (dev->type == DEVICE_SWITCH)
+	if (dev->type == DEVICE_SWITCH || dev->subtype == SUBTYPE_SWITCH ||
+	    dev->subtype == SUBTYPE_OUTLET ||
+	    dev->subtype == SUBTYPE_COLLECTOR ||
+	    dev->subtype == SUBTYPE_SMNUMBER ||
+	    dev->subtype == SUBTYPE_ALARMSTATUS ||
+	    dev->subtype == SUBTYPE_DAYLIGHT ||
+	    dev->subtype == SUBTYPE_WEATHER)
 		data.ui = (uint32_t)data.state;
 
 	switch (watch->wtype) {
@@ -260,6 +266,10 @@ void alarmcoll_establish_feeds(void)
 		uid = watched[i].uid;
 		if (uid == NULL)
 			continue;
+
+		/* clear the alarm */
+		gn_setalarm(gnhastd_conn->bev, watched[i].aluid,
+			    watched[i].msg, 0, watched[i].channel);
 
 		/* schedule a feed with the server */
 		send = evbuffer_new();

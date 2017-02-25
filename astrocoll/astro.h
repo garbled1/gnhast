@@ -12,7 +12,7 @@
 #define SUNRISE_SUNSET_PORT	80
 
 #define USNO_URL	"http://api.usno.navy.mil"
-#define USNO_API	"/rstt/oneday?"
+#define USNO_API	"/rstt/oneday?ID=gnhast&"
 #define USNO_PORT	80
 
 #define SUNTYPE_SS	0

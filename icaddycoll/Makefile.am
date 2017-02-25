@@ -1,5 +1,6 @@
 AM_CPPFLAGS = -DLOCALSTATEDIR=\"$(localstatedir)\" \
 	-DSYSCONFDIR=\"$(sysconfdir)\" \
+	-DJSMN_PARENT_LINKS=1 -DJSMN_TOKEN_LINKS=1 \
 	-I$(top_srcdir)/common -I$(top_srcdir)/jsmn
 
 bin_PROGRAMS = icaddycoll

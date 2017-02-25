@@ -568,7 +568,7 @@ void ad2usb_wake_up(int nada, short what, void *arg)
 
 	LOG(LOG_NOTICE, "Sending wakeup to AD2USB");
 	send = evbuffer_new();
-	evbuffer_add_printf(send, "\n");
+	evbuffer_add_printf(send, "\n\r");
 	bufferevent_write_buffer(ad2usb_conn->bev, send);
 	evbuffer_free(send);
 }
