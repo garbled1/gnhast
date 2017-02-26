@@ -1,3 +1,9 @@
-TempSensor,0,1,1,AC_tsensebad,"The freezer is broke",80.0
+TempSensor,>,1,1,AC_tsensebad,"The freezer is broke",80.0
 Dimmer,J,1,1,AC_dimmerJ,"The dimmer is not moving",0.0,300
 Switch,=,1,1,AC_switchon,"The switch is ON",1
+sunrise,>,4,5,AC_sunrise,"The sun is up",0
+moonrise,>,4,5,AC_moonrise,"The moon is up",0
+moonphase,>,4,5,AC_moonphase,"Full moon tonight!",0.96
+Switch,&=,1,1,AC_switchandtemp,"The switch is ON and the freezer is broke",1,,AC_tsensebad
+Switch,|=,1,1,AC_switchordimmer,"The switch is ON or the dimmer is not moving",1,,AC_dimmerJ
+TempSensor,H>,0,0,AC_tsensefix,"Need to fix freezer",80.0,,,"/bin/date"

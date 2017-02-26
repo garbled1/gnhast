@@ -4,8 +4,14 @@
 enum WTYPES {
 	WTYPE_GT,
 	WTYPE_LT,
+	WTYPE_GTE,
+	WTYPE_LTE,
 	WTYPE_EQ,
+	WTYPE_NE,
 	WTYPE_JITTER,
+	WTYPE_AND,
+	WTYPE_OR,
+	WTYPE_HANDLER,
 };
 
 typedef struct _watch_t {
@@ -19,5 +25,7 @@ typedef struct _watch_t {
 	int fired;
 	time_t lastchg;
 	uint32_t threshold;
+	int comparison;
+	char *handler;
 } watch_t;
 #endif /*_ALARMCOLL_H_*/

@@ -190,13 +190,12 @@ void coll_upd_cb(device_t *dev, void *arg)
 {
 	data_t data;
 	watch_t *watch;
-	int datatype, fired=0;
+	int datatype, fired, i;
 	time_t now;
 
 	/* the only thing we talk to is gnhastd */
 	acoll_lastupd = time(NULL);
 	get_data_dev(dev, DATALOC_DATA, &data);
-	watch = (watch_t *)dev->localdata;
 	datatype = datatype_dev(dev);
 	/* XXX brutal hack until I fix datatype of switches */
 	if (dev->type == DEVICE_SWITCH || dev->subtype == SUBTYPE_SWITCH ||
@@ -208,50 +207,91 @@ void coll_upd_cb(device_t *dev, void *arg)
 	    dev->subtype == SUBTYPE_WEATHER)
 		data.ui = (uint32_t)data.state;
 
-	switch (watch->wtype) {
-	case WTYPE_GT:
-		TEST_DATATYPE(>, datatype);
-		break;
-	case WTYPE_LT:
-		TEST_DATATYPE(<, datatype);
-		break;
-	case WTYPE_EQ:
-		TEST_DATATYPE(==, datatype);
-		break;
-	case WTYPE_JITTER:
-		now = time(NULL);
-		TEST_DATATYPE(==, datatype);
-		if (fired == 0) {
-			watch->val = dev->data; /* copy */
-			watch->lastchg = now; /* reset */
-			fired = 0; /* unset alarm */
-		} else if (fired &&
-			   ((now - watch->lastchg) > watch->threshold)) {
-			/* we should fire */
-			fired = 1;
-		} else { /* same but time is OK */
-			fired = 0; /* no fire */
+	/* iterate top to bottom because of the ordering of things like
+	   and and or */
+	for (i=0; i < watched_items; i++) {
+		if (strcmp(watched[i].uid, dev->uid) != 0)
+			continue;
+		watch = &watched[i];
+		fired = 0;
+
+		/* Simple tests first */
+
+		if (QUERY_FLAG(watch->wtype, WTYPE_GT)) {
+			TEST_DATATYPE(>, datatype);
+		} else if (QUERY_FLAG(watch->wtype, WTYPE_LT)) {
+			TEST_DATATYPE(<, datatype);
+		} else if (QUERY_FLAG(watch->wtype, WTYPE_EQ)) {
+			TEST_DATATYPE(==, datatype);
+		} else if (QUERY_FLAG(watch->wtype, WTYPE_LTE)) {
+			TEST_DATATYPE(<=, datatype);
+		} else if (QUERY_FLAG(watch->wtype, WTYPE_GTE)) {
+			TEST_DATATYPE(>=, datatype);
+		} else if (QUERY_FLAG(watch->wtype, WTYPE_NE)) {
+			TEST_DATATYPE(!=, datatype);
+		} else if (QUERY_FLAG(watch->wtype, WTYPE_JITTER)) {
+			now = time(NULL);
+			TEST_DATATYPE(==, datatype);
+			if (fired == 0) {
+				watch->val = dev->data; /* copy */
+				watch->lastchg = now; /* reset */
+				fired = 0; /* unset alarm */
+			} else if (fired &&
+				   ((now - watch->lastchg) > watch->threshold)) {
+				/* we should fire */
+				fired = 1;
+			} else { /* same but time is OK */
+				fired = 0; /* no fire */
+			}
+			LOG(LOG_DEBUG, "Diff=%d data=%f last=%f",
+			    now-watch->lastchg, dev->data.d, watch->val.d);
 		}
-		LOG(LOG_DEBUG, "Diff=%d data=%f last=%f", now-watch->lastchg,
-		    dev->data.d, watch->val.d);
-		break;
-	}
-	if (fired && !watch->fired) {
-		LOG(LOG_DEBUG, "Alarm should fire for dev %s", dev->uid);
-		gn_setalarm(gnhastd_conn->bev, watch->aluid, watch->msg,
-			    watch->sev, watch->channel);
-		watch->fired = 1;
-	} else if (watch->fired && !fired) {
-		LOG(LOG_DEBUG, "Alarm should CLEAR for dev %s", dev->uid);
-		gn_setalarm(gnhastd_conn->bev, watch->aluid, watch->msg,
-			    0, watch->channel);
-		watch->fired = 0;
+
+		/* now lets dig through the complex tests */
+
+		if (QUERY_FLAG(watch->wtype, WTYPE_OR)&&
+		    watched[watch->comparison].fired)
+			fired = 1;
+
+		if (QUERY_FLAG(watch->wtype, WTYPE_AND)) {
+			if (fired && watched[watch->comparison].fired)
+				fired = 1;
+			else
+				fired = 0;
+		}
+
+		/* The result of the handler is irrelevant */
+		if (QUERY_FLAG(watch->wtype, WTYPE_HANDLER) && fired) {
+			if (watch->handler != NULL) {
+				LOG(LOG_NOTICE, "Firing handler %s for dev %s"
+				    " aluid %s", watch->handler, dev->uid,
+				    watch->aluid);
+				system(watch->handler);
+			}
+		}
+
+		if (fired && !watch->fired) {
+			LOG(LOG_DEBUG, "Alarm should FIRE for dev %s aluid %s",
+			    dev->uid, watch->aluid);
+			if (watch->sev)
+				gn_setalarm(gnhastd_conn->bev, watch->aluid,
+					    watch->msg, watch->sev,
+					    watch->channel);
+			watch->fired = 1;
+		} else if (watch->fired && !fired) {
+			LOG(LOG_DEBUG, "Alarm should CLEAR for dev %s "
+			    "aluid %s", dev->uid, watch->aluid);
+			gn_setalarm(gnhastd_conn->bev, watch->aluid,
+				    watch->msg, 0, watch->channel);
+			watch->fired = 0;
+		}
 	}
 }
 
 
 /**
    \brief connect to gnhast and establish feeds for the monitored devices
+   XXX A little stupid in that it will ask for multiples...
 */
 
 void alarmcoll_establish_feeds(void)
@@ -316,6 +356,113 @@ inline unsigned long long strtoullMax(const char *nptr, char **endptr,
    strtoullMax(NPTR, ENDPTR, BASE, (uint32_t)-1)
 
 /**
+   \brief Parse the watch type
+   \param field The field string
+   \param row the current row
+   \param numfields the number of fields in the row
+   \return wtype
+   Try to do the best we can with insane combinations.
+*/
+
+int parse_wtype(const char *field, int row, int numfields)
+{
+	int i, wtype=0;
+	size_t len;
+
+	len = strlen(field);
+	if (len < 1)
+		return 0;
+
+	for (i=0; i < len; i++) {
+		switch (field[i]) {
+		case '>':
+			if (QUERY_FLAG(wtype, WTYPE_LT))
+				SET_FLAG(wtype, WTYPE_NE);
+			else
+				SET_FLAG(wtype, WTYPE_GT);
+			break;
+		case '<':
+			if (QUERY_FLAG(wtype, WTYPE_GT))
+				SET_FLAG(wtype, WTYPE_NE);
+			else
+				SET_FLAG(wtype, WTYPE_LT);
+			break;
+		case '=':
+			if (QUERY_FLAG(wtype, WTYPE_LT)) {
+				CLEAR_FLAG(wtype, WTYPE_LT);
+				SET_FLAG(wtype, WTYPE_LTE);
+			} else if (QUERY_FLAG(wtype, WTYPE_GT)) {
+				CLEAR_FLAG(wtype, WTYPE_GT);
+				SET_FLAG(wtype, WTYPE_GTE);
+			} else
+				SET_FLAG(wtype, WTYPE_EQ);
+			break;
+		case 'J':
+			SET_FLAG(wtype, WTYPE_JITTER);
+				if (numfields < 7) {
+				LOG(LOG_WARNING, "Row %d is set to jitter but"
+				    " no timespan set, assuming 1 hr.", row);
+				watched[row].threshold = 3600;
+			}
+			break;
+		case '&':
+			if (QUERY_FLAG(wtype, WTYPE_OR)) {
+				LOG(LOG_WARNING, "Setting AND and OR is"
+				    " insane. row %d", row);
+				break;
+			}
+			if (numfields < 8)
+				LOG(LOG_WARNING, "Row %d has AND but no "
+				    "comparison field found. Ignoring.", row);
+			else
+				SET_FLAG(wtype, WTYPE_AND);
+			break;
+		case '|':
+			if (QUERY_FLAG(wtype, WTYPE_AND)) {
+				LOG(LOG_WARNING, "Setting AND and OR is"
+				    " insane. row %d", row);
+				break;
+			}
+			if (numfields < 8)
+				LOG(LOG_WARNING, "Row %d has OR but no "
+				    "comparison field found. Ignoring.", row);
+			else
+				SET_FLAG(wtype, WTYPE_OR);
+			break;
+		case 'H':
+			if (numfields < 9)
+				LOG(LOG_WARNING, "Row %d has handler but no "
+				    "handler field found. Ignoring.", row);
+			else
+				SET_FLAG(wtype, WTYPE_HANDLER);
+			break;
+		default:
+			LOG(LOG_WARNING, "Unhandled watch type: %s row %d",
+			    field, row);
+			wtype += WTYPE_GT; /* just pick a thing */
+			break;
+		}
+	}
+	return wtype;
+}
+
+/**
+   \brief Simple linear search of aluids in the watchlist
+   \param aluid a string to search for
+   \return row #, or -1 for fail
+*/
+
+int find_row_by_aluid(const char *aluid)
+{
+	int i;
+
+	for (i=0; i < watched_items; i++)
+		if (strcmp(watched[i].aluid, aluid) == 0)
+			return i;
+	return -1;
+}
+
+/**
    \brief Parse a csv file for our info
    \param csvname name of CSV to parse
    \return 0 if file not read, 1 for success
@@ -355,33 +502,8 @@ int parse_csv(char *csvname)
 			continue;
 		}
 		watched[crow].uid = strdup(rowFields[0]);
-		switch (rowFields[1][0]) {
-		case '0':
-		case '>':
-			watched[crow].wtype = WTYPE_GT;
-			break;
-		case '1':
-		case '<':
-			watched[crow].wtype = WTYPE_LT;
-			break;
-		case '2':
-		case '=':
-			watched[crow].wtype = WTYPE_EQ;
-			break;
-		case 'J':
-			watched[crow].wtype = WTYPE_JITTER;
-			if (CsvParser_getNumFields(row) < 7) {
-				LOG(LOG_WARNING, "Row %d is set to jitter but"
-				    " no timespan set, assuming 1 hr.", crow);
-				watched[crow].threshold = 3600;
-			}
-			break;
-		default:
-			LOG(LOG_WARNING, "Unhandled watch type: %s row %d",
-			    rowFields[1], crow);
-			watched[crow].wtype = WTYPE_GT; /* just pick a thing */
-			break;
-		}
+		watched[crow].wtype = parse_wtype(rowFields[1], crow,
+						  CsvParser_getNumFields(row));
 		watched[crow].sev = atoi(rowFields[2]);
 		alchan = atoi(rowFields[3]);
 		if (alchan > 31 || alchan < 0) {
@@ -408,11 +530,32 @@ int parse_csv(char *csvname)
 			LOG(LOG_DEBUG, "%s is DOUBLE", rowFields[6]);
 		} else
 			LOG(LOG_DEBUG, "%s is UINT", rowFields[6]);
-		if (CsvParser_getNumFields(row) > 7) {
+
+		/* now lets look for additional fields */
+		if (QUERY_FLAG(watched[crow].wtype, WTYPE_JITTER) &&
+		    CsvParser_getNumFields(row) > 7) {
 			p = (char *)rowFields[7];
 			watched[crow].threshold = strtou32(rowFields[7],&p,10);
 			watched[crow].val.ui = 0; /* we use val to record */
 		}
+		if ((QUERY_FLAG(watched[crow].wtype, WTYPE_AND) ||
+		     QUERY_FLAG(watched[crow].wtype, WTYPE_OR)) &&
+		    CsvParser_getNumFields(row) > 8) {
+			watched[crow].comparison =
+				find_row_by_aluid(rowFields[8]);
+			if (watched[crow].comparison == -1) {
+				LOG(LOG_WARNING, "Cannot find matching aluid "
+				    "for %s, ignoring comparison.",
+				    rowFields[8]);
+				CLEAR_FLAG(watched[crow].wtype, WTYPE_AND);
+				CLEAR_FLAG(watched[crow].wtype, WTYPE_OR);
+			}
+		}
+		if (QUERY_FLAG(watched[crow].wtype, WTYPE_HANDLER) &&
+		    CsvParser_getNumFields(row) > 9) {
+			watched[crow].handler = strdup(rowFields[9]);
+		}
+
 		watched[crow].lastchg = time(NULL); /* set to now */
 		watched[crow].fired = 0; /* set initial state */
 		CsvParser_destroy_row(row);

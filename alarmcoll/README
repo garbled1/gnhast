@@ -6,13 +6,42 @@ Field 3: Severity of Alarm (1-100 is good, 100 being end of planet)
 Field 4: Channel of Alarm (see below)
 Field 5: alarm uid, must be unique and per-alarm
 Field 6: Value to compare against
-Field 7: OPTIONAL.  Jitter type max seconds of no change.
+Field 7: OPTIONAL.  Jitter type max seconds of no change. must exist for jitter
+Field 8: OPTIONAL alarm uid for AND and OR
+Field 9: OPTIONAL Handler for handler type
 
 Monitoring types:
 >  Fire if device is higher than field 6
+>= Fire if device is higher or equal to field 6
 <  Fire if device is lower than field 6
+<= Fire if device is lower or equal to field 6
 =  Fire if device is equal to field 6
 J  Jitter.  Field 6 ignored. Fire if value does not change in Field 7 seconds.
+<> or ><  Fire if device is not equal to field 6
+H  If Fired, run field 9 as a shell command.
+&  Test if field 8 is also fired (AND)
+|  Test if field 8 is fired instead (OR)
+
+Alarms are evaluated top down.  The & and | types are special, in that you
+set a check, and then also evaluate a previous alarm.  You can use this to
+create a cascade alert, for example:
+
+TempSensor,>,1,1,AC_tsensebad,"The freezer is broke",80.0
+Switch,&=,1,1,AC_switchandtemp,"The switch is ON and the freezer is broke",1,,AC_tsensebad
+
+Handlers are special, in that they perform a test, and then if they fire, they
+execute the shell command specified.  They will continually attempt to run
+the command.  The idea is that hopefully the command will correct the situation
+and the reason for the alarm will self-clear.  When writing a handler alert,
+you can set the severity to 0, which will cause the handler to run, but no
+actual alarm sent to gnhast.  You can do this for any alert actually, so for
+example:
+
+TempSensor,>,0,1,AC_tsensebad,"The freezer is broke",80.0
+Switch,&=,1,1,AC_switchandtemp,"The switch is ON and the freezer is broke",1,,AC_tsensebad
+
+This will not send an alert about the freeze, but will send an alert if the
+freezer is hot and the switch is on.
 
 Channels:  (see common/gnhast.h ACHAN_*
 #define ACHAN_GENERIC   0       /**< \brief Generic default channel */
@@ -31,7 +60,7 @@ Channels:  (see common/gnhast.h ACHAN_*
 
 Example:
 
-TempSensor,0,1,1,AC_tsensebad,"The freezer is broke",80.0
+TempSensor,>,1,1,AC_tsensebad,"The freezer is broke",80.0
 
 If the temp sensor TempSensor goes above 80 degrees (in the native format)
 set an alarm of type POWER with a severity of 1.
@@ -45,3 +74,8 @@ Switch,=,10,1,AC_switchon,"The switch is ON",1
 
 If the device "Switch" is set to "1" (on) set an alarm of type POWER with a
 severity of 10.
+
+TempSensor,H>,0,0,AC_tsensefix,"Need to fix freezer",80.0,,,"/bin/date"
+
+If the device TempSensor is higher than 80.0 degrees, do not send an alarm
+to gnhast, but run /bin/date. (the output of which is lost).
