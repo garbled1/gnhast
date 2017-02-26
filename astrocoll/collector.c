@@ -330,12 +330,11 @@ void modify_moonrise_cb(int fd, short what, void *arg)
 /**
    \brief convert a time into an event and schedule
    \param str Time as a string, format: 2015-05-21T12:14:17+00:00
-   \param ev event to schedule
    \param daylight DAYLIGHT_TYPES enum value
    \param field SS_TIMES enum value
 */
 
-void convert_sunrise_data(char *str, struct event *ev, int daylight, int field)
+void convert_sunrise_data(char *str, int daylight, int field)
 {
 	time_t curtime, event_time;
 	double difft;
@@ -373,11 +372,11 @@ void convert_sunrise_data(char *str, struct event *ev, int daylight, int field)
 	}
 	if (difft > 0.0 && field != SS_SOLAR_NOON) {
 		secs.tv_sec = sunrise_offsets[field];
-		if (ev != NULL)
-			event_free(ev); /* clear old one */
-		ev = evtimer_new(base, modify_sunrise_cb,
-				(void*)&dl_cbarg[daylight]);
-		event_add(ev, &secs);
+		if (sun_ev[field] != NULL)
+			event_free(sun_ev[field]); /* clear old one */
+		sun_ev[field] = evtimer_new(base, modify_sunrise_cb,
+					    (void*)&dl_cbarg[daylight]);
+		event_add(sun_ev[field], &secs);
 		LOG(LOG_NOTICE, "Create event %d start at %s", daylight,
 		    print_time(secs.tv_sec));
 	}
@@ -472,7 +471,7 @@ void ss_request_cb(struct evhttp_request *req, void *arg)
 		i = jtok_find_token_val(token, buf, apiwords[j], jret);
 		JSMN_TEST_OR_FAIL(i, apiwords[j]);
 		str = jtok_string(&token[i], buf);
-		convert_sunrise_data(str, sun_ev[j], apidayl[j], j);
+		convert_sunrise_data(str, apidayl[j], j);
 		free(str);
 	}
 
@@ -547,12 +546,11 @@ void modify_moonphase(char *frac)
 /**
    \brief convert a time into an event and schedule
    \param str Time as a string, format: 12:14
-   \param ev event to schedule
    \param daylight DAYLIGHT_TYPES enum value
    \param field USNO_TIMES enum value
 */
 
-void convert_usno_data(char *str, struct event *ev, int daylight, int field)
+void convert_usno_data(char *str, int daylight, int field)
 {
 	time_t curtime, event_time;
 	double difft;
@@ -590,11 +588,11 @@ void convert_usno_data(char *str, struct event *ev, int daylight, int field)
 	}
 	if (difft > 0.0 && field != USNO_SUN_SOLAR_NOON) {
 		secs.tv_sec = usno_sun_offsets[field];
-		if (ev != NULL)
-			event_free(ev); /* clear old one */
-		ev = evtimer_new(base, modify_sunrise_cb,
-				(void*)&dl_cbarg[daylight]);
-		event_add(ev, &secs);
+		if (sun_ev[field] != NULL)
+			event_free(sun_ev[field]); /* clear old one */
+		sun_ev[field] = evtimer_new(base, modify_sunrise_cb,
+					    (void*)&dl_cbarg[daylight]);
+		event_add(sun_ev[field], &secs);
 		LOG(LOG_NOTICE, "Create event %d start at %s", daylight,
 		    print_time(secs.tv_sec));
 	}
@@ -603,13 +601,13 @@ void convert_usno_data(char *str, struct event *ev, int daylight, int field)
 /**
    \brief convert a time into an event and schedule, for lunar
    \param str Time as a string, format: 12:14
-   \param ev event to schedule
    \param daylight DAYLIGHT_TYPES enum value
    \param field USNO_TIMES enum value
+   \note The API is a little obnoxious about fracillum, in that it doesn't
+   display if the closestphase is today.  Argh.
 */
 
-void convert_usno_moondata(char *str, struct event *ev, int daylight,
-			   int field)
+void convert_usno_moondata(char *str, int daylight, int field)
 {
 	time_t curtime, event_time;
 	double difft;
@@ -647,11 +645,11 @@ void convert_usno_moondata(char *str, struct event *ev, int daylight,
 	}
 	if (difft > 0.0 && field != USNO_MOON_UPPER_TRANSIT) {
 		secs.tv_sec = usno_moon_offsets[field];
-		if (ev != NULL)
-			event_free(ev); /* clear old one */
-		ev = evtimer_new(base, modify_moonrise_cb,
-				(void*)&dl_cbarg[daylight]);
-		event_add(ev, &secs);
+		if (moon_ev[field] != NULL)
+			event_free(moon_ev[field]); /* clear old one */
+		moon_ev[field] = evtimer_new(base, modify_moonrise_cb,
+					     (void*)&dl_cbarg[daylight]);
+		event_add(moon_ev[field], &secs);
 		LOG(LOG_NOTICE, "Create lunar event %d start at %s", daylight,
 		    print_time(secs.tv_sec));
 	}
@@ -783,8 +781,7 @@ void usno_request_cb(struct evhttp_request *req, void *arg)
 				    apiwords[j], str);
 				sprintf(datestr, "%d-%d-%d %s", year, month,
 					day, str);
-				convert_usno_data(datestr, sun_ev[j],
-						  apidayl[j], j);
+				convert_usno_data(datestr, apidayl[j], j);
 				free(str);
 			} else
 				free(str);
@@ -818,8 +815,7 @@ void usno_request_cb(struct evhttp_request *req, void *arg)
 				LOG(LOG_DEBUG, "Found nexttime for phen %s : %s",
 				    apiwords[j], str);
 				sprintf(datestr, "%s %s", dbuf, str);
-				convert_usno_data(datestr, sun_ev[j],
-						  apidayl[j], j);
+				convert_usno_data(datestr, apidayl[j], j);
 				free(str);
 			} else
 				free(str);
@@ -877,8 +873,7 @@ usno_moon:
 				    moonwords[j], str);
 				sprintf(datestr, "%d-%d-%d %s", year, month,
 					day, str);
-				convert_usno_moondata(datestr, moon_ev[j],
-						      moondayl[j], j);
+				convert_usno_moondata(datestr, moondayl[j], j);
 				free(str);
 			} else
 				free(str);
@@ -894,11 +889,13 @@ usno_moon:
 	} else {
 		/* we skip solar noon here */
 		if (usno_moon_offsets[USNO_MOONRISE] <= 0 &&
-		    usno_moon_offsets[USNO_MOONSET] <= 0) {
+		    usno_moon_offsets[USNO_MOONSET] <= 0 &&
+		    usno_moon_offsets[USNO_MOONRISE] < 
+		    usno_moon_offsets[USNO_MOONSET]) {
 			LOG(LOG_DEBUG, "Moon is down");
 			modify_moonrise_cb(0, 0, &dl_cbarg[DAYL_NIGHT]);
-		} else if (usno_moon_offsets[USNO_MOONRISE] <= 0 &&
-			   usno_moon_offsets[USNO_MOONSET] >= 0) {
+		} else if (usno_moon_offsets[USNO_MOONRISE] > 
+			   usno_moon_offsets[USNO_MOONSET]) {
 			LOG(LOG_DEBUG, "Moon is up");
 			modify_moonrise_cb(0, 0, &dl_cbarg[DAYL_DAY]);
 		} else {
