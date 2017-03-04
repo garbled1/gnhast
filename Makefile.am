@@ -25,6 +25,7 @@ SUBDIRS = libconfuse \
 	urtsicoll \
 	astrocoll \
 	alarmcoll \
+	balboacoll \
 	tools \
 	data \
 	gnhastweb \

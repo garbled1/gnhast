@@ -159,7 +159,7 @@ CSCOPE = cscope
 DIST_SUBDIRS = libconfuse common gnhastd fakecoll owsrvcoll rrdcoll \
 	brulcoll insteoncoll wmr918coll wupwscoll ad2usbcoll \
 	icaddycoll venstarcoll moncoll jsoncgicoll urtsicoll astrocoll \
-	alarmcoll tools data gnhastweb handlers gtk-gnhast \
+	alarmcoll balboacoll tools data gnhastweb handlers gtk-gnhast \
 	gtk-insteonedit
 am__DIST_COMMON = $(srcdir)/Makefile.in AUTHORS COPYING ChangeLog \
 	INSTALL NEWS README compile config.guess config.sub depcomp \
@@ -356,6 +356,7 @@ SUBDIRS = libconfuse \
 	urtsicoll \
 	astrocoll \
 	alarmcoll \
+	balboacoll \
 	tools \
 	data \
 	gnhastweb \

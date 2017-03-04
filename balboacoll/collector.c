@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014
+ * Copyright (c) 2013, 2014, 2017
  *      Tim Rightnour.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,8 +30,7 @@
 /**
    \file collector.c
    \author Tim Rightnour
-   \brief An example collector, that generates fake data to test
-   \note You may/should use this as a skeleton to create a new collector
+   \brief Collector for talking to a balboa spa wifi model 50350
 */
 
 #include <stdio.h>
@@ -59,21 +58,10 @@
 #include "confparser.h"
 #include "collector.h"
 
-/* There is a bunch of extraneous stuff in this example that really isn't
-   needed to just get the fakecoll working, however, I've built it like a
-   normal collector, so it can be easily copied and hacked up.
-*/
-
-/* internal stuffs here */
-int loopmax = FAKECOLL_LOOPMAX;
-int loopcur = 0;
-device_t *deva, *devb, *devc;
-int lie_about_ok = 0;
-
 /** our logfile */
 FILE *logfile;
 char *dumpconf = NULL;
-char *conffile = SYSCONFDIR "/" FAKECOLL_CONFIG_FILE;;
+char *conffile = SYSCONFDIR "/" BALBOACOLL_CONFIG_FILE;;
 
 /* Need the argtable in scope, so we can generate proper commands
    for the server */
@@ -83,7 +71,7 @@ extern argtable_t argtable[];
 struct event_base *base;
 struct evdns_base *dns_base;
 
-cfg_t *cfg, *gnhastd_c, *fakecoll_c;
+cfg_t *cfg, *gnhastd_c, *balboacoll_c;
 
 #define CONN_TYPE_GNHASTD       1
 char *conntype[3] = {
@@ -105,7 +93,7 @@ cfg_opt_t gnhastd_opts[] = {
 	CFG_END(),
 };
 
-cfg_opt_t fakecoll_opts[] = {
+cfg_opt_t balboacoll_opts[] = {
 	CFG_INT("instance", 1, CFGF_NONE),
 	CFG_END(),
 };
@@ -113,162 +101,18 @@ cfg_opt_t fakecoll_opts[] = {
 cfg_opt_t options[] = {
 	CFG_SEC("gnhastd", gnhastd_opts, CFGF_NONE),
 	CFG_SEC("device", device_opts, CFGF_MULTI | CFGF_TITLE),
-	CFG_SEC("fakecoll", fakecoll_opts, CFGF_NONE),
-	CFG_STR("logfile", FAKECOLL_LOG_FILE, CFGF_NONE),
-	CFG_STR("pidfile", FAKECOLL_PID_FILE, CFGF_NONE),
+	CFG_SEC("balboacoll", balboacoll_opts, CFGF_NONE),
+	CFG_STR("logfile", BALBOACOLL_LOG_FILE, CFGF_NONE),
+	CFG_STR("pidfile", BALBOACOLL_PID_FILE, CFGF_NONE),
 	CFG_END(),
 };
 
-void cb_generate_chaff(int fd, short what, void *arg);
 void cb_sigterm(int fd, short what, void *arg);
 void cb_shutdown(int fd, short what, void *arg);
 
 
 /*** Collector specific code goes here ***/
 
-/**
-   \brief random number generator, between x and y
-   \param min smallest number
-   \param max largest number
-   \return The random number
-*/
-
-int rndm(int min, int max)
-{
-	int diff;
-
-	diff = max - min + 1;
-	if (max < 1 || diff < 1)
-		return(min);
-
-	return(random()%diff+min);
-}
-
-/**
-   \brief random number generator, between x and y, float value
-   \param min smallest number
-   \param max largest number
-   \return The random number
-*/
-
-float frndm(float min, float max)
-{
-	float diff;
-
-	diff = max - min + 1.0;
-	if (max < 1 || diff < 1)
-		return(min);
-
-	return(drand48()*diff+min);
-}
-
-/**
-   \brief Generate chaff callback so we can test the engine
-   \param fd unused
-   \param what what happened?
-   \param arg unused
-*/
-
-void cb_generate_chaff(int fd, short what, void *arg)
-{
-	int j;
-	uint8_t s, ss;
-	double d, dd;
-	struct timeval secs = { 0, 0 };
-	struct event *timer_ev;
-
-	loopcur++;
-
-	j = rndm(0, 2);
-	switch(j) {
-	case 0:
-		s = rndm(0, 1);
-		store_data_dev(deva, DATALOC_DATA, &s);
-		gn_update_device(deva, 0, gnhastd_conn->bev);
-		get_data_dev(deva, DATALOC_LAST, &ss);
-		LOG(LOG_NOTICE, "Storing on %s:%d last: %d",
-		    deva->name, s, ss);
-		break;
-	case 1:
-		d = frndm(60.0, 110.0);
-		store_data_dev(devb, DATALOC_DATA, &d);
-		get_data_dev(devb, DATALOC_LAST, &dd);
-		gn_update_device(devb, 0, gnhastd_conn->bev);
-		LOG(LOG_NOTICE, "Storing on %s:%f last: %f",
-		    devb->name, d, dd);
-		break;
-	case 2:
-		d = frndm(0.0, 100.0);
-		store_data_dev(devc, DATALOC_DATA, &d);
-		get_data_dev(devc, DATALOC_LAST, &dd);
-		gn_update_device(devc, 0, gnhastd_conn->bev);
-		LOG(LOG_NOTICE, "Storing on %s:%f last: %f",
-		    devc->name, d, dd);
-		break;
-	}
-
-	/* if loopmax is 0 or -1, go forever */
-	if (loopcur >= loopmax && loopmax > 1) {
-		generic_cb_sigterm(0, 0, NULL);
-		return;
-	}
-
-	/* otherwise, schedule another one */
-
-	/* sleep for 2-10 seconds */
-	secs.tv_sec = rndm(2, 10);
-
-	if (!lie_about_ok) {
-		/* schedule ourselves as a timer */
-		timer_ev = evtimer_new(base, cb_generate_chaff, NULL);
-		evtimer_add(timer_ev, &secs);
-	}
-}
-
-/**
-   \brief Build the fake devices and setup the event loop
-*/
-
-void build_chaff_engine(void)
-{
-	struct timeval secs = { 0, 0 };
-	struct event *timer_ev;
-
-	/* Setup 3 fake devices */
-	deva = smalloc(device_t);
-	devb = smalloc(device_t);
-	devc = smalloc(device_t);
-
-	/* switch device */
-	deva->name = deva->uid = "Switch";
-	deva->proto = PROTO_INSTEON_V2;
-	deva->type = DEVICE_SWITCH;
-	deva->subtype = SUBTYPE_SWITCH;
-
-	/* temperature sensor */
-	devb->name = devb->uid = "TempSensor";
-	devb->proto = PROTO_SENSOR_OWFS;
-	devb->type = DEVICE_SENSOR;
-	devb->subtype = SUBTYPE_TEMP;
-
-	/* dimmer */
-	devc->name = devc->uid = "Dimmer";
-	devc->proto = PROTO_INSTEON_V1;
-	devc->type = DEVICE_DIMMER;
-	devc->subtype = SUBTYPE_OUTLET;
-
-	/* tell the server about the three devices */
-	gn_register_device(deva, gnhastd_conn->bev);
-	gn_register_device(devb, gnhastd_conn->bev);
-	gn_register_device(devc, gnhastd_conn->bev);
-
-	/* sleep for 2-10 seconds */
-	secs.tv_sec = rndm(2, 10);
-
-	/* schedule a chaff timer */
-	timer_ev = evtimer_new(base, cb_generate_chaff, NULL);
-	evtimer_add(timer_ev, &secs);
-}
 
 /* Gnhastd connection type routines go here */
 
@@ -283,8 +127,6 @@ void build_chaff_engine(void)
 
 int collector_is_ok(void)
 {
-	if (lie_about_ok)
-		return(0);
 	return(1); /* lie */
 }
 
@@ -305,7 +147,7 @@ int main(int argc, char **argv)
 	char *pidfile;
 
 	/* process command line arguments */
-	while ((ch = getopt(argc, argv, "?c:dfl:s:p:")) != -1)
+	while ((ch = getopt(argc, argv, "?c:d")) != -1)
 		switch (ch) {
 		case 'c':	/* Set configfile */
 			conffile = strdup(optarg);
@@ -313,22 +155,9 @@ int main(int argc, char **argv)
 		case 'd':	/* debugging mode */
 			debugmode = 1;
 			break;
-		case 'f':	/* lie about being OK */
-			lie_about_ok = 1;
-			break;
-		case 'l':
-			loopmax = atoi(optarg);
-			break;
-		case 's':	/* set servername */
-			gnhastdserver = strdup(optarg);
-			break;
-		case 'p':	/* portnum */
-			port = atoi(optarg);
-			break;
 		default:
 		case '?':	/* you blew it */
-			(void)fprintf(stderr, "usage:\n%s [-c configfile]"
-				      "[-l loops] [-s server] [-p port]\n",
+			(void)fprintf(stderr, "usage:\n%s [-c configfile]\n",
 				      getprogname());
 			return(EXIT_FAILURE);
 			/*NOTREACHED*/
@@ -370,10 +199,10 @@ int main(int argc, char **argv)
 
 	/* Now parse the collector specific config settings */
 	if (cfg) {
-		fakecoll_c = cfg_getsec(cfg, "fakecoll");
-		if (!fakecoll_c)
+		balboacoll_c = cfg_getsec(cfg, "balboacoll");
+		if (!balboacoll_c)
 			LOG(LOG_FATAL, "Error reading config file, "
-			    "fakecoll section");
+			    "balboacoll section");
 	}
 
 	gnhastd_conn = smalloc(connection_t);
@@ -390,7 +219,7 @@ int main(int argc, char **argv)
 	/* cheat, and directly call the timer callback
 	   This sets up a connection to the server. */
 	generic_connect_server_cb(0, 0, gnhastd_conn);
-	collector_instance = cfg_getint(fakecoll_c, "instance");
+	collector_instance = cfg_getint(balboacoll_c, "instance");
 	gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
 
 	/* setup signal handlers */
@@ -404,9 +233,6 @@ int main(int argc, char **argv)
 	event_add(ev, NULL);
 	ev = evsignal_new(base, SIGUSR1, cb_sigusr1, NULL);
 	event_add(ev, NULL);
-
-	/* spam the server */
-	build_chaff_engine();
 
 	/* go forth and destroy */
 	event_base_dispatch(base);

@@ -88,14 +88,14 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-bin_PROGRAMS = fakecoll$(EXEEXT)
+bin_PROGRAMS = balboacoll$(EXEEXT)
 @NEED_RBTREE_TRUE@am__append_1 = \
 @NEED_RBTREE_TRUE@	$(top_srcdir)/linux/queue.h \
 @NEED_RBTREE_TRUE@	$(top_srcdir)/linux/endian.h \
 @NEED_RBTREE_TRUE@	$(top_srcdir)/linux/rbtree.h \
 @NEED_RBTREE_TRUE@	$(top_srcdir)/linux/time.h
 
-subdir = fakecoll
+subdir = balboacoll
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -107,16 +107,16 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am__fakecoll_SOURCES_DIST = $(top_srcdir)/common/collcmd.h \
+am__balboacoll_SOURCES_DIST = $(top_srcdir)/common/collcmd.h \
 	$(top_srcdir)/common/genconn.h $(top_srcdir)/common/common.h \
 	$(top_srcdir)/common/gnhast.h $(top_srcdir)/common/confuse.h \
 	$(top_srcdir)/common/gncoll.h collector.c collector.h \
 	$(top_srcdir)/linux/queue.h $(top_srcdir)/linux/endian.h \
 	$(top_srcdir)/linux/rbtree.h $(top_srcdir)/linux/time.h
 am__objects_1 =
-am_fakecoll_OBJECTS = collector.$(OBJEXT) $(am__objects_1)
-fakecoll_OBJECTS = $(am_fakecoll_OBJECTS)
-fakecoll_DEPENDENCIES = $(top_builddir)/libconfuse/libgnconfuse.la \
+am_balboacoll_OBJECTS = collector.$(OBJEXT) $(am__objects_1)
+balboacoll_OBJECTS = $(am_balboacoll_OBJECTS)
+balboacoll_DEPENDENCIES = $(top_builddir)/libconfuse/libgnconfuse.la \
 	$(top_builddir)/common/libgnhast.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -156,8 +156,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(fakecoll_SOURCES)
-DIST_SOURCES = $(am__fakecoll_SOURCES_DIST)
+SOURCES = $(balboacoll_SOURCES)
+DIST_SOURCES = $(am__balboacoll_SOURCES_DIST)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -318,12 +318,12 @@ AM_CPPFLAGS = -DLOCALSTATEDIR=\"$(localstatedir)\" \
 	-DSYSCONFDIR=\"$(sysconfdir)\" \
 	-I$(top_srcdir)/common
 
-fakecoll_SOURCES = $(top_srcdir)/common/collcmd.h \
+balboacoll_SOURCES = $(top_srcdir)/common/collcmd.h \
 	$(top_srcdir)/common/genconn.h $(top_srcdir)/common/common.h \
 	$(top_srcdir)/common/gnhast.h $(top_srcdir)/common/confuse.h \
 	$(top_srcdir)/common/gncoll.h collector.c collector.h \
 	$(am__append_1)
-fakecoll_LDADD = \
+balboacoll_LDADD = \
 	$(top_builddir)/libconfuse/libgnconfuse.la \
 	$(top_builddir)/common/libgnhast.la
 
@@ -340,9 +340,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu fakecoll/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu balboacoll/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --gnu fakecoll/Makefile
+	  $(AUTOMAKE) --gnu balboacoll/Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
 	  *config.status*) \
@@ -410,9 +410,9 @@ clean-binPROGRAMS:
 	echo " rm -f" $$list; \
 	rm -f $$list
 
-fakecoll$(EXEEXT): $(fakecoll_OBJECTS) $(fakecoll_DEPENDENCIES) $(EXTRA_fakecoll_DEPENDENCIES) 
-	@rm -f fakecoll$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(fakecoll_OBJECTS) $(fakecoll_LDADD) $(LIBS)
+balboacoll$(EXEEXT): $(balboacoll_OBJECTS) $(balboacoll_DEPENDENCIES) $(EXTRA_balboacoll_DEPENDENCIES) 
+	@rm -f balboacoll$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(balboacoll_OBJECTS) $(balboacoll_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)

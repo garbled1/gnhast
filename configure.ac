@@ -113,6 +113,7 @@ AC_CONFIG_FILES([Makefile \
 		 urtsicoll/Makefile \
 		 astrocoll/Makefile \
 		 alarmcoll/Makefile \
+		 balboacoll/Makefile \
 		 handlers/Makefile \
 		 tools/Makefile \
 		 gtk-gnhast/Makefile \
