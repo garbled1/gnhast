@@ -7,14 +7,8 @@
 #define ICADDYCOLL_LOG_FILE     "icaddycoll.log"
 #define ICADDYCOLL_PID_FILE     "icaddycoll.pid"
 
-#define ICADDY_DPORT		30303
-#define ICADDY_DSTRING		"Discovery: Who is out there?"
-
+#define ICADDY_MAC_PREFIX	"00-04-A3"
 #define ICADDY_HTTP_PORT	80
-
-/* really?  you have more than 8?  recompile. sheesh */
-#define MAX_ICADDY_DEVS		8
-#define IC_SCAN_TIMEOUT		5 /* seconds */
 
 #define ICJ_SETTINGS	"/settingsVars.json"
 #define ICJ_STATUS	"/status.json"
@@ -32,13 +26,5 @@ typedef struct _http_ctx_t {
         struct evhttp_request *req;
         char *query;
 } http_ctx_t;
-
-typedef struct _icaddy_discovery_resp_t {
-	char *ipaddr;
-	struct in_addr sin_addr;
-	char *uc_hostname;
-	char *macaddr;
-} icaddy_discovery_resp_t;
-
 
 #endif /* _ICADDY_H_ */

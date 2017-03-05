@@ -66,22 +66,17 @@
 #include "jsmn.h"
 #include "jsmn_func.h"
 #include "http_func.h"
+#include "30303_disc.h"
 
 char *conffile = SYSCONFDIR "/" ICADDYCOLL_CONFIG_FILE;
 FILE *logfile;   /** our logfile */
 cfg_t *cfg, *gnhastd_c, *icaddy_c;
 char *dumpconf = NULL;
 int need_rereg = 0;
-int discovery_fd = -1;
-int discovery_port = 0;
-int discovery_count = 0;
-int discovery_done = 0;
 int waiting = 0; /* are we waiting for more zone updates from gnhastd? */
 char *icaddy_url = NULL;
 char *ichn;
 int hasrain = 0;
-icaddy_discovery_resp_t icaddy_list[MAX_ICADDY_DEVS];
-struct event *disc_ev; /* the discovery event */
 time_t icaddy_lastupd;
 http_get_t *status_get;
 http_get_t *settings_get;
@@ -142,10 +137,25 @@ cfg_opt_t options[] = {
 
 void cb_shutdown(int fd, short what, void *arg);
 void request_cb(struct evhttp_request *req, void *arg);
+void icaddy_startfeed(char *url_prefix);
 
 /*****
       Stubs
 *****/
+
+/**
+   \brief Called when the discovery event ends and has found a device
+   \param url the url we found
+   \param hostname the hostname of the device
+*/
+
+void d30303_found_cb(char *url, char *hostname)
+{
+	cfg_setstr(icaddy_c, "hostname", hostname);
+	ichn = cfg_getstr(icaddy_c, "hostname");
+	icaddy_url = strdup(url);
+	icaddy_startfeed(icaddy_url);
+}
 
 /**
    \brief Called when a switch chg command occurs
@@ -753,244 +763,6 @@ void icaddy_startfeed(char *url_prefix)
 }
 
 
-/*****
-  irrigationcaddy discovery stuff
-*****/
-
-/**
-   \brief End the discovery routine, and fire everything up
-   \param fd unused
-   \param what what happened?
-   \param arg unused
-*/
-
-void cb_end_discovery(int fd, short what, void *arg)
-{
-	char *hn;
-	int i;
-	size_t hn_len;
-
-	LOG(LOG_NOTICE, "Discovery ended, found %d devices", discovery_count);
-	event_del(disc_ev);
-	event_free(disc_ev);
-	close(discovery_fd);
-	discovery_done = 1;
-
-	hn = cfg_getstr(icaddy_c, "hostname");
-	if (hn == NULL) {  /* maybe we just pick one? */
-		if (discovery_count == 1) { /* ok, we do */
-			LOG(LOG_NOTICE, "Only found one IrrigationCaddy, "
-			    "using that one");
-			hn = icaddy_list[0].uc_hostname;
-			cfg_setstr(icaddy_c, "hostname", hn);
-			ichn = cfg_getstr(icaddy_c, "hostname");
-		} else {
-			LOG(LOG_ERROR, "No hostname set in conf file, and "
-			    "too many IrrigationCaddys found, giving up.");
-			generic_cb_shutdown(0, 0, NULL);
-			return; /*NOTREACHED*/
-		}
-	}
-
-	if (hn == NULL) {
-		LOG(LOG_ERROR, "Hostname still NULL, giving up");
-		generic_cb_shutdown(0, 0, NULL);
-		return; /*NOTREACHED*/
-	}
-
-	for (i=0; i < MAX_ICADDY_DEVS; i++) {
-		if (icaddy_list[i].uc_hostname != NULL &&
-		    strcasecmp(hn, icaddy_list[i].uc_hostname) == 0) {
-			LOG(LOG_DEBUG, "Found disc record %d matches by"
-			    " hostname", i);
-			hn_len = strlen(hn);
-			/* alloc for hn + http://hn\0 */
-			icaddy_url = safer_malloc(hn_len + 8);
-			sprintf(icaddy_url, "http://%s", hn);
-			break;
-		} else if (icaddy_list[i].ipaddr != NULL &&
-			   strcasecmp(hn, icaddy_list[i].ipaddr) == 0) {
-			hn_len = strlen(icaddy_list[i].ipaddr);
-			icaddy_url = safer_malloc(hn_len + 9);
-			sprintf(icaddy_url, "http://%s",
-				icaddy_list[i].ipaddr);
-			break;
-		}
-	}
-	if (icaddy_url == NULL) {
-		LOG(LOG_ERROR, "Couldn't find a matching controller, punt");
-		generic_cb_shutdown(0, 0, NULL);
-		return; /*NOTREACHED*/
-	}
-	LOG(LOG_NOTICE, "Set connect URL to %s", icaddy_url);
-	icaddy_startfeed(icaddy_url);
-}
-
-/**
-   \brief bind udp to listen to icaddy discovery events
-   \return fd
-*/
-int bind_discovery_recv(void)
-{
-	int sock_fd, f, flag=1;
-	struct sockaddr_in sin;
-	socklen_t slen;
-
-	if ((sock_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-		LOG(LOG_ERROR, "Failed to bind discovery in socket()");
-		return -1;
-	}
-
-	if (setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, &flag,
-		       sizeof(int)) < 0) {
-		LOG(LOG_ERROR, "Could not set SO_REUSEADDR for discovery");
-		return -1;
-	}
-	if (setsockopt(sock_fd, SOL_SOCKET, SO_BROADCAST, &flag,
-		       sizeof(int)) < 0) {
-		LOG(LOG_ERROR, "Could not set SO_BROADCAST for discovery");
-		return -1;
-	}
-	if (setsockopt(sock_fd, SOL_SOCKET, SO_REUSEPORT, &flag,
-		       sizeof(int)) < 0) {
-		LOG(LOG_ERROR, "Could not set SO_REUSEPORT for discovery");
-		return -1;
-	}
-
-	/* make it non-blocking */
-	f = fcntl(sock_fd, F_GETFL);
-	f |= O_NONBLOCK;
-	fcntl(sock_fd, F_SETFL, f);
-
-	/* Set IP, port */
-	memset(&sin, 0, sizeof(sin));
-	sin.sin_family = AF_INET;
-	sin.sin_addr.s_addr = INADDR_ANY;
-	sin.sin_port = 0; /* take any available port */
-
-	if (bind(sock_fd, (struct sockaddr *)&sin,
-		 sizeof(struct sockaddr)) < 0) {
-		LOG(LOG_ERROR, "bind() for discovery port failed");
-		return -1;
-	} else {
-		slen = sizeof(sin);
-		getsockname(sock_fd, (struct sockaddr *)&sin, &slen);
-		discovery_port = ntohs(sin.sin_port);
-		LOG(LOG_NOTICE,
-		    "Listening on port %d:udp for discovery events",
-		    discovery_port);
-	}
-
-	return sock_fd;
-}
-
-/**
-   \brief Watch for discovery messages
-   \param fd unused
-   \param what what happened?
-   \param arg unused
-*/
-
-void cb_discovery_read(int fd, short what, void *arg)
-{
-	char buf[2048], buf2[8];
-	char *p, *r;
-	int len, size;
-	struct sockaddr_in cli_addr;
-
-	size = sizeof(struct sockaddr);
-	bzero(buf, sizeof(buf));
-	len = recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr *)&cli_addr,
-		       &size);
-
-	LOG(LOG_DEBUG, "got %d bytes on udp:%d", len, discovery_port);
-	discovery_count++;
-
-	buf[len] = '\0';
-	LOG(LOG_DEBUG, "Response #%d from: %s", discovery_count,
-	    inet_ntoa(cli_addr.sin_addr));
-	LOG(LOG_DEBUG, "%s", buf);
-
-	if (discovery_count >= MAX_ICADDY_DEVS) {
-		LOG(LOG_ERROR, "Too many IrrigationCaddys on your network!");
-		LOG(LOG_ERROR, "Recompile and change MAX_ICADDY_DEVS!");
-		return;
-	}
-
-	p = strchr(buf, '\n');
-	if (p == NULL)
-		return;
-
-	*p = '\0';
-	/* find the first space, that's the end of the hostname */
-	r = strchr(buf, ' ');
-	if (r != NULL)
-		*r = '\0';
-
-	icaddy_list[discovery_count-1].ipaddr = inet_ntoa(cli_addr.sin_addr);
-	icaddy_list[discovery_count-1].sin_addr = cli_addr.sin_addr;
-	icaddy_list[discovery_count-1].uc_hostname = strdup(buf);
-	*p++;
-	/* now find the \r, and fix it */
-	r = strchr(p, '\r');
-	if (r != NULL)
-		*r = '\0';
-	icaddy_list[discovery_count-1].macaddr = strdup(p);
-
-	LOG(LOG_NOTICE, "Found IC#%d named %s at %s macaddr %s",
-	    discovery_count, icaddy_list[discovery_count-1].uc_hostname,
-	    icaddy_list[discovery_count-1].ipaddr,
-	    icaddy_list[discovery_count-1].macaddr);
-}
-
-/**
-   \brief Send an icaddy discovery string
-   \param fd the search fd
-   \param what what happened?
-   \param arg unused
-*/
-
-void cb_discovery_send(int fd, short what, void *arg)
-{
-	char *send = ICADDY_DSTRING;
-	int len;
-	struct sockaddr_in broadcast_addr;
-
-	memset(&broadcast_addr, 0, sizeof(broadcast_addr));
-	broadcast_addr.sin_family = AF_INET;
-	broadcast_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
-	broadcast_addr.sin_port = htons(ICADDY_DPORT);
-
-	len = sendto(fd, send, strlen(send), 0,
-		     (struct sockaddr *)&broadcast_addr,
-		     sizeof(struct sockaddr_in));
-	LOG(LOG_DEBUG, "Sent Irrigation Caddy Discovery message");
-}
-
-/**
- */
-void discovery_setup()
-{
-	struct event *timer_ev;
-	struct timeval secs = { IC_SCAN_TIMEOUT, 0 };
-
-	/* build discovery event */
-	discovery_fd = bind_discovery_recv();
-	if (discovery_fd != -1) {
-		disc_ev = event_new(base, discovery_fd, EV_READ | EV_PERSIST,
-				   cb_discovery_read, NULL);
-		event_add(disc_ev, NULL);
-		event_base_once(base, discovery_fd, EV_WRITE|EV_TIMEOUT,
-				cb_discovery_send, NULL, NULL);
-		LOG(LOG_NOTICE, "Searching for Irrigation Caddy devices");
-	} else
-		LOG(LOG_ERROR, "Failed to setup discovery event");
-
-	timer_ev = evtimer_new(base, cb_end_discovery, NULL);
-	evtimer_add(timer_ev, &secs);
-}
-
-
 /**
    \brief Main itself
    \param argc count
@@ -1056,7 +828,8 @@ int main(int argc, char **argv)
 	if (cfg) {
 		icaddy_c = cfg_getsec(cfg, "icaddycoll");
 		if (!icaddy_c)
-			LOG(LOG_FATAL, "Error reading config file, icaddy section");
+			LOG(LOG_FATAL, "Error reading config file, icaddy "
+			    "section");
 	}
 
 	/* Now, parse the details of connecting to the gnhastd server */
@@ -1064,11 +837,12 @@ int main(int argc, char **argv)
 	if (cfg) {
 		gnhastd_c = cfg_getsec(cfg, "gnhastd");
 		if (!gnhastd_c)
-			LOG(LOG_FATAL, "Error reading config file, gnhastd section");
+			LOG(LOG_FATAL, "Error reading config file, gnhastd "
+			    "section");
 	}
 
 	/* discover the icaddy */
-	discovery_setup();
+	d30303_setup(ICADDY_MAC_PREFIX, cfg_getstr(icaddy_c, "hostname"));
 
 	gnhastd_conn = smalloc(connection_t);
 	gnhastd_conn->cname = strdup(COLLECTOR_NAME);
