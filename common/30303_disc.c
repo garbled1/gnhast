@@ -309,7 +309,8 @@ void cb_d30303_read(int fd, short what, void *arg)
 	if (r != NULL)
 		*r = '\0';
 
-	d30303_list[d30303_count-1].ipaddr = inet_ntoa(cli_addr.sin_addr);
+	d30303_list[d30303_count-1].ipaddr =
+		strdup(inet_ntoa(cli_addr.sin_addr));
 	d30303_list[d30303_count-1].sin_addr = cli_addr.sin_addr;
 	d30303_list[d30303_count-1].uc_hostname = strdup(buf);
 	*p++;

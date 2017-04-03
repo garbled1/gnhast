@@ -38,8 +38,11 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <errno.h>
 #include <netdb.h>
 #include <time.h>
@@ -56,7 +59,9 @@
 #include "genconn.h"
 #include "gncoll.h"
 #include "confparser.h"
+#include "30303_disc.h"
 #include "collector.h"
+#include "crc.h"
 
 /** our logfile */
 FILE *logfile;
@@ -70,20 +75,39 @@ extern argtable_t argtable[];
 /** The event base */
 struct event_base *base;
 struct evdns_base *dns_base;
-
 cfg_t *cfg, *gnhastd_c, *balboacoll_c;
+struct sockaddr_in bwg_addr;
 
 #define CONN_TYPE_GNHASTD       1
+#define CONN_TYPE_BALBOA	2
 char *conntype[3] = {
-        "none",
-        "gnhastd",
+	"none",
+	"gnhastd",
+	"balboa",
 };
 connection_t *gnhastd_conn;
+connection_t *balboa_conn;
+
 int need_rereg = 0;
+int devices_ready = 0;
+uint8_t mac_suffix[3] = { 0x0, 0x0, 0x0 };
 extern int debugmode;
 extern int collector_instance;
 
-/* Example options setup */
+/* the message types */
+uint8_t mtypes[9][3] = {
+	{ 0xFF, 0xAF, 0x13 }, /* BMTR_STATUS_UPDATE */
+	{ 0x0A, 0xBF, 0x23 }, /* BMTR_FILTER_CONFIG */
+	{ 0x0A, 0xBF, 0x04 }, /* BMTS_CONFIG_REQ */
+	{ 0x0A, 0XBF, 0x94 }, /* BMTR_CONFIG_RESP */
+	{ 0x0A, 0xBF, 0x22 }, /* BMTS_FILTER_REQ */
+	{ 0x0A, 0xBF, 0x11 }, /* BMTS_CONTROL_REQ */
+	{ 0x0A, 0xBF, 0x20 }, /* BMTS_SET_TEMP */
+	{ 0x0A, 0xBF, 0x21 }, /* BMTS_SET_TIME */
+	{ 0x0A, 0xBF, 0x92 }, /* BMTS_SET_WI	FI */
+};
+
+/* options setup */
 
 extern cfg_opt_t device_opts[];
 
@@ -95,6 +119,7 @@ cfg_opt_t gnhastd_opts[] = {
 
 cfg_opt_t balboacoll_opts[] = {
 	CFG_INT("instance", 1, CFGF_NONE),
+	CFG_INT("pumps", 1, CFGF_NONE),
 	CFG_END(),
 };
 
@@ -109,9 +134,312 @@ cfg_opt_t options[] = {
 
 void cb_sigterm(int fd, short what, void *arg);
 void cb_shutdown(int fd, short what, void *arg);
-
+void connect_server_cb(int nada, short what, void *arg);
 
 /*** Collector specific code goes here ***/
+
+/**
+   \brief Called when the discovery event ends and has found a device
+   \param url the url we found
+   \param hostname the hostname of the device
+   We will get back the IP in the url in the form of http://IP
+*/
+
+void d30303_found_cb(char *url, char *hostname)
+{
+	char *p;
+
+	p = url+7;
+	LOG(LOG_DEBUG, "Using IP: %s", p);
+	inet_aton(p, &bwg_addr.sin_addr);
+	bwg_addr.sin_port = htons(BALBOA_PORT);
+	bwg_addr.sin_family = AF_INET;
+
+	/* connect to what we found */
+	balboa_conn = smalloc(connection_t);
+	balboa_conn->port = BALBOA_PORT;
+	balboa_conn->host = strdup(p);
+	balboa_conn->type = CONN_TYPE_BALBOA;
+	connect_server_cb(0,0, balboa_conn);
+}
+
+/**
+ * Update the crc value with new data.
+ *
+ * \param crc      The current crc value.
+ * \param data     Pointer to a buffer of \a data_len bytes.
+ * \param data_len Number of bytes in the \a data buffer.
+ * \return         The updated crc value.
+ *****************************************************************************/
+crc_t crc_update(crc_t crc, const void *data, size_t data_len)
+{
+    const unsigned char *d = (const unsigned char *)data;
+    unsigned int i;
+    bool bit;
+    unsigned char c;
+
+    while (data_len--) {
+        c = *d++;
+        for (i = 0; i < 8; i++) {
+            bit = crc & 0x80;
+            crc = (crc << 1) | ((c >> (7 - i)) & 0x01);
+            if (bit) {
+                crc ^= 0x07;
+            }
+        }
+        crc &= 0xff;
+    }
+    return crc & 0xff;
+}
+
+
+/**
+ * Calculate the final crc value.
+ *
+ * \param crc  The current crc value.
+ * \return     The final crc value.
+ *****************************************************************************/
+crc_t crc_finalize(crc_t crc)
+{
+    unsigned int i;
+    bool bit;
+
+    for (i = 0; i < 8; i++) {
+        bit = crc & 0x80;
+        crc = (crc << 1) | 0x00;
+        if (bit) {
+            crc ^= 0x07;
+        }
+    }
+    return (crc ^ 0x02) & 0xff;
+}
+
+/**
+   \brief Calculate the checksum byte for a balboa message
+   \param data data
+   \param len length of data
+   \return checksum
+*/
+uint8_t balboa_calc_cs(uint8_t *data, int len)
+{
+	crc_t crc;
+
+	crc = crc_init();
+	crc = crc_update(crc, data, len);
+	crc = crc_finalize(crc);
+	return (uint8_t)crc;
+}
+
+/**
+   \brief Figure out which message we recieved
+   \param data the data stream
+   \param len the length
+   \return BALBOA_MTYPES enum, -1 if not found
+*/
+
+int find_balboa_mtype(uint8_t *data, size_t len)
+{
+	int i;
+
+	for (i=0; i < NROF_BMT; i++) {
+		if (data[2] == mtypes[i][0] &&
+		    data[3] == mtypes[i][1] &&
+		    data[4] == mtypes[i][2])
+			return i;
+	}
+	return -1;
+}
+
+/**
+   \brief Send a config request
+*/
+
+void send_config_req(void)
+{
+	uint8_t data[8];
+
+	data[0] = M_START;
+	data[1] = 5;
+	data[2] = mtypes[BMTS_CONFIG_REQ][0];
+	data[3] = mtypes[BMTS_CONFIG_REQ][1];
+	data[4] = mtypes[BMTS_CONFIG_REQ][2];
+	data[5] = 0x77; /* chksum is easy here */
+	data[6] = M_END;
+
+	bufferevent_write(balboa_conn->bev, data, 7);
+}
+
+/**
+   \brief Parse a config response
+   \param data The data
+   \param len Length of data
+   \return -1 if error
+
+SZ 02 03 04   05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22
+1E 0A BF 94   02 14 80 00 15 27 37 EF ED 00 00 00 00 00 00 00 00 00
+
+23 24 25 26 27 28 29 CB
+15 27 FF FF 37 EF ED 42
+
+22,23,24 seems to be mac prefix,  27-29 suffix.  25/26 unk
+8-13 also full macaddr.
+*/
+
+int parse_config_resp(uint8_t *data, size_t len)
+{
+	int i;
+
+	/* initialize the mac_suffix */
+	if (mac_suffix[0] == 0x0 && mac_suffix[1] == 0x0 &&
+	    mac_suffix[2] == 0x0) {
+		mac_suffix[0] = data[11];
+		mac_suffix[1] = data[12];
+		mac_suffix[2] = data[13];
+	}
+
+	LOG(LOG_DEBUG, "config bytes: %0.2X %0.2X %0.2X", data[5], data[6],
+	    data[7]);
+}
+
+
+/**
+   \brief balboa read callback
+   \param in the bufferevent that fired
+   \param arg the connection_t
+*/
+
+/*
+                 F    H    F       F F P   C L
+MS ML MT MT MT X 1 CT H MM 2 X X X 3 4 P X P F X X X X X ST X X X CB ME
+7E 1D FF AF 13 0 0 64 8 2D 0 0 1 0 0 4 0 0 0 0 0 0 0 0 0 64 0 0 0 6  7E 
+7E 1D FF AF 13 0 0 64 8 2E 0 0 1 0 0 4 0 0 0 0 0 0 0 0 0 64 0 0 0 72 7E 
+
+*/
+
+void balboa_buf_read_cb(struct bufferevent *in, void *arg)
+{
+	connection_t *conn = (connection_t *)arg;
+	size_t len, rlen;
+	uint8_t *data, header[2], cs;
+	device_t *dev;
+	int i, j;
+	struct evbuffer *evbuf;
+
+	evbuf = bufferevent_get_input(in);
+	len = evbuffer_get_length(evbuf);
+
+	if (len < 2)
+		return;  /* no size data yet */
+
+	evbuffer_copyout(evbuf, header, 2);
+	LOG(LOG_DEBUG, "Got MSG: %X len %d bytes", header[0], header[1]);
+	if (header[0] == M_START)
+		rlen = (size_t)header[1] + 2; /* checksum + msg end */
+	else
+		return; /* eh? */
+
+	data = safer_malloc(rlen);
+	evbuffer_remove(evbuf, data, rlen);
+#if 0
+	for (j=0; j < rlen; j++)
+		printf("%0.2X", data[j]);
+	printf("\n");
+	cs = balboa_calc_cs(data+1, rlen-3);
+#endif
+
+	i = find_balboa_mtype(data, rlen);
+	if (i == -1) {
+		free(data);
+		LOG(LOG_DEBUG, "Got unknown message type %0.2X%0.2X%0.2X",
+		    data[2], data[3], data[4]);
+		return;
+	}
+	switch (i) {
+	case BMTR_CONFIG_RESP:
+		parse_config_resp(data, rlen);
+		for (j=0; j < rlen; j++)
+			printf("%0.2X", data[j]);
+		printf("\n");
+		break;
+	}
+
+	free(data);
+
+	
+}
+
+/**
+   \brief Event callback used for balboa connection
+   \param ev The bufferevent that fired
+   \param what why did it fire?
+   \param arg pointer to connection_t;
+*/
+
+void balboa_connect_event_cb(struct bufferevent *ev, short what, void *arg)
+{
+	int err;
+	connection_t *conn = (connection_t *)arg;
+
+	if (what & BEV_EVENT_CONNECTED) {
+		LOG(LOG_DEBUG, "Connected to %s", conntype[conn->type]);
+		send_config_req();
+	} else if (what & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
+		if (what & BEV_EVENT_ERROR) {
+			err = bufferevent_socket_get_dns_error(ev);
+			if (err)
+				LOG(LOG_FATAL, "DNS Failure connecting to "
+				    "%s: %s", conntype[conn->type],
+				    strerror(err));
+		}
+		LOG(LOG_DEBUG, "Lost connection to %s, closing",
+		    conntype[conn->type]);
+		bufferevent_disable(ev, EV_READ|EV_WRITE);
+		bufferevent_free(ev);
+		/* Retry immediately */
+		connect_server_cb(0, 0, conn);
+	}
+}
+
+/**
+   \brief A timer callback that initiates a new connection
+   \param nada used for file descriptor
+   \param what why did we fire?
+   \param arg pointer to connection_t
+   \note also used to manually initiate a connection
+*/
+
+void connect_server_cb(int nada, short what, void *arg)
+{
+	connection_t *conn = (connection_t *)arg;
+	device_t *dev;
+
+	conn->bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
+	if (conn->type == CONN_TYPE_BALBOA)
+		bufferevent_setcb(conn->bev, balboa_buf_read_cb, NULL,
+				  balboa_connect_event_cb, conn);
+	else
+		return;
+	bufferevent_enable(conn->bev, EV_READ|EV_WRITE);
+	bufferevent_socket_connect(conn->bev, (struct sockaddr *)&bwg_addr,
+				   sizeof(struct sockaddr_in));
+	LOG(LOG_NOTICE, "Attempting to connect to %s @ %s:%d",
+	    conntype[conn->type], inet_ntoa(bwg_addr.sin_addr), conn->port);
+}
+
+/**
+   \brief Initialize devices
+*/
+
+void init_balboa_devs(void)
+{
+	device_t *dev;
+	char buf[256], macstr[16];
+	char *buf2;
+
+	/* lets build some basic devices */
+
+
+}
 
 
 /* Gnhastd connection type routines go here */
@@ -204,6 +532,9 @@ int main(int argc, char **argv)
 			LOG(LOG_FATAL, "Error reading config file, "
 			    "balboacoll section");
 	}
+
+	/* find the spa */
+	d30303_setup(BALBOA_MAC_PREFIX, NULL);
 
 	gnhastd_conn = smalloc(connection_t);
 	gnhastd_conn->cname = strdup(COLLECTOR_NAME);

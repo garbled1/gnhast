@@ -1,0 +1,22 @@
+#ifndef _BALBOA_H_
+#define _BALBOA_H_
+
+#define BALBOA_MAC_PREFIX	"00-15-27"
+#define BALBOA_PORT		4257
+
+#define M_START		0x7e
+#define M_END		0x7e
+
+enum BALBOA_MTYPES {
+   BMTR_STATUS_UPDATE,
+   BMTR_FILTER_CONFIG,
+   BMTS_CONFIG_REQ,
+   BMTR_CONFIG_RESP,
+   BMTS_FILTER_REQ,
+   BMTS_CONTROL_REQ,
+   BMTS_SET_TEMP,
+   BMTS_SET_TIME,
+   NROF_BMT,
+};
+
+#endif /*_BALBOA_H_*/
