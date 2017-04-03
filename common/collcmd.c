@@ -452,6 +452,7 @@ int cmd_update(pargs_t *args, void *arg)
 		case SC_BLIND:
 		case SC_DAYLIGHT:
 		case SC_MOONPH:
+		case SC_TRISTATE:
 			store_data_dev(dev, DATALOC_DATA, &args[i].arg.i);
 			break;
 		case SC_LUX:
@@ -595,6 +596,7 @@ int cmd_change(pargs_t *args, void *arg)
 		case SC_BLIND:
 		case SC_DAYLIGHT:
 		case SC_MOONPH:
+		case SC_TRISTATE:
 			store_data_dev(dev, DATALOC_CHANGE, &args[i].arg.i);
 			state = args[i].arg.i; /* XXX */
 			break;

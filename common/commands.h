@@ -111,6 +111,7 @@ enum SC_COMMANDS {
 	SC_SPAM,	/**< \brief spamhandler setting */
 	SC_DAYLIGHT,	/**< \brief daylight */
 	SC_MOONPH,	/**< \brief lunar phase */
+	SC_TRISTATE,	/**< \brief tri-state device */
 };
 
 void init_argcomm(void);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013
+ * Copyright (c) 2013, 2017
  *      Tim Rightnour.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -106,6 +106,7 @@ argtable_t argtable[] = {
 	{"alchan", SC_ALCHAN, PTUINT},
 	{"spamhandler", SC_SPAM, PTINT},
 	{"daylight", SC_DAYLIGHT, PTINT},
+	{"tristate", SC_TRISTATE, PTINT},
 	{"moonph", SC_MOONPH, PTDOUBLE},
 };
 
@@ -199,6 +200,7 @@ int find_arg_bydev(device_t *dev)
 	case SUBTYPE_ORP: return find_arg_byid(SC_ORP); break;
 	case SUBTYPE_SALINITY: return find_arg_byid(SC_SALINITY); break;
 	case SUBTYPE_DAYLIGHT: return find_arg_byid(SC_DAYLIGHT); break;
+	case SUBTYPE_TRISTATE: return find_arg_byid(SC_TRISTATE); break;
 	case SUBTYPE_MOONPH: return find_arg_byid(SC_MOONPH); break;
 	}
 	return -1;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016
+ * Copyright (c) 2013, 2016, 2017
  *      Tim Rightnour.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -85,9 +85,10 @@ enum PROTO_TYPES {
 	PROTO_TUXEDO,
 	PROTO_NEPTUNE_APEX,
 	PROTO_CALCULATED, /* for calculated values */
+	PROTO_BALBOA,
 	NROF_PROTOS,
 };
-#define PROTO_MAX PROTO_CALCULATED
+#define PROTO_MAX PROTO_BALBOA
 
 /***
     The following files must be updated when adding a subtype:
@@ -138,6 +139,7 @@ enum SUBTYPE_TYPES {
 	SUBTYPE_SALINITY, /* Salinity (d) */
 	SUBTYPE_DAYLIGHT, /* daylight (8 bit number stored in state) */
 	SUBTYPE_MOONPH, /* lunar phase (d) */
+	SUBTYPE_TRISTATE, /* tri-state device 0,1,2 stored in state) */
 	SUBTYPE_BOOL, /* Never actually use this one, just for submax */
 	NROF_SUBTYPES,
 };

@@ -102,6 +102,7 @@ name_map_t devproto_map[] = {
 	{PROTO_TUXEDO, "tuxedo"},
 	{PROTO_NEPTUNE_APEX, "neptuneapex"},
 	{PROTO_CALCULATED, "calculated"},
+	{PROTO_BALBOA, "balboa"},
 };
 
 name_map_t devsubtype_map[] = {
@@ -141,6 +142,7 @@ name_map_t devsubtype_map[] = {
 	{SUBTYPE_SALINITY, "salinity"},
 	{SUBTYPE_DAYLIGHT, "daylight"},
 	{SUBTYPE_MOONPH, "moonph"},
+	{SUBTYPE_TRISTATE, "tristate"},
 	{SUBTYPE_BOOL, "bool"},
 };
 
@@ -526,6 +528,7 @@ void get_data_dev(device_t *dev, int where, void *data)
 		case SUBTYPE_COLLECTOR:
 		case SUBTYPE_BLIND:
 		case SUBTYPE_DAYLIGHT:
+		case SUBTYPE_TRISTATE:
 			*((uint8_t *)data) = store->state;
 			break;
 		case SUBTYPE_NUMBER:
@@ -661,6 +664,7 @@ void store_data_dev(device_t *dev, int where, void *data)
 		case SUBTYPE_COLLECTOR:
 		case SUBTYPE_BLIND:
 		case SUBTYPE_DAYLIGHT:
+		case SUBTYPE_TRISTATE:
 			store->state = *((uint8_t *)data);
 			break;
 		case SUBTYPE_NUMBER:
@@ -789,6 +793,7 @@ int datatype_dev(device_t *dev)
 	case SUBTYPE_BLIND:
 	case SUBTYPE_DAYLIGHT:
 	case SUBTYPE_TRIGGER:
+	case SUBTYPE_TRISTATE:
 		return DATATYPE_UINT;
 		break;
 	case SUBTYPE_WATTSEC:
