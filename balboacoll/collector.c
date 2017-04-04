@@ -90,7 +90,11 @@ connection_t *balboa_conn;
 
 int need_rereg = 0;
 int devices_ready = 0;
+int nrof_pumps = 0;
+int tscale = TSCALE_F;
 uint8_t mac_suffix[3] = { 0x0, 0x0, 0x0 };
+uint8_t prev_stat[23];
+time_t spa_lastupd = NULL;
 extern int debugmode;
 extern int collector_instance;
 
@@ -270,6 +274,97 @@ void send_config_req(void)
 }
 
 /**
+   \brief Initialize devices
+   \param pumps number of pumps
+*/
+
+void init_balboa_devs(int pumps)
+{
+	device_t *dev;
+	char uid[256], name[256], macstr[16];
+	char *buf2;
+	int i;
+
+	/* lets build some basic devices */
+
+	if (mac_suffix[0] == 0x0 && mac_suffix[1] == 0x0 &&
+	    mac_suffix[2] == 0x0)
+		return;
+
+	sprintf(macstr, "%0.2X%0.2X%0.2X", mac_suffix[0],
+		mac_suffix[1], mac_suffix[2]);
+
+	/* first, pumps */
+	nrof_pumps = pumps;
+	for (i=0; i < pumps; i++) {
+		sprintf(uid, "%s-pump%0.2d", macstr, i);
+		sprintf(name, "Spa Pump #%0.2d", i);
+		generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
+				     DEVICE_SWITCH, SUBTYPE_TRISTATE, NULL,
+				     0, balboa_conn->bev);
+	}
+	/* the circulation pump */
+	sprintf(uid, "%s-circpump", macstr);
+	sprintf(name, "Spa Circulation Pump");
+	generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
+			     DEVICE_SWITCH, SUBTYPE_SWITCH, NULL,
+			     0, balboa_conn->bev);
+	/* the light */
+	sprintf(uid, "%s-light", macstr);
+	sprintf(name, "Spa Light");
+	generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
+			     DEVICE_SWITCH, SUBTYPE_SWITCH, NULL,
+			     0, balboa_conn->bev);
+	/* The current temp */
+	sprintf(uid, "%s-curtemp", macstr);
+	sprintf(name, "Spa Curent Temp");
+	generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
+			     DEVICE_SENSOR, SUBTYPE_TEMP, NULL,
+			     TSCALE_F, balboa_conn->bev);
+	dev = find_device_byuid(uid);
+	if (dev != NULL) {
+		tscale = dev->scale;
+	}
+
+	/* The settemp */
+	sprintf(uid, "%s-settemp", macstr);
+	sprintf(name, "Spa Set Temp");
+	generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
+			     DEVICE_SENSOR, SUBTYPE_TEMP, NULL,
+			     TSCALE_F, balboa_conn->bev);
+	/* The heat mode */
+	sprintf(uid, "%s-heatmode", macstr);
+	sprintf(name, "Spa Heating Mode");
+	generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
+			     DEVICE_SENSOR, SUBTYPE_TRISTATE, NULL,
+			     0, balboa_conn->bev);
+	/* The heat state */
+	sprintf(uid, "%s-heatstate", macstr);
+	sprintf(name, "Spa Heating State");
+	generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
+			     DEVICE_SENSOR, SUBTYPE_TRISTATE, NULL,
+			     0, balboa_conn->bev);
+	/* The heat state */
+	sprintf(uid, "%s-temprange", macstr);
+	sprintf(name, "Spa Temperature Range");
+	generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
+			     DEVICE_SENSOR, SUBTYPE_SWITCH, NULL,
+			     0, balboa_conn->bev);
+	devices_ready = 1;
+	/* are we dumping the conf file? */
+	if (dumpconf != NULL) {
+		LOG(LOG_NOTICE, "Dumping config file to "
+		    "%s and exiting", dumpconf);
+		dump_conf(cfg, 0, dumpconf);
+		exit(0);
+	}
+
+	/* initialize the prev register */
+	memset(prev_stat, 0, 23);
+}
+
+
+/**
    \brief Parse a config response
    \param data The data
    \param len Length of data
@@ -283,6 +378,8 @@ SZ 02 03 04   05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22
 
 22,23,24 seems to be mac prefix,  27-29 suffix.  25/26 unk
 8-13 also full macaddr.
+I'm assuming 05 is the number of pumps.  no idea what 06 is.  Wild guesses
+at this point.
 */
 
 int parse_config_resp(uint8_t *data, size_t len)
@@ -297,23 +394,186 @@ int parse_config_resp(uint8_t *data, size_t len)
 		mac_suffix[2] = data[13];
 	}
 
+	spa_lastupd = time(NULL);
+
 	LOG(LOG_DEBUG, "config bytes: %0.2X %0.2X %0.2X", data[5], data[6],
 	    data[7]);
+
+	/* we assume data[5] is number of pumps. Could be wrong. */
+	if (!devices_ready)
+		init_balboa_devs((int)data[5]);
+	return 0;
 }
 
+/**
+   \brief Parse a status update
+   \param data The data
+   \param len Length of data
+   \return 1 if error
+
+00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25
+MS ML MT MT MT XX F1 CT HH MM F2  X  X  X F3 F4 PP  X CP LF  X  X  X  X  X ST
+7E 1D FF AF 13  0  0 64  8 2D  0  0  1  0  0  4  0  0  0  0  0  0  0  0  0 64
+
+26 27 28 29 30
+ X  X  X CB ME
+ 0  0  0  6 7E
+*/
+
+int parse_status_update(uint8_t *data, size_t len)
+{
+	device_t *dev;
+	char uid[256], macstr[16];
+	int n_tscale = TSCALE_F;
+	int upd = 0;
+	int i;
+	uint8_t val;
+	double d;
+
+	/* we got data so update this */
+	spa_lastupd = time(NULL);
+
+	/*
+	  check if anything changed for quick exit.
+	  Because the minute counter will update every minute, we still send
+	  data once per minute.  This is intentional.
+	*/
+	if (memcmp(prev_stat, data+6, 23) == 0)
+		return 0;
+
+	sprintf(macstr, "%0.2X%0.2X%0.2X", mac_suffix[0],
+		mac_suffix[1], mac_suffix[2]);
+
+	/* figure out if our scale is correct still */
+	if (data[14] & 0x01)
+		n_tscale = TSCALE_C;
+	if (n_tscale != tscale) {
+		tscale = n_tscale;
+		upd = GNC_UPD_FULL;
+	}
+
+	/* First curtemp */
+	sprintf(uid, "%s-curtemp", macstr);
+	dev = find_device_byuid(uid);
+	if (dev == NULL) {
+		LOG(LOG_ERROR, "Can't find curtemp");
+		return 1;
+	}
+	d = (double)data[7];
+	if (tscale)
+		d /= 2.0;
+	store_data_dev(dev, DATALOC_DATA, &d);
+	if (upd)
+		dev->scale = tscale;
+	LOG(LOG_DEBUG, "CurTemp changed to %f", d);
+	gn_update_device(dev, upd, balboa_conn->bev);
+
+	/* Set Temp */
+	sprintf(uid, "%s-settemp", macstr);
+	dev = find_device_byuid(uid);
+	if (dev == NULL) {
+		LOG(LOG_ERROR, "Can't find settemp");
+		return 1;
+	}
+	d = (double)data[25];
+	if (tscale)
+		d /= 2.0;
+	store_data_dev(dev, DATALOC_DATA, &d);
+	if (upd)
+		dev->scale = tscale;
+	LOG(LOG_DEBUG, "SetTemp changed to %f", d);
+	gn_update_device(dev, upd, balboa_conn->bev);
+
+	/* Heat Mode (flag 2) */
+	sprintf(uid, "%s-heatmode", macstr);
+	dev = find_device_byuid(uid);
+	if (dev == NULL) {
+		LOG(LOG_ERROR, "Can't find heatmode");
+		return 1;
+	}
+	val = data[10] & 0x03;
+	if (val == 3)
+		val = 2;
+	store_data_dev(dev, DATALOC_DATA, &val);
+	LOG(LOG_DEBUG, "Heat Mode changed to %d", val);
+	gn_update_device(dev, 0, balboa_conn->bev);
+
+	/* Flag 4, heating, temp range */
+	sprintf(uid, "%s-heatstate", macstr);
+	dev = find_device_byuid(uid);
+	if (dev == NULL) {
+		LOG(LOG_ERROR, "Can't find heatstate");
+		return 1;
+	}
+	val = (data[15] & 0x30)>>4;
+	store_data_dev(dev, DATALOC_DATA, &val);
+	LOG(LOG_DEBUG, "Heat State changed to %d", val);
+	gn_update_device(dev, 0, balboa_conn->bev);
+
+	sprintf(uid, "%s-temprange", macstr);
+	dev = find_device_byuid(uid);
+	if (dev == NULL) {
+		LOG(LOG_ERROR, "Can't find temprange");
+		return 1;
+	}
+	val = (data[15] & 0x04)>>2;
+	store_data_dev(dev, DATALOC_DATA, &val);
+	LOG(LOG_DEBUG, "Temp Range changed to %d", val);
+	gn_update_device(dev, 0, balboa_conn->bev);
+
+	/* pump status */
+	for (i=0; i < nrof_pumps; i++) {
+		sprintf(uid, "%s-pump%0.2d", macstr, i);
+		dev = find_device_byuid(uid);
+		if (dev == NULL) {
+			LOG(LOG_ERROR, "Can't find pump %d", i);
+			return 1;
+		}
+		val = (data[16]>>i) & 0x03;
+		store_data_dev(dev, DATALOC_DATA, &val);
+		LOG(LOG_DEBUG, "Pump %d changed to %d", i, val);
+		gn_update_device(dev, 0, balboa_conn->bev);
+	}
+
+	/* Circulation pump */
+	sprintf(uid, "%s-circpump", macstr);
+	dev = find_device_byuid(uid);
+	if (dev == NULL) {
+		LOG(LOG_ERROR, "Can't find circpump");
+		return 1;
+	}
+	if (data[18] == 0x02)
+		val = 1;
+	else
+		val = 0;
+	store_data_dev(dev, DATALOC_DATA, &val);
+	LOG(LOG_DEBUG, "Circ Pump changed to %d", val);
+	gn_update_device(dev, 0, balboa_conn->bev);
+
+	/* Spa light */
+	sprintf(uid, "%s-light", macstr);
+	dev = find_device_byuid(uid);
+	if (dev == NULL) {
+		LOG(LOG_ERROR, "Can't find light");
+		return 1;
+	}
+	if (data[19] == 0x03)
+		val = 1;
+	else
+		val = 0;
+	store_data_dev(dev, DATALOC_DATA, &val);
+	LOG(LOG_DEBUG, "Light changed to %d", val);
+	gn_update_device(dev, 0, balboa_conn->bev);
+
+	/* Phew, done, now update the baseline */
+	memcpy(prev_stat, data+6, 23);
+	return 0;
+}
 
 /**
    \brief balboa read callback
    \param in the bufferevent that fired
    \param arg the connection_t
-*/
-
-/*
-                 F    H    F       F F P   C L
-MS ML MT MT MT X 1 CT H MM 2 X X X 3 4 P X P F X X X X X ST X X X CB ME
-7E 1D FF AF 13 0 0 64 8 2D 0 0 1 0 0 4 0 0 0 0 0 0 0 0 0 64 0 0 0 6  7E 
-7E 1D FF AF 13 0 0 64 8 2E 0 0 1 0 0 4 0 0 0 0 0 0 0 0 0 64 0 0 0 72 7E 
-
 */
 
 void balboa_buf_read_cb(struct bufferevent *in, void *arg)
@@ -340,18 +600,25 @@ void balboa_buf_read_cb(struct bufferevent *in, void *arg)
 
 	data = safer_malloc(rlen);
 	evbuffer_remove(evbuf, data, rlen);
+	cs = balboa_calc_cs(data+1, rlen-3);
+
+	if (cs != data[rlen-2]) {
+		LOG(LOG_ERROR, "Got bad checksum on message, discarding");
+		free(data);
+		return;
+	}
+
 #if 0
 	for (j=0; j < rlen; j++)
 		printf("%0.2X", data[j]);
 	printf("\n");
-	cs = balboa_calc_cs(data+1, rlen-3);
 #endif
 
 	i = find_balboa_mtype(data, rlen);
 	if (i == -1) {
+		LOG(LOG_DEBUG, "Got unknown message type %0.2X%0.2X%0.2X"
+		    " LEN:%d", data[2], data[3], data[4], data[1]);
 		free(data);
-		LOG(LOG_DEBUG, "Got unknown message type %0.2X%0.2X%0.2X",
-		    data[2], data[3], data[4]);
 		return;
 	}
 	switch (i) {
@@ -361,11 +628,12 @@ void balboa_buf_read_cb(struct bufferevent *in, void *arg)
 			printf("%0.2X", data[j]);
 		printf("\n");
 		break;
+	case BMTR_STATUS_UPDATE:
+		parse_status_update(data, rlen);
+		break;
 	}
 
 	free(data);
-
-	
 }
 
 /**
@@ -426,22 +694,6 @@ void connect_server_cb(int nada, short what, void *arg)
 	    conntype[conn->type], inet_ntoa(bwg_addr.sin_addr), conn->port);
 }
 
-/**
-   \brief Initialize devices
-*/
-
-void init_balboa_devs(void)
-{
-	device_t *dev;
-	char buf[256], macstr[16];
-	char *buf2;
-
-	/* lets build some basic devices */
-
-
-}
-
-
 /* Gnhastd connection type routines go here */
 
 /**
@@ -475,7 +727,7 @@ int main(int argc, char **argv)
 	char *pidfile;
 
 	/* process command line arguments */
-	while ((ch = getopt(argc, argv, "?c:d")) != -1)
+	while ((ch = getopt(argc, argv, "?c:dm:")) != -1)
 		switch (ch) {
 		case 'c':	/* Set configfile */
 			conffile = strdup(optarg);
@@ -483,9 +735,13 @@ int main(int argc, char **argv)
 		case 'd':	/* debugging mode */
 			debugmode = 1;
 			break;
+		case 'm':
+			dumpconf = strdup(optarg);
+			break;
 		default:
 		case '?':	/* you blew it */
-			(void)fprintf(stderr, "usage:\n%s [-c configfile]\n",
+			(void)fprintf(stderr, "usage:\n%s [-c configfile]"
+				      "[-m dumpconfigfile]\n",
 				      getprogname());
 			return(EXIT_FAILURE);
 			/*NOTREACHED*/
