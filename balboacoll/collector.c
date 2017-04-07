@@ -31,6 +31,8 @@
    \file collector.c
    \author Tim Rightnour
    \brief Collector for talking to a balboa spa wifi model 50350
+   Much help from:
+   https://gist.github.com/ccutrer/ba945ac2ff9508d9e151556b572f2503
 */
 
 #include <stdio.h>
@@ -90,8 +92,7 @@ connection_t *balboa_conn;
 
 int need_rereg = 0;
 int devices_ready = 0;
-int nrof_pumps = 0;
-int tscale = TSCALE_F;
+spaconfig_t spacfg;
 uint8_t mac_suffix[3] = { 0x0, 0x0, 0x0 };
 uint8_t prev_stat[23];
 time_t spa_lastupd = NULL;
@@ -99,7 +100,7 @@ extern int debugmode;
 extern int collector_instance;
 
 /* the message types */
-uint8_t mtypes[9][3] = {
+uint8_t mtypes[14][3] = {
 	{ 0xFF, 0xAF, 0x13 }, /* BMTR_STATUS_UPDATE */
 	{ 0x0A, 0xBF, 0x23 }, /* BMTR_FILTER_CONFIG */
 	{ 0x0A, 0xBF, 0x04 }, /* BMTS_CONFIG_REQ */
@@ -108,7 +109,20 @@ uint8_t mtypes[9][3] = {
 	{ 0x0A, 0xBF, 0x11 }, /* BMTS_CONTROL_REQ */
 	{ 0x0A, 0xBF, 0x20 }, /* BMTS_SET_TEMP */
 	{ 0x0A, 0xBF, 0x21 }, /* BMTS_SET_TIME */
-	{ 0x0A, 0xBF, 0x92 }, /* BMTS_SET_WI	FI */
+	{ 0x0A, 0xBF, 0x92 }, /* BMTS_SET_WIFI */
+	{ 0x0A, 0xBF, 0x22 }, /* BMTS_PANEL_REQ */
+	{ 0x0A, 0XBF, 0x27 }, /* BMTS_SET_TSCALE */
+	{ 0x0A, 0xBF, 0x2E }, /* BMTR_PANEL_RESP */
+	{ 0x0A, 0xBF, 0x24 }, /* BMTR_PANEL_NOCLUE1 */
+	{ 0x0A, 0XBF, 0x25 }, /* BMTR_PANEL_NOCLUE2 */
+};
+double tmin[2][2] = {
+	{ 50.0, 10.0 }, /* low F, C */
+	{ 80.0, 26.0 }, /* high F, C */
+};
+double tmax[2][2] = {
+	{ 80.0, 26.0 }, /* low F, C */
+	{ 104.0, 40.0 }, /* high F, C */
 };
 
 /* options setup */
@@ -140,32 +154,7 @@ void cb_sigterm(int fd, short what, void *arg);
 void cb_shutdown(int fd, short what, void *arg);
 void connect_server_cb(int nada, short what, void *arg);
 
-/*** Collector specific code goes here ***/
-
-/**
-   \brief Called when the discovery event ends and has found a device
-   \param url the url we found
-   \param hostname the hostname of the device
-   We will get back the IP in the url in the form of http://IP
-*/
-
-void d30303_found_cb(char *url, char *hostname)
-{
-	char *p;
-
-	p = url+7;
-	LOG(LOG_DEBUG, "Using IP: %s", p);
-	inet_aton(p, &bwg_addr.sin_addr);
-	bwg_addr.sin_port = htons(BALBOA_PORT);
-	bwg_addr.sin_family = AF_INET;
-
-	/* connect to what we found */
-	balboa_conn = smalloc(connection_t);
-	balboa_conn->port = BALBOA_PORT;
-	balboa_conn->host = strdup(p);
-	balboa_conn->type = CONN_TYPE_BALBOA;
-	connect_server_cb(0,0, balboa_conn);
-}
+/*** Checksum code ***/
 
 /**
  * Update the crc value with new data.
@@ -234,6 +223,226 @@ uint8_t balboa_calc_cs(uint8_t *data, int len)
 	return (uint8_t)crc;
 }
 
+/*** Collector callbacks go here ***/
+
+/**
+   \brief Called when a switch chg command occurs
+   \param dev device that got updated
+   \param state new state (on/off)
+   \param arg pointer to client_t
+
+   The control mechanisim is a toggle button, so we have to potentially
+   cycle through, not just set a value.
+*/
+
+void coll_chg_switch_cb(device_t *dev, int state, void *arg)
+{
+	char buf[16];
+	int i, j, iter;
+	uint8_t data[12];
+	uint8_t curval, cs;
+
+	if (dev->loc == NULL)
+		return; /* not a changeable value */
+
+	/* setup things that don't change */
+	data[0] = M_START;
+	data[1] = 7;
+	data[2] = mtypes[BMTS_CONTROL_REQ][0];
+	data[3] = mtypes[BMTS_CONTROL_REQ][1];
+	data[4] = mtypes[BMTS_CONTROL_REQ][2];
+	data[6] = 0x00; /* who knows? */
+	data[8] = M_END;
+
+	/* there are only a few, just iterate */
+
+	/* The lights */
+	if (strcmp(dev->loc, "l0") == 0 ||
+	    strcmp(dev->loc, "l1") == 0) { /* light */
+		get_data_dev(dev, DATALOC_DATA, &curval);
+		if (curval == state)
+			return;
+		if (strcmp(dev->loc, "l0") == 0)
+			data[5] = C_LIGHT1;
+		else
+			data[5] = C_LIGHT2;
+		data[7] = cs = balboa_calc_cs(data+1, 6);
+		bufferevent_write(balboa_conn->bev, data, 9);
+		return;
+	}
+	/* The pumps */
+	for (i=0; i < MAX_PUMPS; i++) {
+		get_data_dev(dev, DATALOC_DATA, &curval);
+		if (curval == state)
+			return;
+		/* this madness gives us the # of pushes to cycle around */
+		for (iter=0; iter < 3; iter++)
+			if (state == (curval+iter)%3)
+				break;
+
+		sprintf(buf, "p%0.2d", i);
+		if (strcmp(dev->loc, buf) == 0) {
+			for (j=0; j < iter; j++) {
+				/* 4 is 0, 5 is 2, presume 6 is 3? */
+				data[5] = C_PUMP1 + i;
+				data[7] = cs = balboa_calc_cs(data+1, 6);
+				bufferevent_write(balboa_conn->bev, data, 9);
+			}
+			return;
+		}
+	}
+	/* Heatmode */
+	if (strcmp(dev->loc, "hm") == 0) {
+		get_data_dev(dev, DATALOC_DATA, &curval);
+		if (curval == state)
+			return;
+		data[5] = C_HEATMODE;
+		data[7] = cs = balboa_calc_cs(data+1, 6);
+		bufferevent_write(balboa_conn->bev, data, 9);
+		return;
+	}
+	/* TempRange */
+	if (strcmp(dev->loc, "tr") == 0) {
+		get_data_dev(dev, DATALOC_DATA, &curval);
+		if (curval == state)
+			return;
+		data[5] = C_TEMPRANGE;
+		data[7] = cs = balboa_calc_cs(data+1, 6);
+		bufferevent_write(balboa_conn->bev, data, 9);
+		return;
+	}
+
+	/* The AUX devices */
+	if (strcmp(dev->loc, "a0") == 0 ||
+	    strcmp(dev->loc, "a1") == 0) { /* Aux 1 & 2 */
+		get_data_dev(dev, DATALOC_DATA, &curval);
+		if (curval == state)
+			return;
+		if (strcmp(dev->loc, "a0") == 0)
+			data[5] = C_AUX1;
+		else
+			data[5] = C_AUX2;
+		data[7] = cs = balboa_calc_cs(data+1, 6);
+		bufferevent_write(balboa_conn->bev, data, 9);
+		return;
+	}
+
+	/* The mister */
+	if (strcmp(dev->loc, "mi") == 0) {
+		get_data_dev(dev, DATALOC_DATA, &curval);
+		if (curval == state)
+			return;
+		data[5] = C_MISTER;
+		data[7] = cs = balboa_calc_cs(data+1, 6);
+		bufferevent_write(balboa_conn->bev, data, 9);
+		return;
+	}
+
+	/* The blower (quad state) */
+	if (strcmp(dev->loc, "bl") == 0) {
+		get_data_dev(dev, DATALOC_DATA, &curval);
+		if (curval == state)
+			return;
+		/* this madness gives us the # of pushes to cycle around */
+		for (iter=0; iter < 4; iter++)
+			if (state == (curval+iter)%4)
+				break;
+		for (j=0; j < iter; j++) {
+			data[5] = C_BLOWER;
+			data[7] = cs = balboa_calc_cs(data+1, 6);
+			bufferevent_write(balboa_conn->bev, data, 9);
+		}
+		return;
+	}
+}
+
+/**
+   \brief Called when a temp chg command occurs
+   \param dev device that got updated
+   \param temp new set temp
+   \param arg pointer to client_t
+*/
+
+void coll_chg_temp_cb(device_t *dev, double temp, void *arg)
+{
+	uint8_t val, data[8], cs;
+
+	if (temp < tmin[spacfg.trange][spacfg.tscale] ||
+	    temp > tmax[spacfg.trange][spacfg.tscale]) {
+		LOG(LOG_ERROR, "Attempt to set out of bounds temp %f", temp);
+		return;
+	}
+	val = (uint8_t)temp; /* close enough */
+	if (spacfg.tscale == TSCALE_C)
+		val *= 2;
+	data[0] = M_START;
+	data[1] = 6;
+	data[2] = mtypes[BMTS_SET_TEMP][0];
+	data[3] = mtypes[BMTS_SET_TEMP][1];
+	data[4] = mtypes[BMTS_SET_TEMP][2];
+	data[5] = val;
+	data[6] = cs = balboa_calc_cs(data+1, 5);
+	data[7] = M_END;
+	bufferevent_write(balboa_conn->bev, data, 8);
+	return;
+}
+
+/**
+   \brief Called when a chg command occurs
+   \param dev device that got updated
+   \param arg pointer to client_t
+*/
+void coll_chg_cb(device_t *dev, void *arg)
+{
+	uint8_t state;
+	double d;
+
+	switch (dev->subtype) {
+	case SUBTYPE_TRISTATE:
+	case SUBTYPE_SWITCH:
+		get_data_dev(dev, DATALOC_CHANGE, &state);
+                coll_chg_switch_cb(dev, state, arg);
+                break;
+	case SUBTYPE_TEMP:
+		get_data_dev(dev, DATALOC_CHANGE, &d);
+		coll_chg_temp_cb(dev, d, arg);
+		break;
+	default:
+		LOG(LOG_ERROR, "Got unhandled chg for subtype %d",
+		    dev->subtype);
+	}
+	return;
+}
+
+
+
+/*** Collector specific code goes here ***/
+
+/**
+   \brief Called when the discovery event ends and has found a device
+   \param url the url we found
+   \param hostname the hostname of the device
+   We will get back the IP in the url in the form of http://IP
+*/
+
+void d30303_found_cb(char *url, char *hostname)
+{
+	char *p;
+
+	p = url+7;
+	LOG(LOG_DEBUG, "Using IP: %s", p);
+	inet_aton(p, &bwg_addr.sin_addr);
+	bwg_addr.sin_port = htons(BALBOA_PORT);
+	bwg_addr.sin_family = AF_INET;
+
+	/* connect to what we found */
+	balboa_conn = smalloc(connection_t);
+	balboa_conn->port = BALBOA_PORT;
+	balboa_conn->host = strdup(p);
+	balboa_conn->type = CONN_TYPE_BALBOA;
+	connect_server_cb(0,0, balboa_conn);
+}
+
 /**
    \brief Figure out which message we recieved
    \param data the data stream
@@ -255,6 +464,37 @@ int find_balboa_mtype(uint8_t *data, size_t len)
 }
 
 /**
+   \brief Send a panel request
+   \param ba byte 1
+   \param bb byte 2
+
+      0001020304 0506070809101112
+0,1 - 7E0B0ABF2E 0A0001500000BF7E
+2,0 - 7E1A0ABF24 64DC140042503230303047310451800C6B010A0200F97E
+4,0 - 7E0E0ABF25 120432635068290341197E
+
+*/
+
+void send_panel_req(int ba, int bb)
+{
+	uint8_t data[10];
+
+	data[0] = M_START;
+	data[1] = 8;
+	data[2] = mtypes[BMTS_PANEL_REQ][0];
+	data[3] = mtypes[BMTS_PANEL_REQ][1];
+	data[4] = mtypes[BMTS_PANEL_REQ][2];
+	data[5] = (uint8_t)ba;
+	data[6] = 0;
+	data[7] = (uint8_t)bb;
+	data[8] = balboa_calc_cs(data+1, 7);
+	data[9] = M_END;
+
+	bufferevent_write(balboa_conn->bev, data, 10);
+}
+
+
+/**
    \brief Send a config request
 */
 
@@ -274,82 +514,147 @@ void send_config_req(void)
 }
 
 /**
+   \brief Callback to just send a config req every so often as a keepalive
+   \param fd ignored
+   \param what ignored
+   \param arg ignored
+*/
+
+void cb_get_spaconfig(int fd, short what, void *arg)
+{
+	send_config_req();
+}
+
+/**
+   \brief Attempt to rescue the connection to the balboa device
+   Sometimes the device seems to just stop talking to us. If it does so,
+   try sending it something just to wake it up.
+*/
+
+void rescue_balboa_conn(void)
+{
+	send_config_req();
+}
+
+
+
+/**
    \brief Initialize devices
    \param pumps number of pumps
 */
 
-void init_balboa_devs(int pumps)
+void init_balboa_devs(void)
 {
 	device_t *dev;
-	char uid[256], name[256], macstr[16];
+	char uid[256], name[256], macstr[16], loc[16];
 	char *buf2;
 	int i;
 
 	/* lets build some basic devices */
 
+	/* is our macsuffix set? */
 	if (mac_suffix[0] == 0x0 && mac_suffix[1] == 0x0 &&
 	    mac_suffix[2] == 0x0)
+		return;
+
+	/* If all three config elements are ready, we can build devs */
+	if (spacfg.cfgdone[CFGDONE_CONF] == 0 ||
+	    spacfg.cfgdone[CFGDONE_PANEL] == 0 ||
+	    spacfg.cfgdone[CFGDONE_STATUS] == 0)
 		return;
 
 	sprintf(macstr, "%0.2X%0.2X%0.2X", mac_suffix[0],
 		mac_suffix[1], mac_suffix[2]);
 
 	/* first, pumps */
-	nrof_pumps = pumps;
-	for (i=0; i < pumps; i++) {
-		sprintf(uid, "%s-pump%0.2d", macstr, i);
-		sprintf(name, "Spa Pump #%0.2d", i);
-		generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
-				     DEVICE_SWITCH, SUBTYPE_TRISTATE, NULL,
-				     0, balboa_conn->bev);
+	for (i=0; i < MAX_PUMPS; i++) {
+		if (spacfg.pump_array[i]) {
+			sprintf(uid, "%s-pump%0.2d", macstr, i);
+			sprintf(name, "Spa Pump #%0.2d", i);
+			sprintf(loc, "p%0.2d", i);
+			generic_build_device(cfg, uid, name, NULL,
+					     PROTO_BALBOA,
+					     DEVICE_SWITCH, SUBTYPE_TRISTATE,
+					     loc, 0, gnhastd_conn->bev);
+		}
 	}
 	/* the circulation pump */
-	sprintf(uid, "%s-circpump", macstr);
-	sprintf(name, "Spa Circulation Pump");
-	generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
-			     DEVICE_SWITCH, SUBTYPE_SWITCH, NULL,
-			     0, balboa_conn->bev);
-	/* the light */
-	sprintf(uid, "%s-light", macstr);
-	sprintf(name, "Spa Light");
-	generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
-			     DEVICE_SWITCH, SUBTYPE_SWITCH, NULL,
-			     0, balboa_conn->bev);
+	if (spacfg.circpump) {
+		sprintf(uid, "%s-circpump", macstr);
+		sprintf(name, "Spa Circulation Pump");
+		generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
+				     DEVICE_SWITCH, SUBTYPE_SWITCH, NULL,
+				     0, gnhastd_conn->bev);
+	}
+	/* the lights */
+	for (i=0; i < 2; i++) {
+		if (spacfg.light_array[i]) {
+			sprintf(uid, "%s-light%0.2d", macstr, i);
+			sprintf(name, "Spa Light #0.2d", i);
+			sprintf(loc, "l%d", i);
+			generic_build_device(cfg, uid, name, NULL,
+					     PROTO_BALBOA, DEVICE_SWITCH,
+					     SUBTYPE_SWITCH, loc,
+					     0, gnhastd_conn->bev);
+		}
+	}
+	/* the Aux devices */
+	for (i=0; i < 2; i++) {
+		if (spacfg.aux_array[i]) {
+			sprintf(uid, "%s-aux%0.2d", macstr, i);
+			sprintf(name, "Spa Aux #0.2d", i);
+			sprintf(loc, "a%d", i);
+			generic_build_device(cfg, uid, name, NULL,
+					     PROTO_BALBOA, DEVICE_SWITCH,
+					     SUBTYPE_SWITCH, loc,
+					     0, gnhastd_conn->bev);
+		}
+	}
+	/* the blower, needs a new type XXX */
+	/* the mister */
+	if (spacfg.mister) {
+		sprintf(uid, "%s-mister", macstr);
+		sprintf(name, "Spa Mister");
+		generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
+				     DEVICE_SWITCH, SUBTYPE_SWITCH, "mi",
+				     0, gnhastd_conn->bev);
+	}
 	/* The current temp */
 	sprintf(uid, "%s-curtemp", macstr);
 	sprintf(name, "Spa Curent Temp");
 	generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
 			     DEVICE_SENSOR, SUBTYPE_TEMP, NULL,
-			     TSCALE_F, balboa_conn->bev);
+			     spacfg.tscale, gnhastd_conn->bev);
 	dev = find_device_byuid(uid);
 	if (dev != NULL) {
-		tscale = dev->scale;
+		spacfg.tscale = dev->scale;
 	}
 
 	/* The settemp */
 	sprintf(uid, "%s-settemp", macstr);
 	sprintf(name, "Spa Set Temp");
 	generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
-			     DEVICE_SENSOR, SUBTYPE_TEMP, NULL,
-			     TSCALE_F, balboa_conn->bev);
+			     DEVICE_SENSOR, SUBTYPE_TEMP, "st",
+			     spacfg.tscale, gnhastd_conn->bev);
+
 	/* The heat mode */
 	sprintf(uid, "%s-heatmode", macstr);
 	sprintf(name, "Spa Heating Mode");
 	generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
-			     DEVICE_SENSOR, SUBTYPE_TRISTATE, NULL,
-			     0, balboa_conn->bev);
+			     DEVICE_SENSOR, SUBTYPE_TRISTATE, "hm",
+			     0, gnhastd_conn->bev);
 	/* The heat state */
 	sprintf(uid, "%s-heatstate", macstr);
 	sprintf(name, "Spa Heating State");
 	generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
 			     DEVICE_SENSOR, SUBTYPE_TRISTATE, NULL,
-			     0, balboa_conn->bev);
+			     0, gnhastd_conn->bev);
 	/* The heat state */
 	sprintf(uid, "%s-temprange", macstr);
 	sprintf(name, "Spa Temperature Range");
 	generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
-			     DEVICE_SENSOR, SUBTYPE_SWITCH, NULL,
-			     0, balboa_conn->bev);
+			     DEVICE_SENSOR, SUBTYPE_SWITCH, "tr",
+			     0, gnhastd_conn->bev);
 	devices_ready = 1;
 	/* are we dumping the conf file? */
 	if (dumpconf != NULL) {
@@ -362,7 +667,6 @@ void init_balboa_devs(int pumps)
 	/* initialize the prev register */
 	memset(prev_stat, 0, 23);
 }
-
 
 /**
    \brief Parse a config response
@@ -378,8 +682,11 @@ SZ 02 03 04   05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22
 
 22,23,24 seems to be mac prefix,  27-29 suffix.  25/26 unk
 8-13 also full macaddr.
-I'm assuming 05 is the number of pumps.  no idea what 06 is.  Wild guesses
-at this point.
+
+05 - nrof pumps. Bitmask 2 bits per pump.
+06 - P6xxxxP5
+07 - L1xxxxL2
+
 */
 
 int parse_config_resp(uint8_t *data, size_t len)
@@ -396,12 +703,72 @@ int parse_config_resp(uint8_t *data, size_t len)
 
 	spa_lastupd = time(NULL);
 
-	LOG(LOG_DEBUG, "config bytes: %0.2X %0.2X %0.2X", data[5], data[6],
-	    data[7]);
+	LOG(LOG_DEBUG, "Got device config");
 
-	/* we assume data[5] is number of pumps. Could be wrong. */
-	if (!devices_ready)
-		init_balboa_devs((int)data[5]);
+	if (!devices_ready) {
+		spacfg.cfgdone[CFGDONE_CONF] = 1;
+		init_balboa_devs();
+	}
+	return 0;
+}
+
+/**
+   \brief Parse a panel config response
+   \param data The data
+   \param len Length of data
+   \return -1 if error
+
+SZ 02 03 04   05 06 07 08 09 10 CB
+0B 0A BF 2E   0A 00 01 50 00 00 BF
+
+05 - nrof pumps. Bitmask 2 bits per pump.
+06 - P6xxxxP5
+07 - L2xxxxL1
+08 - CxxxxxBL - circpump, blower
+09 - xxMIxxAA - mister, Aux2, Aux1
+
+*/
+
+int parse_panel_config_resp(uint8_t *data, size_t len)
+{
+	int i;
+
+	spa_lastupd = time(NULL);
+
+	LOG(LOG_DEBUG, "Got panel config");
+
+	if (!devices_ready) {
+		/* check the config bitmasks */
+		if (data[5] & 0x03)
+			spacfg.pump_array[0] = 1;
+		if (data[5] & 0x0c)
+			spacfg.pump_array[1] = 1;
+		if (data[5] & 0x30)
+			spacfg.pump_array[2] = 1;
+		if (data[5] & 0xc0)
+			spacfg.pump_array[3] = 1;
+		if (data[6] & 0x03)
+			spacfg.pump_array[4] = 1;
+		if (data[6] & 0xc0)
+			spacfg.pump_array[5] = 1;
+		if (data[7] & 0x03)
+			spacfg.light_array[0] = 1;
+		if (data[7] & 0xc0)
+			spacfg.light_array[1] = 1;
+		if (data[8] & 0x03)
+			spacfg.blower = 1;
+		if (data[8] & 0x80)
+			spacfg.circpump = 1;
+		if (data[9] & 0x01)
+			spacfg.aux_array[1] = 1;
+		if (data[9] & 0x02)
+			spacfg.aux_array[2] = 1;
+		if (data[9] & 0x30)
+			spacfg.mister = 1;
+		/* we got the second cfg response */
+		spacfg.cfgdone[CFGDONE_PANEL] = 1;
+		init_balboa_devs();
+	}
 	return 0;
 }
 
@@ -412,12 +779,14 @@ int parse_config_resp(uint8_t *data, size_t len)
    \return 1 if error
 
 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25
-MS ML MT MT MT XX F1 CT HH MM F2  X  X  X F3 F4 PP  X CP LF  X  X  X  X  X ST
+MS ML MT MT MT XX F1 CT HH MM F2  X  X  X F3 F4 PP  X CP LF MB  X  X  X  X ST
 7E 1D FF AF 13  0  0 64  8 2D  0  0  1  0  0  4  0  0  0  0  0  0  0  0  0 64
 
 26 27 28 29 30
  X  X  X CB ME
  0  0  0  6 7E
+
+20- mister/blower
 */
 
 int parse_status_update(uint8_t *data, size_t len)
@@ -429,6 +798,19 @@ int parse_status_update(uint8_t *data, size_t len)
 	int i;
 	uint8_t val;
 	double d;
+
+	if (!devices_ready) {
+		if (data[14] & 0x01)
+			spacfg.tscale = TSCALE_C;
+		else
+			spacfg.tscale = TSCALE_F;
+
+		spacfg.trange = (data[15] & 0x04)>>2;
+
+		spacfg.cfgdone[CFGDONE_STATUS] = 1;
+		init_balboa_devs();
+		return 1;
+	}
 
 	/* we got data so update this */
 	spa_lastupd = time(NULL);
@@ -447,8 +829,8 @@ int parse_status_update(uint8_t *data, size_t len)
 	/* figure out if our scale is correct still */
 	if (data[14] & 0x01)
 		n_tscale = TSCALE_C;
-	if (n_tscale != tscale) {
-		tscale = n_tscale;
+	if (n_tscale != spacfg.tscale) {
+		spacfg.tscale = n_tscale;
 		upd = GNC_UPD_FULL;
 	}
 
@@ -460,13 +842,13 @@ int parse_status_update(uint8_t *data, size_t len)
 		return 1;
 	}
 	d = (double)data[7];
-	if (tscale)
+	if (spacfg.tscale)
 		d /= 2.0;
 	store_data_dev(dev, DATALOC_DATA, &d);
 	if (upd)
-		dev->scale = tscale;
+		dev->scale = spacfg.tscale;
 	LOG(LOG_DEBUG, "CurTemp changed to %f", d);
-	gn_update_device(dev, upd, balboa_conn->bev);
+	gn_update_device(dev, upd, gnhastd_conn->bev);
 
 	/* Set Temp */
 	sprintf(uid, "%s-settemp", macstr);
@@ -476,13 +858,13 @@ int parse_status_update(uint8_t *data, size_t len)
 		return 1;
 	}
 	d = (double)data[25];
-	if (tscale)
+	if (spacfg.tscale)
 		d /= 2.0;
 	store_data_dev(dev, DATALOC_DATA, &d);
 	if (upd)
-		dev->scale = tscale;
+		dev->scale = spacfg.tscale;
 	LOG(LOG_DEBUG, "SetTemp changed to %f", d);
-	gn_update_device(dev, upd, balboa_conn->bev);
+	gn_update_device(dev, upd, gnhastd_conn->bev);
 
 	/* Heat Mode (flag 2) */
 	sprintf(uid, "%s-heatmode", macstr);
@@ -496,7 +878,7 @@ int parse_status_update(uint8_t *data, size_t len)
 		val = 2;
 	store_data_dev(dev, DATALOC_DATA, &val);
 	LOG(LOG_DEBUG, "Heat Mode changed to %d", val);
-	gn_update_device(dev, 0, balboa_conn->bev);
+	gn_update_device(dev, 0, gnhastd_conn->bev);
 
 	/* Flag 4, heating, temp range */
 	sprintf(uid, "%s-heatstate", macstr);
@@ -508,7 +890,7 @@ int parse_status_update(uint8_t *data, size_t len)
 	val = (data[15] & 0x30)>>4;
 	store_data_dev(dev, DATALOC_DATA, &val);
 	LOG(LOG_DEBUG, "Heat State changed to %d", val);
-	gn_update_device(dev, 0, balboa_conn->bev);
+	gn_update_device(dev, 0, gnhastd_conn->bev);
 
 	sprintf(uid, "%s-temprange", macstr);
 	dev = find_device_byuid(uid);
@@ -517,54 +899,97 @@ int parse_status_update(uint8_t *data, size_t len)
 		return 1;
 	}
 	val = (data[15] & 0x04)>>2;
+	spacfg.trange = val; /* update trange here for speed */
 	store_data_dev(dev, DATALOC_DATA, &val);
 	LOG(LOG_DEBUG, "Temp Range changed to %d", val);
-	gn_update_device(dev, 0, balboa_conn->bev);
+	gn_update_device(dev, 0, gnhastd_conn->bev);
 
 	/* pump status */
-	for (i=0; i < nrof_pumps; i++) {
+	for (i=0; i < MAX_PUMPS; i++) {
+		if (!spacfg.pump_array[i])
+			continue;
 		sprintf(uid, "%s-pump%0.2d", macstr, i);
 		dev = find_device_byuid(uid);
 		if (dev == NULL) {
 			LOG(LOG_ERROR, "Can't find pump %d", i);
 			return 1;
 		}
-		val = (data[16]>>i) & 0x03;
+		if (i < 4)
+			val = (data[16]>>i) & 0x03;
+		else
+			val = (data[17]>>(i-4)) & 0x03;
 		store_data_dev(dev, DATALOC_DATA, &val);
 		LOG(LOG_DEBUG, "Pump %d changed to %d", i, val);
-		gn_update_device(dev, 0, balboa_conn->bev);
+		gn_update_device(dev, 0, gnhastd_conn->bev);
 	}
 
 	/* Circulation pump */
-	sprintf(uid, "%s-circpump", macstr);
-	dev = find_device_byuid(uid);
-	if (dev == NULL) {
-		LOG(LOG_ERROR, "Can't find circpump");
-		return 1;
+	if (spacfg.circpump) {
+		sprintf(uid, "%s-circpump", macstr);
+		dev = find_device_byuid(uid);
+		if (dev == NULL) {
+			LOG(LOG_ERROR, "Can't find circpump");
+			return 1;
+		}
+		if (data[18] == 0x02)
+			val = 1;
+		else
+			val = 0;
+		store_data_dev(dev, DATALOC_DATA, &val);
+		LOG(LOG_DEBUG, "Circ Pump changed to %d", val);
+		gn_update_device(dev, 0, gnhastd_conn->bev);
 	}
-	if (data[18] == 0x02)
-		val = 1;
-	else
-		val = 0;
-	store_data_dev(dev, DATALOC_DATA, &val);
-	LOG(LOG_DEBUG, "Circ Pump changed to %d", val);
-	gn_update_device(dev, 0, balboa_conn->bev);
-
-	/* Spa light */
-	sprintf(uid, "%s-light", macstr);
-	dev = find_device_byuid(uid);
-	if (dev == NULL) {
-		LOG(LOG_ERROR, "Can't find light");
-		return 1;
+	/* Spa lights */
+	for (i=0; i<2; i++) {
+		if (!spacfg.light_array[i])
+			continue;
+		sprintf(uid, "%s-light%0.2d", macstr, i);
+		dev = find_device_byuid(uid);
+		if (dev == NULL) {
+			LOG(LOG_ERROR, "Can't find light %d", i);
+			return 1;
+		}
+		if (data[19]>>i & 0x03)
+			val = 1;
+		else
+			val = 0;
+		store_data_dev(dev, DATALOC_DATA, &val);
+		LOG(LOG_DEBUG, "Light #%d changed to %d", i, val);
+		gn_update_device(dev, 0, gnhastd_conn->bev);
 	}
-	if (data[19] == 0x03)
-		val = 1;
-	else
-		val = 0;
-	store_data_dev(dev, DATALOC_DATA, &val);
-	LOG(LOG_DEBUG, "Light changed to %d", val);
-	gn_update_device(dev, 0, balboa_conn->bev);
 
+	/* Mister */
+	if (spacfg.mister) {
+		sprintf(uid, "%s-mister", macstr);
+		dev = find_device_byuid(uid);
+		if (dev == NULL) {
+			LOG(LOG_ERROR, "Can't find mister");
+			return 1;
+		}
+		val = data[20] & 0x01;
+		store_data_dev(dev, DATALOC_DATA, &val);
+		LOG(LOG_DEBUG, "Mister changed to %d", val);
+		gn_update_device(dev, 0, gnhastd_conn->bev);
+	}
+
+	/* AUX */
+	for (i=0; i<2; i++) {
+		if (!spacfg.aux_array[i])
+			continue;
+		sprintf(uid, "%s-aux%0.2d", macstr, i);
+		dev = find_device_byuid(uid);
+		if (dev == NULL) {
+			LOG(LOG_ERROR, "Can't find aux %d", i);
+			return 1;
+		}
+		if (i == 0)
+			val = data[20] & 0x08;
+		else
+			val = data[20] & 0x10;
+		store_data_dev(dev, DATALOC_DATA, &val);
+		LOG(LOG_DEBUG, "Aux changed to %d", val);
+		gn_update_device(dev, 0, gnhastd_conn->bev);
+	}
 	/* Phew, done, now update the baseline */
 	memcpy(prev_stat, data+6, 23);
 	return 0;
@@ -592,7 +1017,7 @@ void balboa_buf_read_cb(struct bufferevent *in, void *arg)
 		return;  /* no size data yet */
 
 	evbuffer_copyout(evbuf, header, 2);
-	LOG(LOG_DEBUG, "Got MSG: %X len %d bytes", header[0], header[1]);
+	//LOG(LOG_DEBUG, "Got MSG: %X len %d bytes", header[0], header[1]);
 	if (header[0] == M_START)
 		rlen = (size_t)header[1] + 2; /* checksum + msg end */
 	else
@@ -608,32 +1033,36 @@ void balboa_buf_read_cb(struct bufferevent *in, void *arg)
 		return;
 	}
 
-#if 0
-	for (j=0; j < rlen; j++)
-		printf("%0.2X", data[j]);
-	printf("\n");
-#endif
-
 	i = find_balboa_mtype(data, rlen);
 	if (i == -1) {
 		LOG(LOG_DEBUG, "Got unknown message type %0.2X%0.2X%0.2X"
 		    " LEN:%d", data[2], data[3], data[4], data[1]);
+#if 0
+		for (j=0; j < rlen; j++)
+			printf("%0.2X", data[j]);
+		printf("\n");
+#endif
 		free(data);
 		return;
 	}
 	switch (i) {
 	case BMTR_CONFIG_RESP:
 		parse_config_resp(data, rlen);
-		for (j=0; j < rlen; j++)
-			printf("%0.2X", data[j]);
-		printf("\n");
 		break;
 	case BMTR_STATUS_UPDATE:
-		parse_status_update(data, rlen);
+		j = parse_status_update(data, rlen);
+		break;
+	case BMTR_PANEL_RESP:
+		parse_panel_config_resp(data, rlen);
 		break;
 	}
 
 	free(data);
+
+	if ((time(NULL) - spa_lastupd) > 5 && j) {
+		/* something went wrong.  re-ask for the config */
+		send_config_req();
+	}
 }
 
 /**
@@ -650,7 +1079,9 @@ void balboa_connect_event_cb(struct bufferevent *ev, short what, void *arg)
 
 	if (what & BEV_EVENT_CONNECTED) {
 		LOG(LOG_DEBUG, "Connected to %s", conntype[conn->type]);
+		/* ask for the config */
 		send_config_req();
+		send_panel_req(0, 1);
 	} else if (what & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
 		if (what & BEV_EVENT_ERROR) {
 			err = bufferevent_socket_get_dns_error(ev);
@@ -700,14 +1131,18 @@ void connect_server_cb(int nada, short what, void *arg)
    \brief Check if a collector is functioning properly
    \param conn connection_t of collector's gnhastd connection
    \return 1 if OK, 0 if broken
-   Generally you set this up with some kind of last update check using
-   time(2).  Compare it against the normal update rate, and if there haven't
-   been updates in say, 4-6 cycles, return 0.
+
+   This device spams status updates about 4 per second (wow!)  So if we don't
+   hear from it in about 15 seconds, it's super broke.
 */
 
 int collector_is_ok(void)
 {
-	return(1); /* lie */
+	if ((time(NULL) - spa_lastupd) < 15)
+                return(1);
+
+	rescue_balboa_conn(); /* at least try */
+        return(0);
 }
 
 /**
@@ -722,6 +1157,7 @@ int main(int argc, char **argv)
 	struct event *ev;
 	extern char *optarg;
 	extern int optind;
+	struct timeval secs = { 0, 0 };
 	int ch, port = -1;
 	char *gnhastdserver = NULL;
 	char *pidfile;
@@ -752,6 +1188,9 @@ int main(int argc, char **argv)
 		if (daemon(0, 0) == -1)
 			LOG(LOG_FATAL, "Failed to daemonize: %s",
 			    strerror(errno));
+
+	/* Init the config array 0 */
+	memset(&spacfg, 0, sizeof(spaconfig_t));
 
 	/* Initialize the event system */
 	base = event_base_new();
@@ -820,6 +1259,11 @@ int main(int argc, char **argv)
 	event_add(ev, NULL);
 	ev = evsignal_new(base, SIGUSR1, cb_sigusr1, NULL);
 	event_add(ev, NULL);
+
+	/* check the config every 50 minutes */
+	secs.tv_sec = 3000;
+	ev = event_new(base, -1, EV_PERSIST, cb_get_spaconfig, NULL);
+	event_add(ev, &secs);
 
 	/* go forth and destroy */
 	event_base_dispatch(base);
