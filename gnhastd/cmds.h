@@ -20,6 +20,7 @@ int cmd_imalive(pargs_t *args, void *arg);
 int cmd_setalarm(pargs_t *args, void *arg);
 int cmd_listen_alarms(pargs_t *args, void *arg);
 int cmd_dump_alarms(pargs_t *args, void *arg);
+int cmd_get_apiv(pargs_t *args, void *arg);
 
 int parsed_command(char *command, pargs_t *args, void *arg);
 

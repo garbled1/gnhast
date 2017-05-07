@@ -141,6 +141,7 @@ void generic_connect_server_cb(int nada, short what, void *arg)
 
 	if (need_rereg) {
 		gn_client_name(gnhastd_conn->bev, conn->cname);
+		gn_get_apiv(gnhastd_conn->bev);
 	}
 }
 

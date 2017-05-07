@@ -53,6 +53,8 @@
 /* General defines */
 
 #define HEALTH_CHECK_RATE	60
+/* Bump this whenever you add a new command */
+#define GNHASTD_PROTO_VERS	0x11
 
 /* Basic device types */
 enum DEV_TYPES {

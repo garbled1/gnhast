@@ -32,6 +32,7 @@ void gn_disconnect(struct bufferevent *bev);
 void gn_client_name(struct bufferevent *bev, char *name);
 void gn_ping(struct bufferevent *bev);
 void gn_imalive(struct bufferevent *bev);
+void gn_get_apiv(struct bufferevent *bev);
 void gn_setalarm(struct bufferevent *bev, char *aluid, char *altext,
 		 int alsev, uint32_t alchan);
 void generic_build_device(cfg_t *cfg, char *uid, char *name, char *rrdname,

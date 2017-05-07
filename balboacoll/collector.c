@@ -65,6 +65,9 @@
 #include "collector.h"
 #include "crc.h"
 
+#define GNHASTD_MIN_PROTO_VERS	0x11
+extern int min_proto_version;
+
 /** our logfile */
 FILE *logfile;
 char *dumpconf = NULL;
@@ -1189,6 +1192,9 @@ int main(int argc, char **argv)
 			LOG(LOG_FATAL, "Failed to daemonize: %s",
 			    strerror(errno));
 
+	/* set min proto version */
+	min_proto_version = GNHASTD_MIN_PROTO_VERS;
+
 	/* Init the config array 0 */
 	memset(&spacfg, 0, sizeof(spaconfig_t));
 
@@ -1247,6 +1253,7 @@ int main(int argc, char **argv)
 	generic_connect_server_cb(0, 0, gnhastd_conn);
 	collector_instance = cfg_getint(balboacoll_c, "instance");
 	gn_client_name(gnhastd_conn->bev, COLLECTOR_NAME);
+	gn_get_apiv(gnhastd_conn->bev);
 
 	/* setup signal handlers */
 	ev = evsignal_new(base, SIGHUP, cb_sighup, conffile);

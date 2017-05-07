@@ -670,6 +670,21 @@ void gn_imalive(struct bufferevent *bev)
 	evbuffer_free(send);
 }
 
+/**
+   \brief Send a get api version
+   \param bev bufferevent connected to a gnhastd server
+*/
+
+void gn_get_apiv(struct bufferevent *bev)
+{
+	struct evbuffer *send;
+
+	send = evbuffer_new();
+	evbuffer_add_printf(send, "getapiv\n");
+	bufferevent_write_buffer(bev, send);
+	evbuffer_free(send);
+}
+
 /* note, we have no client send die command.  There is no feasible scenario
    where gnhastd is alive enough to process a death request, but broken enough
    to need one.  Nor do we actually want gnhastd being bonked by collectors.

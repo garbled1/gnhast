@@ -75,6 +75,8 @@ extern char *conffile;
 extern cfg_t *cfg;
 extern struct bufferevent *gnhastd_bev;
 
+int min_proto_version = 0;
+
 /** The command table */
 commands_t commands[] = {
 	{"chg", cmd_change, 0},
@@ -88,6 +90,7 @@ commands_t commands[] = {
 	{"upd", cmd_update, 0},
 	{"mod", cmd_modify, 0},
 	{"setalarm", cmd_alarm, 0},
+	{"apiv", cmd_apiv, 0},
 };
 
 /** The size of the command table */
@@ -233,6 +236,34 @@ int __attribute__((weak)) cmd_alarm(pargs_t *args, void *arg)
 }
 
 /***** Full blown commands *****/
+
+/**
+   \brief Handle an apiv command
+   \param args The list of arguments
+   \param arg void pointer to client_t of provider
+*/
+
+int cmd_apiv(pargs_t *args, void *arg)
+{
+	int i;
+	int64_t version = 0;
+
+	for (i=0; args[i].cword != -1; i++) {
+		switch (args[i].cword) {
+		case SC_NUMBER:
+			version = args[i].arg.ll;
+			break;
+		}
+	}
+
+	LOG(LOG_DEBUG, "Gnhastd APIV: %d My min APIV: %d", version,
+	    min_proto_version);
+
+	if (version < min_proto_version)
+		LOG(LOG_FATAL, "This collector needs protocol API %d, but the"
+		    " server is %d.", min_proto_version, version);
+	return(0);
+}
 
 /**
 	\brief Handle a register device command

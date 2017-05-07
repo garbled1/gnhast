@@ -4,6 +4,7 @@
 
 void init_commands(void);
 int parsed_command(char *command, pargs_t *args, void *arg);
+int cmd_apiv(pargs_t *args, void *arg);
 int cmd_register(pargs_t *args, void *arg);
 int cmd_register_group(pargs_t *args, void *arg);
 int cmd_update(pargs_t *args, void *arg);

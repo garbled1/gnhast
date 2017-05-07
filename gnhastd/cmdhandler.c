@@ -58,6 +58,7 @@ extern argtable_t argtable[];
 /* When adding new commands, update the following files:
    gnhastd/cmds.h
    common/gncoll.c  (if we want to make a shortcut cmd for clients)
+   common/gnhast.h (bump GNHASTD_PROTO_VERS)
 */
 
 /** The command table */
@@ -81,6 +82,7 @@ commands_t commands[] = {
 	{"setalarm", cmd_setalarm, 0},
 	{"listenalarms", cmd_listen_alarms, 0},
 	{"dumpalarms", cmd_dump_alarms, 0},
+	{"getapiv", cmd_get_apiv, 0},
 };
 
 /** The size of the command table */
@@ -1306,4 +1308,21 @@ int cmd_dump_alarms(pargs_t *args, void *arg)
 	}
 
 	return 0;
+}
+
+/**
+   \brief Got a request for API version
+   \param args The list of arguments
+   \param arg void pointer to client_t of connection
+*/
+
+int cmd_get_apiv(pargs_t *args, void *arg)
+{
+	client_t *client = (client_t *)arg;
+	struct evbuffer *send;
+
+	send = evbuffer_new();
+	evbuffer_add_printf(send, "apiv number:%d\n", GNHASTD_PROTO_VERS);
+	bufferevent_write_buffer(client->ev, send);
+	evbuffer_free(send);
 }
