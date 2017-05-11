@@ -1,8 +1,8 @@
-gnhast
+gnhast {#mainpage}
 ======
 
-Garbled's NetBSD Home Automation Scripting Tools
-------------------------------------------------
+Garbled's Nifty Home Automation Scripting Tools
+-----------------------------------------------
 
 Gnhast is an event based home automation suite of tools.  It relies on a
 central daemon, which handles all the coordination of work, and collectors

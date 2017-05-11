@@ -28,7 +28,7 @@
  */
 
 /**
-   \file collector.c
+   \file balboacoll/collector.c
    \author Tim Rightnour
    \brief Collector for talking to a balboa spa wifi model 50350
    Much help from:
