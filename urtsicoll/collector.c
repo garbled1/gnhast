@@ -28,7 +28,7 @@
  */
 
 /**
-   \file collector.c
+   \file urtsicoll/collector.c
    \author Tim Rightnour
    \brief Somfy URTSI collector
 

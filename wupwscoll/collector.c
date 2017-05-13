@@ -28,7 +28,7 @@
  */
 
 /**
-   \file collector.c
+   \file wupwscoll/collector.c
    \author Tim Rightnour
    \brief Weather Underground PWS collector
    This collector connects to gnhastd, and updates a PWS with

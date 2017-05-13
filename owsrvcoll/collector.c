@@ -28,7 +28,7 @@
  */
 
 /**
-   \file collector.c
+   \file owsrvcoll/collector.c
    \author Tim Rightnour
    \brief One Wire Server collector
    This collector connects to an owserver, and relays the data to gnhastd

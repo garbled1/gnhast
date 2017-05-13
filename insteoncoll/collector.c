@@ -28,7 +28,7 @@
  */
 
 /**
-   \file collector.c
+   \file insteoncoll/collector.c
    \brief Bidirectional collector for insteon devices
    \author Tim Rightnour
    \note Currently only supports i2 and i2cs devices

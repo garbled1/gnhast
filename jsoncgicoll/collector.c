@@ -28,7 +28,7 @@
  */
 
 /**
-   \file collector.c
+   \file jsoncgicoll/collector.c
    \author Tim Rightnour
    \brief A cgi backend that generates json data of device status
 */

@@ -28,7 +28,7 @@
  */
 
 /**
-   \file collector.c
+   \file ad2usbcoll/collector.c
    \author Tim Rightnour
    \brief NUTech AD2USB collector
 */

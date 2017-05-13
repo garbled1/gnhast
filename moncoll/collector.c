@@ -28,7 +28,7 @@
  */
 
 /**
-   \file collector.c
+   \file moncoll/collector.c
    \author Tim Rightnour
    \brief A collector to monitor and restart other collectors
 */

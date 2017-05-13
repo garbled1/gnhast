@@ -28,7 +28,7 @@
  */
 
 /**
-   \file collector.c
+   \file icaddycoll/collector.c
    \author Tim Rightnour
    \brief IrrigationCaddy collector
 */

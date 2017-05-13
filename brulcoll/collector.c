@@ -28,7 +28,7 @@
  */
 
 /**
-   \file collector.c
+   \file brulcoll/collector.c
    \author Tim Rightnour
    \brief Brultech collector
    This collector connects to a brultech GEM, and relays the data to gnhastd

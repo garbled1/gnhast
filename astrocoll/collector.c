@@ -28,7 +28,7 @@
  */
 
 /**
-   \file collector.c
+   \file astrocoll/collector.c
    \author Tim Rightnour
    \brief Astronomical Phenomenon Collector
 */

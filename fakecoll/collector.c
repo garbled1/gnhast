@@ -28,7 +28,7 @@
  */
 
 /**
-   \file collector.c
+   \file fakecoll/collector.c
    \author Tim Rightnour
    \brief An example collector, that generates fake data to test
    \note You may/should use this as a skeleton to create a new collector

@@ -28,7 +28,7 @@
  */
 
 /**
-   \file collector.c
+   \file alarmcoll/collector.c
    \author Tim Rightnour
    \brief A collector that can monitor devices and create alarms
 */

@@ -28,7 +28,7 @@
  */
 
 /**
-   \file collector.c
+   \file wmr918coll/collector.c
    \author Tim Rightnour
    \brief Oregon Scientific WMR918/968 Collector
    Can be used directly attached, or with wx200d

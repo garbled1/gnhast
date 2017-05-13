@@ -28,7 +28,7 @@
  */
 
 /**
-   \file collector.c
+   \file rrdcoll/collector.c
    \author Tim Rightnour
    \brief RRDtool collector
    This collector connects to gnhastd, and generates rrd data.

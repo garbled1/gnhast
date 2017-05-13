@@ -28,7 +28,7 @@
  */
 
 /**
-   \file collector.c
+   \file venstarcoll/collector.c
    \author Tim Rightnour
    \brief Venstar T5800/T5900/T6800/T6900 collector
    Documentation for this is available at:
