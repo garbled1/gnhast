@@ -1,0 +1,5 @@
+PROJECT_NAME = gnhast
+PROJECT_LOGO = data/gnhast-icon-48.png
+INPUT = README.md . docs
+USE_MDFILE_AS_MAINPAGE = README.md
+RECURSIVE = YES

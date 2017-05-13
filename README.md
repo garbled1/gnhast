@@ -1,4 +1,4 @@
-gnhast {#mainpage}
+gnhast
 ======
 
 Garbled's Nifty Home Automation Scripting Tools
