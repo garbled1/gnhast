@@ -84,6 +84,5 @@ log files, and conf files.  Use chown/chmod.
 More Documentation
 ------------------
 
-[Doxygen Source Documentation](https://codedocs.xyz/garbled1/gnhast/)
-[Full Documentation](https://garbled1.github.io/gnhast/)
-
+* [Doxygen Source Documentation](https://codedocs.xyz/garbled1/gnhast/)
+* [Full Documentation](https://garbled1.github.io/gnhast/)
