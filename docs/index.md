@@ -1,5 +1,3 @@
-![logo](data/gnhast-icon-48.png)
-
 gnhast
 ======
 
@@ -13,8 +11,6 @@ central daemon, which handles all the coordination of work, and collectors
 which handle all the actual work.  While the primary development
 environment is NetBSD, it should also work on any other version of UNIX or
 Linux. 
-
-![Image](docs/img/gnweb1-small.png)
 
 The gnhast daemon itself runs on a server, and feeds data to/is fed data
 from collectors.  It can respond to a change in the state of a device, by
@@ -84,5 +80,4 @@ log files, and conf files.  Use chown/chmod.
 More Documentation
 ------------------
 
-[Doxygen Source Documentation](https://codedocs.xyz/garbled1/gnhast/)
-
+http://sourceforge.net/projects/gnhast/
