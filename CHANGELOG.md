@@ -7,12 +7,21 @@
 - salinity - Salinity (ppt)
 - daylight - Simple daylight state
 - moonphase - Phase of moon in %full
+- tristate - On/Off/Etc
 ### Added Collectors:
 - astrocoll - Gather daylight/moonlight data from various sources
 - balboacoll - Balboa wifi spa controller
+- alarmcoll - A collector that generates alarms for events
+### Added Commands:
+- apiv - Get api version of gnhastd
 ### New Features:
 - owsrvcoll - Add support for moisture and wetness Hobby Boards sensors.
 - insteroncoll - Rewrite how we pull data off the PLM and process.
+- Add a protocol API version command and specifier
+- Break out the UDP 30303 discovery code into it's own common library so
+  multiple collectors can use it.
+- Convert common into a libgnhast shared library
+- Update libconfuse to 3.0
 
 ## [0.4 - Release Version]
 ### Added Collectors:
