@@ -46,7 +46,7 @@ will contact the appropriate collector.
 The core system of gnhast is written in C.  However, because the
 collectors are simply separate processes that communicate with gnhastd,
 they can be written in any language.  Additionally, collectors that are
-not directly launched by gnhastd (scripts) com municate to gnhastd via a
+not directly launched by gnhastd (scripts) communicate to gnhastd via a
 simple TCP API. Because of this, they could even reside on a different
 machine, or machines, than the master gnhastd. 
 
@@ -60,7 +60,7 @@ despise all the fiddly bits of UNIX, this is not for you.
 There is no built-in pseudo-coding language for making decisions based on
 sensor data.  Writing a good language parser is hard, and many people are
 better at it than I am.  They wrote languages, alot of them even.  Some
-people like perl, some people despi se it.  Gnhast works similarly to a
+people like perl, some people despise it.  Gnhast works similarly to a
 UNIX kernel, it handles all the hardware, and provides a set API for
 working with it.  If you want to write code that says "when it's light
 out, turn the outside lights off", then just do that.  Write it in perl,
@@ -72,7 +72,7 @@ script to open the door, and put it in *cron*.
 Finally, it's distributed.  Each collector runs on a machine, and gnhastd
 runs on a machine.  The machines do not have to be the same machine. 
 Perhaps you wish to run the core gnhastd on a big server with a massive
-UPS, but you want to run the insteon co llector on a Raspberry PI next to
+UPS, but you want to run the insteon collector on a Raspberry PI next to
 a power outlet in the laundry room.  Maybe you have a dedicated machine
 running Cacti, and you want to run the rrd collector locally there. 
 Gnhast lets you do all this. 
