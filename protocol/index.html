@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <meta name="author" content="Tim Rightnour">
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+
+	<title>Protocol Design - gnhast</title>
+
+        <link href="../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../css/font-awesome-4.5.0.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="../css/highlight.css">
+
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+        <![endif]-->
+
+        
+    </head>
+
+    <body>
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+
+        <!-- Collapsed navigation -->
+        <div class="navbar-header">
+            
+            <!-- Expander button -->
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            
+
+            <!-- Main title -->
+            <a class="navbar-brand" href="..">gnhast</a>
+        </div>
+
+        <!-- Expanded navigation -->
+        <div class="navbar-collapse collapse">
+            
+                <!-- Main navigation -->
+                <ul class="nav navbar-nav">
+                
+                
+                    <li >
+                        <a href="..">Home</a>
+                    </li>
+                
+                
+                
+                    <li >
+                        <a href="../screenshots/">Screenshots</a>
+                    </li>
+                
+                
+                
+                    <li class="dropdown active">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">Getting Started <b class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                        
+                            
+<li >
+    <a href="../start/">The Basics</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../ideas/">Ideas</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../collectors/">The Collectors</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../dependencies/">Dependencies</a>
+</li>
+
+                        
+                            
+<li class="active">
+    <a href="./">Protocol Design</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../gnhastweb/">GnhastWeb</a>
+</li>
+
+                        
+                        </ul>
+                    </li>
+                
+                
+                
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">Programming Gnhast <b class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                        
+                            
+<li >
+    <a href="../subtype/">Adding a new subtype</a>
+</li>
+
+                        
+                        </ul>
+                    </li>
+                
+                
+                
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">Configuration <b class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                        
+                            
+<li >
+    <a href="../config/device/">device section</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../config/gnhastd_sec/">gnhastd section</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../config/brulcoll/">brulcoll.conf</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../config/insteon/">Insteon</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../config/gnhastd/">gnhastd.conf</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../config/owsrvcoll/">owsrvcoll.conf</a>
+</li>
+
+                        
+                        </ul>
+                    </li>
+                
+                
+                </ul>
+            
+
+            <ul class="nav navbar-nav navbar-right">
+                <li>
+                    <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                        <i class="fa fa-search"></i> Search
+                    </a>
+                </li>
+                
+                    <li >
+                        <a rel="next" href="../dependencies/">
+                            <i class="fa fa-arrow-left"></i> Previous
+                        </a>
+                    </li>
+                    <li >
+                        <a rel="prev" href="../gnhastweb/">
+                            Next <i class="fa fa-arrow-right"></i>
+                        </a>
+                    </li>
+                
+                
+                    <li>
+                        <a href="https://github.com/garbled1/gnhast/">
+                            
+                                <i class="fa fa-github"></i>
+                            
+                            GitHub
+                        </a>
+                    </li>
+                
+            </ul>
+        </div>
+    </div>
+</div>
+
+        <div class="container">
+            
+                <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+    
+        <li class="main active"><a href="#protocol-design">Protocol Design</a></li>
+        
+            <li><a href="#example-session">Example session</a></li>
+        
+            <li><a href="#server-commands">Server Commands</a></li>
+        
+            <li><a href="#arguments">Arguments</a></li>
+        
+    
+    </ul>
+</div></div>
+                <div class="col-md-9" role="main">
+
+<h1 id="protocol-design">Protocol Design</h1>
+<h2 id="example-session">Example session</h2>
+<p>The below sequence, tells gnhastd that the dimmer device 1B.D4.4C is currently set to 0.5, or 50%, and then disconnects from gnhastd.</p>
+<pre><code>upd uid:1B.D4.4C dimmer:0.5
+disconnect
+</code></pre>
+
+<p>The below sequence tells gnhastd to find the collector for the 1B.D4.4C device, and to request it to change the status of the switch to ON, and then disconnects from gnhastd.  This is a typical sequence you could use in a script via netcat, to turn a light on.</p>
+<pre><code>chg uid:1B.D4.4C dimmer:1.0
+disconnect
+</code></pre>
+
+<h2 id="server-commands">Server Commands</h2>
+<h3 id="reg">reg</h3>
+<p>Register a device with the server, or, tell the collector about a device</p>
+<h3 id="regg">regg</h3>
+<p>Register a group with the server, or, tell the collector about a group</p>
+<h3 id="upd">upd</h3>
+<p>Update the status of a device.  Sent to, and by the server</p>
+<h3 id="mod">mod</h3>
+<p>Modify a setting of a device.  (Currently only name, rrdname, hargs, and handler).  Sent to and by the server.</p>
+<h3 id="chg">chg</h3>
+<p>Request a change in the status of a device.  For example, ask for an outlet to be turned off.  Sent to and by the server.</p>
+<h3 id="ldevs">ldevs</h3>
+<p>Request a list of devices from the server.  Can give it arguments such as protocol, type, etc, to narrow the list.  Devices are sent back to the collector as reg commands.</p>
+<h3 id="endldevs">endldevs</h3>
+<p>Server sends this to let the client know we are done sending it device names from an ldevs.</p>
+<h3 id="lgrps">lgrps</h3>
+<p>Request a list of groups from the server.  Groups are sent back as regg commands.</p>
+<h3 id="enlgrps">enlgrps</h3>
+<p>Server sends this to let the client know we are done sending it group names from an lgrps.</p>
+<h3 id="feed">feed</h3>
+<p>Request a continuous stream of updates from the server for a particular device.  rate argument sets the update speed in seconds.  Updates are sent via the upd comamnd.</p>
+<h3 id="ask">ask</h3>
+<p>Ask for a single upd on a device, or devices</p>
+<h3 id="cactiask">cactiask</h3>
+<p>Ask for a single upd on a device, or devices, but reply in cacti format.</p>
+<h3 id="disconnect">disconnect</h3>
+<p>Disconnect form the gnhastd server</p>
+<h3 id="client">client</h3>
+<p>Tell the server the name of our client (needs client arg)</p>
+<h2 id="arguments">Arguments</h2>
+<h3 id="uid">uid</h3>
+<p>The unique identifier for this device</p>
+<h3 id="name">name</h3>
+<p>The human readable name for this device</p>
+<h3 id="rrdname">rrdname</h3>
+<p>The name of the field to store this value in, in an rrd file</p>
+<h3 id="rate">rate</h3>
+<p>The rate in seconds of an update (used by feed) (integer)</p>
+<h3 id="devt">devt</h3>
+<p>The device type.  (integer)</p>
+<h3 id="proto">proto</h3>
+<p>The device protocol. Integer</p>
+<h3 id="subt">subt</h3>
+<p>The device subtype.  Integer</p>
+<h3 id="switch">switch</h3>
+<p>The status of a switch.  0=off, 1=on. Integer</p>
+<h3 id="dimmer">dimmer</h3>
+<p>Status of a dimmer.  0.0-1.0 float</p>
+<h3 id="temp">temp</h3>
+<p>Temperature.  Float</p>
+<h3 id="humid">humid</h3>
+<p>Humidity.  Float</p>
+<h3 id="lux">lux</h3>
+<p>Light level in LUX. Float</p>
+<h3 id="pres">pres</h3>
+<p>Pressure.  (air pressure)  Float.</p>
+<h3 id="speed">speed</h3>
+<p>A speed value, used for windspeed for now. Float.</p>
+<h3 id="dir">dir</h3>
+<p>Wind direction</p>
+<h3 id="count">count</h3>
+<p>A count, for a counter type device.  Integer.</p>
+<h3 id="wet">wet</h3>
+<p>Wetness, for leaf wetness sensors.  Float.</p>
+<h3 id="moist">moist</h3>
+<p>Moisture.  For soil moisture sensors.  Float.</p>
+<h3 id="wsec">wsec</h3>
+<p>Wattseconds.  (aka joules)  Long long.</p>
+<h3 id="volts">volts</h3>
+<p>Voltage.  Float.</p>
+<h3 id="watt">watt</h3>
+<p>Wattage. Float.</p>
+<h3 id="amps">amps</h3>
+<p>Amperage.  Float.</p>
+<h3 id="rain">rain</h3>
+<p>Rain rate.  Float.</p>
+<h3 id="weather">weather</h3>
+<p>For weather stations that report cloudy/overcast/etc.  Integer, reports values of:
+0 - sunny
+1 - partly cloudy
+2 - cloudy
+3 - rainy</p>
+<h3 id="client_1">client</h3>
+<p>Client name.  Used by collectors so gnhastd knows which collector is on which connection.</p>
+<h3 id="scale">scale</h3>
+<p>Used to determine scale of incoming data, or set scale of outgoing data. Currently supports the following scale values:  temperature, barometer, length, speed, light.  All scale values cont from zero, so, for temperature in celcius, send a "1" as the value.  Integer.</p>
+<h4 id="temperature-scales">temperature scales</h4>
+<p>Currently F, C, K, R. (count from 0)</p>
+<h4 id="barometer-scales">Barometer scales</h4>
+<p>Currently Inches, millimeters, millibars (of mercury for the in/mm).</p>
+<h4 id="length-scales">Length scales</h4>
+<p>Currently inches or millimeters</p>
+<h4 id="speed-scales">Speed scales</h4>
+<p>MPH, Knots, Meters/Sec, KPH.</p>
+<h4 id="light-scales">Light scales</h4>
+<p>Lux, Watts/Meter squared</p>
+<h3 id="hiwat">hiwat</h3>
+<p>Sensor high water mark. Float.</p>
+<h3 id="lowat">lowat</h3>
+<p>Sensor Low water mark.  Float</p>
+<h3 id="handler">handler</h3>
+<p>Path to a handler routine.  String.</p>
+<h3 id="hargs">hargs</h3>
+<p>Handler arguments.  comma separated string of arguments.  String.  Example:
+argument1,argument2</p>
+<h3 id="flow">flow</h3>
+<p>Flow rate. Float</p>
+<h3 id="distance">distance</h3>
+<p>Distance. Float</p>
+<h3 id="alarm">alarm</h3>
+<p>For alarm devices.  Integer, reports values of:
+0 - Alarm Ready
+1 - Alarm Stay
+2 - Alarm Night/Stay
+3 - Alarm Instant Max
+4 - Alarm Away
+5 - Alarm Fault</p>
+<h3 id="number">number</h3>
+<p>int64 number</p>
+<h3 id="pct">pct</h3>
+<p>Percentage. Float</p>
+<h3 id="volume">volume</h3>
+<p>Sound volume.  Float</p>
+<h3 id="timer">timer</h3>
+<p>Countdown timer.  Counts to zero automatically in seconds.  Unsigned int</p>
+<h3 id="thmode">thmode</h3>
+<p>Thermostat mode.  Integer, reports values of:
+0 - Off
+1 - Heat
+2 - Cool
+3 - Auto</p>
+<h3 id="thstate">thstate</h3>
+<p>Themostat state.  Integer, reports values of:
+0 - Idle
+1 - Heating
+2 - Cooling
+3 - Lockout
+4 - Error</p>
+<h3 id="smnum">smnum</h3>
+<p>Small number. 0-255</p>
+<h3 id="glist">glist</h3>
+<p>Group list.  Comma separated list of group UID's</p>
+<h3 id="dlist">dlist</h3>
+<p>Device list.  Comma separated list of device UID's</p></div>
+            
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            
+            <p>Documentation built with <a href="http://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+
+        <script src="../js/jquery-1.10.2.min.js"></script>
+        <script src="../js/bootstrap-3.0.3.min.js"></script>
+        <script src="../js/highlight.pack.js"></script>
+        <script>var base_url = '..';</script>
+        <script data-main="../mkdocs/js/search.js" src="../mkdocs/js/require.js"></script>
+        <script src="../js/base.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="Search Modal" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                        <h4 class="modal-title" id="exampleModalLabel">Search</h4>
+                    </div>
+                    <div class="modal-body">
+                        <p>
+                            From here you can search these documents. Enter
+                            your search terms below.
+                        </p>
+                        <form role="form">
+                            <div class="form-group">
+                                <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query">
+                            </div>
+                        </form>
+                        <div id="mkdocs-search-results"></div>
+                    </div>
+                    <div class="modal-footer">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </body>
+</html>

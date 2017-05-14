@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <meta name="author" content="Tim Rightnour">
+        
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+
+	<title>Insteon - gnhast</title>
+
+        <link href="../../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome-4.5.0.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="../../css/highlight.css">
+
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+        <![endif]-->
+
+        
+    </head>
+
+    <body>
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+
+        <!-- Collapsed navigation -->
+        <div class="navbar-header">
+            
+            <!-- Expander button -->
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            
+
+            <!-- Main title -->
+            <a class="navbar-brand" href="../..">gnhast</a>
+        </div>
+
+        <!-- Expanded navigation -->
+        <div class="navbar-collapse collapse">
+            
+                <!-- Main navigation -->
+                <ul class="nav navbar-nav">
+                
+                
+                    <li >
+                        <a href="../..">Home</a>
+                    </li>
+                
+                
+                
+                    <li >
+                        <a href="../../screenshots/">Screenshots</a>
+                    </li>
+                
+                
+                
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">Getting Started <b class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                        
+                            
+<li >
+    <a href="../../start/">The Basics</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../../ideas/">Ideas</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../../collectors/">The Collectors</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../../dependencies/">Dependencies</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../../protocol/">Protocol Design</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../../gnhastweb/">GnhastWeb</a>
+</li>
+
+                        
+                        </ul>
+                    </li>
+                
+                
+                
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">Programming Gnhast <b class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                        
+                            
+<li >
+    <a href="../../subtype/">Adding a new subtype</a>
+</li>
+
+                        
+                        </ul>
+                    </li>
+                
+                
+                
+                    <li class="dropdown active">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">Configuration <b class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                        
+                            
+<li >
+    <a href="../device/">device section</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../gnhastd_sec/">gnhastd section</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../brulcoll/">brulcoll.conf</a>
+</li>
+
+                        
+                            
+<li class="active">
+    <a href="./">Insteon</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../gnhastd/">gnhastd.conf</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../owsrvcoll/">owsrvcoll.conf</a>
+</li>
+
+                        
+                        </ul>
+                    </li>
+                
+                
+                </ul>
+            
+
+            <ul class="nav navbar-nav navbar-right">
+                <li>
+                    <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                        <i class="fa fa-search"></i> Search
+                    </a>
+                </li>
+                
+                    <li >
+                        <a rel="next" href="../brulcoll/">
+                            <i class="fa fa-arrow-left"></i> Previous
+                        </a>
+                    </li>
+                    <li >
+                        <a rel="prev" href="../gnhastd/">
+                            Next <i class="fa fa-arrow-right"></i>
+                        </a>
+                    </li>
+                
+                
+                    <li>
+                        <a href="https://github.com/garbled1/gnhast/">
+                            
+                                <i class="fa fa-github"></i>
+                            
+                            GitHub
+                        </a>
+                    </li>
+                
+            </ul>
+        </div>
+    </div>
+</div>
+
+        <div class="container">
+            
+                <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+    
+        <li class="main active"><a href="#discover-insteon-devices">"discover" insteon devices.</a></li>
+        
+    
+        <li class="main "><a href="#edit-generated-insteoncollconf-file-an-install">edit generated insteoncoll.conf file, an install</a></li>
+        
+    
+        <li class="main "><a href="#conf-file-format">Conf file format</a></li>
+        
+            <li><a href="#gnhastd-section">gnhastd section</a></li>
+        
+            <li><a href="#device-section">device section</a></li>
+        
+            <li><a href="#insteoncoll-section">insteoncoll section</a></li>
+        
+            <li><a href="#general-options">general options</a></li>
+        
+            <li><a href="#logfile-file">logfile (file)</a></li>
+        
+            <li><a href="#pidfile-file">pidfile (file)</a></li>
+        
+    
+        <li class="main "><a href="#insteon_aldb-program">insteon_aldb program</a></li>
+        
+    
+    </ul>
+</div></div>
+                <div class="col-md-9" role="main">
+
+<p>Setting up the insteon devices is a bit more complex, as they are inherently more complex devices.  There are a few steps to this process.</p>
+<h1 id="discover-insteon-devices">"discover" insteon devices.</h1>
+<p>There is no way to actually probe a network for insteon devices.  You must write down the addresses of all the devices as you install them.  Make a list of device addresses, in the form:</p>
+<pre><code>ABCDEF
+123456
+AC12FC
+</code></pre>
+
+<p>And save that in a file.  Then run insteon_discover -f (file from above) -s /dev/serialport -m file.conf
+This will connect to each device in the file, send an ALL LINK request to that device, linking it to the PLM, and then write a conf file out that can be used as an initial insteoncoll.conf file.</p>
+<p>The insteon_discover process needs to find the insteon.db configuration file in $PREFIX/etc/insteon.db in order to properly identify devices.  If you have a device it cannot identify, you may add an entry to this file.  An example insteon.db is below:</p>
+<pre><code>model &quot;2477D&quot; {
+        name = &quot;SwitchLinc Dimmer (Dual-Band) (600W)&quot;
+        devcat = 0x01
+        subcat = 0x20
+        type = &quot;dimmer&quot;
+        subtype = &quot;switch&quot;
+}
+model &quot;2475DA1&quot; {
+        name = &quot;In-LineLinc Dimmer&quot;
+        devcat = 0x01
+        subcat = 0x1A
+        type = &quot;dimmer&quot;
+        subtype = &quot;switch&quot;
+}
+model &quot;2486DWH6&quot; {
+        name = &quot;KeypadLinc Dimmer, 6-button&quot;
+        devcat = 0x01
+        subcat = 0x1B
+        type = &quot;dimmer&quot;
+        subtype = &quot;switch&quot;
+}
+</code></pre>
+
+<h1 id="edit-generated-insteoncollconf-file-an-install">edit generated insteoncoll.conf file, an install</h1>
+<p>You now need to edit the conf file the previous program generated, and install it as $PREFIX/insteoncoll.conf.  You will likely only need to edit the [gnhastd section].</p>
+<pre><code>gnhastd {
+  hostname = &quot;127.0.0.1&quot;
+#  hostname = &quot;192.168.10.1&quot;
+  port = 2920
+}
+insteoncoll {
+  device = &quot;/dev/ttyU2&quot;
+}
+device &quot;1C.AF.58&quot; {
+  name = &quot;Spa Room - Spa Lights SwitchLinc Dimmer&quot;
+  loc = &quot;1C.AF.58&quot;
+  # rrdname = &quot;&quot;
+  subtype = switch
+  type = dimmer
+  proto = insteon-v2
+  # multimodel = &quot;&quot;
+  # handler = &quot;&quot;
+  hiwat = 0.000000
+  lowat = 0.000000
+}
+</code></pre>
+
+<h1 id="conf-file-format">Conf file format</h1>
+<h2 id="gnhastd-section">gnhastd section</h2>
+<p>[gnhastd section]</p>
+<h2 id="device-section">device section</h2>
+<p>[device section]</p>
+<h2 id="insteoncoll-section">insteoncoll section</h2>
+<h3 id="device-path">device (path)</h3>
+<p>Pathname of serial device PLM is connected to</p>
+<h2 id="general-options">general options</h2>
+<h2 id="logfile-file">logfile (file)</h2>
+<p>You can override the default path of the logfile here. $PREFIX/var/log/insteoncoll.log</p>
+<h2 id="pidfile-file">pidfile (file)</h2>
+<p>You can override the default path of the pid file here. $PREFIX/var/run/insteoncoll.pid</p>
+<h1 id="insteon_aldb-program">insteon_aldb program</h1>
+<p>The insteon_aldb program lets you directly edit the ALDB of a device.  The first mode of operation queries the device, and dumps the ALDB to a file:</p>
+<p>insteon_aldb -a AB12CD -s /dev/serial -f dumpfile</p>
+<p>This will query device AB12CD, and generate a file named dumpfile with the ALDB.  Example:</p>
+<pre><code>1C.17.A0 03 32 18 00 A2
+1C.17.A0 06 FE 1C 00 A2
+1C.17.A0 04 7D 18 00 A2
+1C.17.A0 01 00 1A 00 A2
+1C.17.A0 05 C8 18 00 A2
+1C.17.A0 03 32 18 00 A2
+1B.D4.4C 01 00 1A 00 E2
+1B.FA.84 75 00 1A 00 A2
+1B.FA.84 76 00 1A 00 E2
+00.00.00 00 00 00 00 00
+</code></pre>
+
+<p>The format is:
+address of linked device, group number, link data 1, link data 2, link data 3, link flags.
+The last line should be all zeros.</p>
+<p>Note, that when editing the ALDB file, you should keep the number of lines the same. If you wanted to delete line 4, add an additional line of all zeros at the end, so the DB is properly wiped.  The program simply writes the new DB to the device, and does not attempt to figure out what you meant for it to do.</p>
+<p>To write the new ALDB to your device:</p>
+<p>insteon_aldb -a AB12CD -s /dev/serial -w -f aldbfile</p>
+<p>This will write the new ALDB record to your device.</p></div>
+            
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            
+            <p>Documentation built with <a href="http://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+
+        <script src="../../js/jquery-1.10.2.min.js"></script>
+        <script src="../../js/bootstrap-3.0.3.min.js"></script>
+        <script src="../../js/highlight.pack.js"></script>
+        <script>var base_url = '../..';</script>
+        <script data-main="../../mkdocs/js/search.js" src="../../mkdocs/js/require.js"></script>
+        <script src="../../js/base.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="Search Modal" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                        <h4 class="modal-title" id="exampleModalLabel">Search</h4>
+                    </div>
+                    <div class="modal-body">
+                        <p>
+                            From here you can search these documents. Enter
+                            your search terms below.
+                        </p>
+                        <form role="form">
+                            <div class="form-group">
+                                <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query">
+                            </div>
+                        </form>
+                        <div id="mkdocs-search-results"></div>
+                    </div>
+                    <div class="modal-footer">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </body>
+</html>

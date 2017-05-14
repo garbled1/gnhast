@@ -1,0 +1,884 @@
+{
+    "docs": [
+        {
+            "location": "/", 
+            "text": "gnhast\n\n\nGarbled's Nifty Home Automation Scripting Tools\n\n\n\n\nGnhast is an event based home automation suite of tools.  It relies on a\ncentral daemon, which handles all the coordination of work, and collectors\nwhich handle all the actual work.  While the primary development\nenvironment is NetBSD, it should also work on any other version of UNIX or\nLinux. \n\n\nThe gnhast daemon itself runs on a server, and feeds data to/is fed data\nfrom collectors.  It can respond to a change in the state of a device, by\nexecuting an external program.  This program, is itself, a form of\ncollector. \n\n\nThe collectors perform all the actual work in gnhast. A collector can\nperform a number of different functions: \n\n\n1) Monitor a device, and tell gnhastd about the changes in that device. \nFor example, monitoring a one-wire temperature probe, and continually\nupdating gnhastd with the current temperature. \n\n\n2) Make changes to a device.  For example, the central daemon might tell\nthe collector to turn off a light switch.  The collector will issue the\ncommand to the light switch it controls, and update gnhastd with the\nstatus. \n\n\n3) Simply collect data.  A collector (such as rrdcoll) can simply receive\ndata from gnhastd, and use it to update rrd files for making pretty\ngraphs. \n\n\n4) Make decisions.  An external script (which is a form of collector)\ncould be informed that the temperature of a one-wire device has changed. \nIt can look at this new value, and decide that it's time to turn on a fan. \nIt would tell gnhastd that the fan device should be turned on, and gnhastd\nwill contact the appropriate collector. \n\n\nThe core system of gnhast is written in C.  However, because the\ncollectors are simply separate processes that communicate with gnhastd,\nthey can be written in any language.  Additionally, collectors that are\nnot directly launched by gnhastd (scripts) com municate to gnhastd via a\nsimple TCP API. Because of this, they could even reside on a different\nmachine, or machines, than the master gnhastd. \n\n\nDesign Philosophy\n\n\nGnhast is based on UNIX, and attempts to make home automation more\nUNIX-like.  If you like the way UNIX works, you will like gnhast.  If you\ndespise all the fiddly bits of UNIX, this is not for you. \n\n\nThere is no built-in pseudo-coding language for making decisions based on\nsensor data.  Writing a good language parser is hard, and many people are\nbetter at it than I am.  They wrote languages, alot of them even.  Some\npeople like perl, some people despi se it.  Gnhast works similarly to a\nUNIX kernel, it handles all the hardware, and provides a set API for\nworking with it.  If you want to write code that says \"when it's light\nout, turn the outside lights off\", then just do that.  Write it in perl,\npython , whatever, and have gnhast just run your executable. \n\n\nDo you want your garage door to open every night at 18:00? (yikes) Write a\nscript to open the door, and put it in \ncron\n. \n\n\nFinally, it's distributed.  Each collector runs on a machine, and gnhastd\nruns on a machine.  The machines do not have to be the same machine. \nPerhaps you wish to run the core gnhastd on a big server with a massive\nUPS, but you want to run the insteon co llector on a Raspberry PI next to\na power outlet in the laundry room.  Maybe you have a dedicated machine\nrunning Cacti, and you want to run the rrd collector locally there. \nGnhast lets you do all this. \n\n\nGnhast does not need to run as root.  The only caveat, is that some of the\ncollectors will need access to the serial devices connected to hardware,\nlog files, and conf files.  Use chown/chmod. \n\n\nMore Documentation\n\n\nhttp://sourceforge.net/projects/gnhast/", 
+            "title": "Home"
+        }, 
+        {
+            "location": "/#gnhast", 
+            "text": "", 
+            "title": "gnhast"
+        }, 
+        {
+            "location": "/#garbleds-nifty-home-automation-scripting-tools", 
+            "text": "Gnhast is an event based home automation suite of tools.  It relies on a\ncentral daemon, which handles all the coordination of work, and collectors\nwhich handle all the actual work.  While the primary development\nenvironment is NetBSD, it should also work on any other version of UNIX or\nLinux.   The gnhast daemon itself runs on a server, and feeds data to/is fed data\nfrom collectors.  It can respond to a change in the state of a device, by\nexecuting an external program.  This program, is itself, a form of\ncollector.   The collectors perform all the actual work in gnhast. A collector can\nperform a number of different functions:   1) Monitor a device, and tell gnhastd about the changes in that device. \nFor example, monitoring a one-wire temperature probe, and continually\nupdating gnhastd with the current temperature.   2) Make changes to a device.  For example, the central daemon might tell\nthe collector to turn off a light switch.  The collector will issue the\ncommand to the light switch it controls, and update gnhastd with the\nstatus.   3) Simply collect data.  A collector (such as rrdcoll) can simply receive\ndata from gnhastd, and use it to update rrd files for making pretty\ngraphs.   4) Make decisions.  An external script (which is a form of collector)\ncould be informed that the temperature of a one-wire device has changed. \nIt can look at this new value, and decide that it's time to turn on a fan. \nIt would tell gnhastd that the fan device should be turned on, and gnhastd\nwill contact the appropriate collector.   The core system of gnhast is written in C.  However, because the\ncollectors are simply separate processes that communicate with gnhastd,\nthey can be written in any language.  Additionally, collectors that are\nnot directly launched by gnhastd (scripts) com municate to gnhastd via a\nsimple TCP API. Because of this, they could even reside on a different\nmachine, or machines, than the master gnhastd.", 
+            "title": "Garbled's Nifty Home Automation Scripting Tools"
+        }, 
+        {
+            "location": "/#design-philosophy", 
+            "text": "Gnhast is based on UNIX, and attempts to make home automation more\nUNIX-like.  If you like the way UNIX works, you will like gnhast.  If you\ndespise all the fiddly bits of UNIX, this is not for you.   There is no built-in pseudo-coding language for making decisions based on\nsensor data.  Writing a good language parser is hard, and many people are\nbetter at it than I am.  They wrote languages, alot of them even.  Some\npeople like perl, some people despi se it.  Gnhast works similarly to a\nUNIX kernel, it handles all the hardware, and provides a set API for\nworking with it.  If you want to write code that says \"when it's light\nout, turn the outside lights off\", then just do that.  Write it in perl,\npython , whatever, and have gnhast just run your executable.   Do you want your garage door to open every night at 18:00? (yikes) Write a\nscript to open the door, and put it in  cron .   Finally, it's distributed.  Each collector runs on a machine, and gnhastd\nruns on a machine.  The machines do not have to be the same machine. \nPerhaps you wish to run the core gnhastd on a big server with a massive\nUPS, but you want to run the insteon co llector on a Raspberry PI next to\na power outlet in the laundry room.  Maybe you have a dedicated machine\nrunning Cacti, and you want to run the rrd collector locally there. \nGnhast lets you do all this.   Gnhast does not need to run as root.  The only caveat, is that some of the\ncollectors will need access to the serial devices connected to hardware,\nlog files, and conf files.  Use chown/chmod.", 
+            "title": "Design Philosophy"
+        }, 
+        {
+            "location": "/#more-documentation", 
+            "text": "http://sourceforge.net/projects/gnhast/", 
+            "title": "More Documentation"
+        }, 
+        {
+            "location": "/screenshots/", 
+            "text": "Gotta have screenshots\n\n\n\n\n\n\ngnhastweb view of a bunch of devices\n\n\n\n\n\n\n\n\ngnhastweb showing a data graph built on the fly\n\n\n\n\n\n\n\n\ngnhastweb showing the home screen, with the forecast and weather widgets active\n\n\n\n\n\n\n\n\nEditing a device's properties in gnhastweb\n\n\n\n\n\n\n\n\ngtk-gnhast overview window\n\n\n\n\n\n\n\n\ngtk-gnhast list view window", 
+            "title": "Screenshots"
+        }, 
+        {
+            "location": "/screenshots/#gotta-have-screenshots", 
+            "text": "gnhastweb view of a bunch of devices     gnhastweb showing a data graph built on the fly     gnhastweb showing the home screen, with the forecast and weather widgets active     Editing a device's properties in gnhastweb     gtk-gnhast overview window     gtk-gnhast list view window", 
+            "title": "Gotta have screenshots"
+        }, 
+        {
+            "location": "/start/", 
+            "text": "Getting Started\n\n\nCompile and install\n\n\nFirst, you will need to compile and install gnhast.  You should just need to run ./configure and make, followed by make install.  The default install prefix is /usr/local. You may want to create /usr/local/var/log, and /usr/local/etc, if they do not exist.\n\n\nBuild config files for the collectors\n\n\nGeneral config file format\n\n\nThe general config file format is pretty simple.  An example config is pasted below:\n\n\n#\nowserver {\n  hostname = \n127.0.0.1\n\n  port = 4304\n}\ngnhastd {\n  hostname = \n127.0.0.1\n\n  port = 2920\n}\nowsrvcoll {\n  tscale = \nF\n\n  update = 60\n  rescan = 30\n}\ndevice \n10.4ED0A0020800\n {\n  name = \nBig Aquarium LED Wall Temp\n\n  # loc = \n\n  rrdname = \nBAQ_WallTemp\n\n  subtype = temp\n  type = sensor\n  proto = sensor-owfs\n  # multimodel = \n\n}\n\n\n\n\n\n\ndevice section\n - Details on the device section of the config file\n\n\ngnhastd section\n - Details on the gnhastd section of the config file\n\n\n\n\nOther sections are detailed in the documentation for the collector config files below.\n\n\nGenerate basic gnhastd config file\n\n\nThe next thing you need to do, is build configuration files for all of your collectors, and gnhastd itself. You should start with a very basic config for gnhastd.  Decide where your gnhastd server will run, and if it needs to be accessable from outside it's host. By default, gnhastd listens on port 2920, localhost (127.0.0.1).  If you wish for it to accept connections from other hosts, you will probably want to set the listen address to 0.0.0.0.\n\n\ngnhastd config file format\n\n\nGenerate owsrvcoll config file\n\n\nIf you have one-wire devices connected to your system, you will want to run the owsrvcoll collector.  First, install and configure OWFS, and run the owserver.  http://www.owfs.org\nOnce you have that running, you can connect to it, and generate an initial owsrvcoll config file.  owsrvcoll assumes that the owserver process is on the same host (127.0.0.1) and is running on the standard owserver port (4304).  If you run \"owsrvcoll -m file.conf\", the collector will connect to a local owserver, issue a command to get a list of devices from the server, and write the config file to \"file.conf\".  You can then copy this generated config file to $PREFIX/etc/owsrvcoll.conf and edit it.  Note that for certain devices (counters, humidity probes, pressure probes, etc) you will need to edit the conf file so the collector knows how to get the data.\n\n\nowsrvcoll config file format\n\n\nGenerate brulcoll config file\n\n\nFor the brultech GEM, you will need to create a basic config file with the hostname/IP of the brultech GEM, and then use that to generate the initial config file.  Create a config file similar to:\n\n\nbrultech {\n  hostname = 192.168.1.45\n}\n\n\n\n\nThen run brulcoll -c conffile -m file.conf\n\n\nThis will connect to the brultech GEM, probe all the devices connected to it, and write out a new config at file.conf.  You may then copy this to $PREFIX/etc/brulcoll.conf and edit to taste.\n\n\nbrulcoll config file format\n\n\nSetup the insteon stuff\n\n\nSetting up the insteon devices is a bit more complex, and it has it's own section.\n\ninsteon collector\n\n\nSetup the web interface\n\n\nThis also has it's own section.\n\ngnhastweb", 
+            "title": "The Basics"
+        }, 
+        {
+            "location": "/start/#getting-started", 
+            "text": "", 
+            "title": "Getting Started"
+        }, 
+        {
+            "location": "/start/#compile-and-install", 
+            "text": "First, you will need to compile and install gnhast.  You should just need to run ./configure and make, followed by make install.  The default install prefix is /usr/local. You may want to create /usr/local/var/log, and /usr/local/etc, if they do not exist.", 
+            "title": "Compile and install"
+        }, 
+        {
+            "location": "/start/#build-config-files-for-the-collectors", 
+            "text": "", 
+            "title": "Build config files for the collectors"
+        }, 
+        {
+            "location": "/start/#general-config-file-format", 
+            "text": "The general config file format is pretty simple.  An example config is pasted below:  #\nowserver {\n  hostname =  127.0.0.1 \n  port = 4304\n}\ngnhastd {\n  hostname =  127.0.0.1 \n  port = 2920\n}\nowsrvcoll {\n  tscale =  F \n  update = 60\n  rescan = 30\n}\ndevice  10.4ED0A0020800  {\n  name =  Big Aquarium LED Wall Temp \n  # loc =  \n  rrdname =  BAQ_WallTemp \n  subtype = temp\n  type = sensor\n  proto = sensor-owfs\n  # multimodel =  \n}   device section  - Details on the device section of the config file  gnhastd section  - Details on the gnhastd section of the config file   Other sections are detailed in the documentation for the collector config files below.", 
+            "title": "General config file format"
+        }, 
+        {
+            "location": "/start/#generate-basic-gnhastd-config-file", 
+            "text": "The next thing you need to do, is build configuration files for all of your collectors, and gnhastd itself. You should start with a very basic config for gnhastd.  Decide where your gnhastd server will run, and if it needs to be accessable from outside it's host. By default, gnhastd listens on port 2920, localhost (127.0.0.1).  If you wish for it to accept connections from other hosts, you will probably want to set the listen address to 0.0.0.0.  gnhastd config file format", 
+            "title": "Generate basic gnhastd config file"
+        }, 
+        {
+            "location": "/start/#generate-owsrvcoll-config-file", 
+            "text": "If you have one-wire devices connected to your system, you will want to run the owsrvcoll collector.  First, install and configure OWFS, and run the owserver.  http://www.owfs.org\nOnce you have that running, you can connect to it, and generate an initial owsrvcoll config file.  owsrvcoll assumes that the owserver process is on the same host (127.0.0.1) and is running on the standard owserver port (4304).  If you run \"owsrvcoll -m file.conf\", the collector will connect to a local owserver, issue a command to get a list of devices from the server, and write the config file to \"file.conf\".  You can then copy this generated config file to $PREFIX/etc/owsrvcoll.conf and edit it.  Note that for certain devices (counters, humidity probes, pressure probes, etc) you will need to edit the conf file so the collector knows how to get the data.  owsrvcoll config file format", 
+            "title": "Generate owsrvcoll config file"
+        }, 
+        {
+            "location": "/start/#generate-brulcoll-config-file", 
+            "text": "For the brultech GEM, you will need to create a basic config file with the hostname/IP of the brultech GEM, and then use that to generate the initial config file.  Create a config file similar to:  brultech {\n  hostname = 192.168.1.45\n}  Then run brulcoll -c conffile -m file.conf  This will connect to the brultech GEM, probe all the devices connected to it, and write out a new config at file.conf.  You may then copy this to $PREFIX/etc/brulcoll.conf and edit to taste.  brulcoll config file format", 
+            "title": "Generate brulcoll config file"
+        }, 
+        {
+            "location": "/start/#setup-the-insteon-stuff", 
+            "text": "Setting up the insteon devices is a bit more complex, and it has it's own section. insteon collector", 
+            "title": "Setup the insteon stuff"
+        }, 
+        {
+            "location": "/start/#setup-the-web-interface", 
+            "text": "This also has it's own section. gnhastweb", 
+            "title": "Setup the web interface"
+        }, 
+        {
+            "location": "/ideas/", 
+            "text": "Timers\n\n\nFor example, you want a light to turn on every night at 1am, and turn off at 2 am.  Rather than build a timer system into gnhast, the UNIX way to accomplish this, is to simply setup a cronjob. The handlers directory provides a switchon/switchoff handler.  So we might setup a cron like so:\n\n\n    0 1 * * * /usr/local/libexec/gnhast/switchon 4A:5C:44=switch\n    0 2 * * * /usr/local/libexec/gnhast/switchoff 4A:5C:44=switch\n\n\n\n\nBut what if we want to do something more complex?  Like maybe we want a light to be activated by a handler, like a motion sensor, but then shut off in 15 minutes.  (I'll have to write a good example handler for this, it's easy enough to do).  We write a handler script that turns the light on, and then immediately schedules an atjob 15 minutes out to run the \"switchoff\" handler.\n\n\nExample handlers\n\n\nThe handlers directory contains a few example, and perfectly usable handlers.  One such handler is the \"nightlight\".  This is a simple handler that responds to a lux sensor, and is used to turn lights on and off.  You can set this handler up very simply.\n\n\nFirst, find your lux sensor in the devices.conf file, and add the full path to the nightlight script to the handler config entry.  Then, set hargs to a comma separated list of the devices you wish to turn on/off with the result of the sensor.  Finally, set the lux level that will activate the threshold in hiwat and lowat.  Make sure you edit the threshold in the nightlight script to match this.\n\n\n    device \n26.A43328010000\n {\n    name = \nOutside LUX\n\n    handler = \n/usr/local/libexec/gnhast/nightlight\n\n    hargs = {\n25.98.9B\n, \n25.9B.6D\n}\n    spamhandler = no\n    hiwat = 250.000000\n    lowat = 250.000000\n    }\n\n\n\n\nThe spamhandler directive, when set to yes, will call the handler every time the device updates above or below the water mark. When set to no, it will only call when a device crosses a water mark.\n\n\nSo, in the above example, when the light level crosses 250, nightlight will be called, and if it's above 250, it will turn the devices in hargs off, and if below, it will turn them on.\n\n\nThis script could easily be rewritten to accomodate other sensor types. For example, you could use a wind sensor's speed to determine if you should raise an outdoor shade to prevent damage to it.  Set a high watermark, of say 10 (mph) and then have it activate the device that raises the shade.", 
+            "title": "Ideas"
+        }, 
+        {
+            "location": "/ideas/#timers", 
+            "text": "For example, you want a light to turn on every night at 1am, and turn off at 2 am.  Rather than build a timer system into gnhast, the UNIX way to accomplish this, is to simply setup a cronjob. The handlers directory provides a switchon/switchoff handler.  So we might setup a cron like so:      0 1 * * * /usr/local/libexec/gnhast/switchon 4A:5C:44=switch\n    0 2 * * * /usr/local/libexec/gnhast/switchoff 4A:5C:44=switch  But what if we want to do something more complex?  Like maybe we want a light to be activated by a handler, like a motion sensor, but then shut off in 15 minutes.  (I'll have to write a good example handler for this, it's easy enough to do).  We write a handler script that turns the light on, and then immediately schedules an atjob 15 minutes out to run the \"switchoff\" handler.", 
+            "title": "Timers"
+        }, 
+        {
+            "location": "/ideas/#example-handlers", 
+            "text": "The handlers directory contains a few example, and perfectly usable handlers.  One such handler is the \"nightlight\".  This is a simple handler that responds to a lux sensor, and is used to turn lights on and off.  You can set this handler up very simply.  First, find your lux sensor in the devices.conf file, and add the full path to the nightlight script to the handler config entry.  Then, set hargs to a comma separated list of the devices you wish to turn on/off with the result of the sensor.  Finally, set the lux level that will activate the threshold in hiwat and lowat.  Make sure you edit the threshold in the nightlight script to match this.      device  26.A43328010000  {\n    name =  Outside LUX \n    handler =  /usr/local/libexec/gnhast/nightlight \n    hargs = { 25.98.9B ,  25.9B.6D }\n    spamhandler = no\n    hiwat = 250.000000\n    lowat = 250.000000\n    }  The spamhandler directive, when set to yes, will call the handler every time the device updates above or below the water mark. When set to no, it will only call when a device crosses a water mark.  So, in the above example, when the light level crosses 250, nightlight will be called, and if it's above 250, it will turn the devices in hargs off, and if below, it will turn them on.  This script could easily be rewritten to accomodate other sensor types. For example, you could use a wind sensor's speed to determine if you should raise an outdoor shade to prevent damage to it.  Set a high watermark, of say 10 (mph) and then have it activate the device that raises the shade.", 
+            "title": "Example handlers"
+        }, 
+        {
+            "location": "/collectors/", 
+            "text": "Overview of the gnhast collectors\n\n\nfakecoll - Generic fake collector\n\n\nFakecoll is the most basic collector.  It emulates a switch, a dimmer, and a temperature probe, and randomly sends status updates to the server for them.  It is designed to be used to test the system.  It is not particularly complex, so you could easily edit it to add more devices, so you could test scripts out with it.\n\n\nowsrvcoll - One Wire collector\n\n\nThe one wire collector collects data from one-wire devices attached to a owfs owserver.  owserver handles all the hardware interfacing, and owsrvcoll polls the owserver for status updates.  It takes all of this data, and hands it off to the gnhastd core at a per-device configurable time interval.\n\n\nrrdcoll - RRDtool collector\n\n\nThe RRD collector contacts the server, and asks for a feed of devices it wishes to record data for.  It then takes the data given to it by gnhastd at regular intervals, and inserts it into rrd databases for each device.\n\n\nbrulcoll - Brultech collector\n\n\nThe Brultech collector is used to collect power usage data, temperature information, and pulse counter data from a Brultech GreenEye Monitor (GEM).  It also has preliminary support for an ECM1240. http://www.brultech.com/\n\n\ninsteoncoll - Insteon collector\n\n\nThe insteon collector is used to collect state data from insteon devices, and control them.  It does so via a PLM. Currently only switches/dimmers/outlets are supported, and it has only been tested on a serial PLM.  Version 2 and Version 2 CS devices are supported and working.\n[insteon collector] - Documentation on the insteon tools\n\n\nwmr918coll - wx200 / wmr918 collector\n\n\nCollects data from a wx200 weatherstation.  Currently handles a wx200 via serial, or, a network connection to wx200d for collection from any device that program supports.  Native WMR918 serial support is also supported, and includes low-battery sensors for the probes.\n\n\nwupwscoll - Personal Weather Station collector\n\n\nSubmits data from gnhast to a PWS site.  Currently supports http://pwsweather.com and http://weatherunderground.com.  Can handle rapid fire on weather underground, assuming your sensors are that fast.\n\n\nad2usbcoll - AD2USB Collector\n\n\nConnects to the AD2USB device from Nutech that allows programming and monitoring of a Honeywell Vista alarm system.  Can read all alarm states, as well as wireless devices.\n\n\nicaddycoll - Irrigation Caddy collector\n\n\nPolls the Irrigation Caddy to determine which zones are running.  Can activate zones and programs on-demand.\n\n\nvenstarcoll - Venstar T5800/T5900 collector\n\n\nPolls the Venstar Thermostat and collects temperature data.  Can turn the thermostat on/off, control the fan, set scheduling on/off, set away state, and modify the setpoints.  Also receives the alert statuses from filter/uv/service alarms.", 
+            "title": "The Collectors"
+        }, 
+        {
+            "location": "/collectors/#overview-of-the-gnhast-collectors", 
+            "text": "", 
+            "title": "Overview of the gnhast collectors"
+        }, 
+        {
+            "location": "/collectors/#fakecoll-generic-fake-collector", 
+            "text": "Fakecoll is the most basic collector.  It emulates a switch, a dimmer, and a temperature probe, and randomly sends status updates to the server for them.  It is designed to be used to test the system.  It is not particularly complex, so you could easily edit it to add more devices, so you could test scripts out with it.", 
+            "title": "fakecoll - Generic fake collector"
+        }, 
+        {
+            "location": "/collectors/#owsrvcoll-one-wire-collector", 
+            "text": "The one wire collector collects data from one-wire devices attached to a owfs owserver.  owserver handles all the hardware interfacing, and owsrvcoll polls the owserver for status updates.  It takes all of this data, and hands it off to the gnhastd core at a per-device configurable time interval.", 
+            "title": "owsrvcoll - One Wire collector"
+        }, 
+        {
+            "location": "/collectors/#rrdcoll-rrdtool-collector", 
+            "text": "The RRD collector contacts the server, and asks for a feed of devices it wishes to record data for.  It then takes the data given to it by gnhastd at regular intervals, and inserts it into rrd databases for each device.", 
+            "title": "rrdcoll - RRDtool collector"
+        }, 
+        {
+            "location": "/collectors/#brulcoll-brultech-collector", 
+            "text": "The Brultech collector is used to collect power usage data, temperature information, and pulse counter data from a Brultech GreenEye Monitor (GEM).  It also has preliminary support for an ECM1240. http://www.brultech.com/", 
+            "title": "brulcoll - Brultech collector"
+        }, 
+        {
+            "location": "/collectors/#insteoncoll-insteon-collector", 
+            "text": "The insteon collector is used to collect state data from insteon devices, and control them.  It does so via a PLM. Currently only switches/dimmers/outlets are supported, and it has only been tested on a serial PLM.  Version 2 and Version 2 CS devices are supported and working.\n[insteon collector] - Documentation on the insteon tools", 
+            "title": "insteoncoll - Insteon collector"
+        }, 
+        {
+            "location": "/collectors/#wmr918coll-wx200-wmr918-collector", 
+            "text": "Collects data from a wx200 weatherstation.  Currently handles a wx200 via serial, or, a network connection to wx200d for collection from any device that program supports.  Native WMR918 serial support is also supported, and includes low-battery sensors for the probes.", 
+            "title": "wmr918coll - wx200 / wmr918 collector"
+        }, 
+        {
+            "location": "/collectors/#wupwscoll-personal-weather-station-collector", 
+            "text": "Submits data from gnhast to a PWS site.  Currently supports http://pwsweather.com and http://weatherunderground.com.  Can handle rapid fire on weather underground, assuming your sensors are that fast.", 
+            "title": "wupwscoll - Personal Weather Station collector"
+        }, 
+        {
+            "location": "/collectors/#ad2usbcoll-ad2usb-collector", 
+            "text": "Connects to the AD2USB device from Nutech that allows programming and monitoring of a Honeywell Vista alarm system.  Can read all alarm states, as well as wireless devices.", 
+            "title": "ad2usbcoll - AD2USB Collector"
+        }, 
+        {
+            "location": "/collectors/#icaddycoll-irrigation-caddy-collector", 
+            "text": "Polls the Irrigation Caddy to determine which zones are running.  Can activate zones and programs on-demand.", 
+            "title": "icaddycoll - Irrigation Caddy collector"
+        }, 
+        {
+            "location": "/collectors/#venstarcoll-venstar-t5800t5900-collector", 
+            "text": "Polls the Venstar Thermostat and collects temperature data.  Can turn the thermostat on/off, control the fan, set scheduling on/off, set away state, and modify the setpoints.  Also receives the alert statuses from filter/uv/service alarms.", 
+            "title": "venstarcoll - Venstar T5800/T5900 collector"
+        }, 
+        {
+            "location": "/dependencies/", 
+            "text": "Currently gnhast depends on the following software to compile and run\n\n\nhttp://www.nongnu.org/confuse/\n libconfuse - embedded in source\n\nhttp://libevent.org/\n libevent 2.0\n\n\nOptional libraries for the collectors:\n\n\nhttp://oss.oetiker.ch/rrdtool/index.en.html\n rrdtool - for rrdcoll\n\n\nOptional external software for collectors:\n\n\nhttp://owfs.org/index.php\n one-wire fs.  gnhast uses owserver for communication to one-wire devices.  Used by owscoll\n\n\nOptional things that make life easier:\n\n\nhttp://www.securityfocus.com/tools/137\n Netcat - for writing scripts\n\nhttp://siag.nu/dwatch/\n Dwatch - Monitor and restart daemons if they crash", 
+            "title": "Dependencies"
+        }, 
+        {
+            "location": "/protocol/", 
+            "text": "Protocol Design\n\n\nExample session\n\n\nThe below sequence, tells gnhastd that the dimmer device 1B.D4.4C is currently set to 0.5, or 50%, and then disconnects from gnhastd.\n\n\nupd uid:1B.D4.4C dimmer:0.5\ndisconnect\n\n\n\n\nThe below sequence tells gnhastd to find the collector for the 1B.D4.4C device, and to request it to change the status of the switch to ON, and then disconnects from gnhastd.  This is a typical sequence you could use in a script via netcat, to turn a light on.\n\n\nchg uid:1B.D4.4C dimmer:1.0\ndisconnect\n\n\n\n\nServer Commands\n\n\nreg\n\n\nRegister a device with the server, or, tell the collector about a device\n\n\nregg\n\n\nRegister a group with the server, or, tell the collector about a group\n\n\nupd\n\n\nUpdate the status of a device.  Sent to, and by the server\n\n\nmod\n\n\nModify a setting of a device.  (Currently only name, rrdname, hargs, and handler).  Sent to and by the server.\n\n\nchg\n\n\nRequest a change in the status of a device.  For example, ask for an outlet to be turned off.  Sent to and by the server.\n\n\nldevs\n\n\nRequest a list of devices from the server.  Can give it arguments such as protocol, type, etc, to narrow the list.  Devices are sent back to the collector as reg commands.\n\n\nendldevs\n\n\nServer sends this to let the client know we are done sending it device names from an ldevs.\n\n\nlgrps\n\n\nRequest a list of groups from the server.  Groups are sent back as regg commands.\n\n\nenlgrps\n\n\nServer sends this to let the client know we are done sending it group names from an lgrps.\n\n\nfeed\n\n\nRequest a continuous stream of updates from the server for a particular device.  rate argument sets the update speed in seconds.  Updates are sent via the upd comamnd.\n\n\nask\n\n\nAsk for a single upd on a device, or devices\n\n\ncactiask\n\n\nAsk for a single upd on a device, or devices, but reply in cacti format.\n\n\ndisconnect\n\n\nDisconnect form the gnhastd server\n\n\nclient\n\n\nTell the server the name of our client (needs client arg)\n\n\nArguments\n\n\nuid\n\n\nThe unique identifier for this device\n\n\nname\n\n\nThe human readable name for this device\n\n\nrrdname\n\n\nThe name of the field to store this value in, in an rrd file\n\n\nrate\n\n\nThe rate in seconds of an update (used by feed) (integer)\n\n\ndevt\n\n\nThe device type.  (integer)\n\n\nproto\n\n\nThe device protocol. Integer\n\n\nsubt\n\n\nThe device subtype.  Integer\n\n\nswitch\n\n\nThe status of a switch.  0=off, 1=on. Integer\n\n\ndimmer\n\n\nStatus of a dimmer.  0.0-1.0 float\n\n\ntemp\n\n\nTemperature.  Float\n\n\nhumid\n\n\nHumidity.  Float\n\n\nlux\n\n\nLight level in LUX. Float\n\n\npres\n\n\nPressure.  (air pressure)  Float.\n\n\nspeed\n\n\nA speed value, used for windspeed for now. Float.\n\n\ndir\n\n\nWind direction\n\n\ncount\n\n\nA count, for a counter type device.  Integer.\n\n\nwet\n\n\nWetness, for leaf wetness sensors.  Float.\n\n\nmoist\n\n\nMoisture.  For soil moisture sensors.  Float.\n\n\nwsec\n\n\nWattseconds.  (aka joules)  Long long.\n\n\nvolts\n\n\nVoltage.  Float.\n\n\nwatt\n\n\nWattage. Float.\n\n\namps\n\n\nAmperage.  Float.\n\n\nrain\n\n\nRain rate.  Float.\n\n\nweather\n\n\nFor weather stations that report cloudy/overcast/etc.  Integer, reports values of:\n0 - sunny\n1 - partly cloudy\n2 - cloudy\n3 - rainy\n\n\nclient\n\n\nClient name.  Used by collectors so gnhastd knows which collector is on which connection.\n\n\nscale\n\n\nUsed to determine scale of incoming data, or set scale of outgoing data. Currently supports the following scale values:  temperature, barometer, length, speed, light.  All scale values cont from zero, so, for temperature in celcius, send a \"1\" as the value.  Integer.\n\n\ntemperature scales\n\n\nCurrently F, C, K, R. (count from 0)\n\n\nBarometer scales\n\n\nCurrently Inches, millimeters, millibars (of mercury for the in/mm).\n\n\nLength scales\n\n\nCurrently inches or millimeters\n\n\nSpeed scales\n\n\nMPH, Knots, Meters/Sec, KPH.\n\n\nLight scales\n\n\nLux, Watts/Meter squared\n\n\nhiwat\n\n\nSensor high water mark. Float.\n\n\nlowat\n\n\nSensor Low water mark.  Float\n\n\nhandler\n\n\nPath to a handler routine.  String.\n\n\nhargs\n\n\nHandler arguments.  comma separated string of arguments.  String.  Example:\nargument1,argument2\n\n\nflow\n\n\nFlow rate. Float\n\n\ndistance\n\n\nDistance. Float\n\n\nalarm\n\n\nFor alarm devices.  Integer, reports values of:\n0 - Alarm Ready\n1 - Alarm Stay\n2 - Alarm Night/Stay\n3 - Alarm Instant Max\n4 - Alarm Away\n5 - Alarm Fault\n\n\nnumber\n\n\nint64 number\n\n\npct\n\n\nPercentage. Float\n\n\nvolume\n\n\nSound volume.  Float\n\n\ntimer\n\n\nCountdown timer.  Counts to zero automatically in seconds.  Unsigned int\n\n\nthmode\n\n\nThermostat mode.  Integer, reports values of:\n0 - Off\n1 - Heat\n2 - Cool\n3 - Auto\n\n\nthstate\n\n\nThemostat state.  Integer, reports values of:\n0 - Idle\n1 - Heating\n2 - Cooling\n3 - Lockout\n4 - Error\n\n\nsmnum\n\n\nSmall number. 0-255\n\n\nglist\n\n\nGroup list.  Comma separated list of group UID's\n\n\ndlist\n\n\nDevice list.  Comma separated list of device UID's", 
+            "title": "Protocol Design"
+        }, 
+        {
+            "location": "/protocol/#protocol-design", 
+            "text": "", 
+            "title": "Protocol Design"
+        }, 
+        {
+            "location": "/protocol/#example-session", 
+            "text": "The below sequence, tells gnhastd that the dimmer device 1B.D4.4C is currently set to 0.5, or 50%, and then disconnects from gnhastd.  upd uid:1B.D4.4C dimmer:0.5\ndisconnect  The below sequence tells gnhastd to find the collector for the 1B.D4.4C device, and to request it to change the status of the switch to ON, and then disconnects from gnhastd.  This is a typical sequence you could use in a script via netcat, to turn a light on.  chg uid:1B.D4.4C dimmer:1.0\ndisconnect", 
+            "title": "Example session"
+        }, 
+        {
+            "location": "/protocol/#server-commands", 
+            "text": "", 
+            "title": "Server Commands"
+        }, 
+        {
+            "location": "/protocol/#reg", 
+            "text": "Register a device with the server, or, tell the collector about a device", 
+            "title": "reg"
+        }, 
+        {
+            "location": "/protocol/#regg", 
+            "text": "Register a group with the server, or, tell the collector about a group", 
+            "title": "regg"
+        }, 
+        {
+            "location": "/protocol/#upd", 
+            "text": "Update the status of a device.  Sent to, and by the server", 
+            "title": "upd"
+        }, 
+        {
+            "location": "/protocol/#mod", 
+            "text": "Modify a setting of a device.  (Currently only name, rrdname, hargs, and handler).  Sent to and by the server.", 
+            "title": "mod"
+        }, 
+        {
+            "location": "/protocol/#chg", 
+            "text": "Request a change in the status of a device.  For example, ask for an outlet to be turned off.  Sent to and by the server.", 
+            "title": "chg"
+        }, 
+        {
+            "location": "/protocol/#ldevs", 
+            "text": "Request a list of devices from the server.  Can give it arguments such as protocol, type, etc, to narrow the list.  Devices are sent back to the collector as reg commands.", 
+            "title": "ldevs"
+        }, 
+        {
+            "location": "/protocol/#endldevs", 
+            "text": "Server sends this to let the client know we are done sending it device names from an ldevs.", 
+            "title": "endldevs"
+        }, 
+        {
+            "location": "/protocol/#lgrps", 
+            "text": "Request a list of groups from the server.  Groups are sent back as regg commands.", 
+            "title": "lgrps"
+        }, 
+        {
+            "location": "/protocol/#enlgrps", 
+            "text": "Server sends this to let the client know we are done sending it group names from an lgrps.", 
+            "title": "enlgrps"
+        }, 
+        {
+            "location": "/protocol/#feed", 
+            "text": "Request a continuous stream of updates from the server for a particular device.  rate argument sets the update speed in seconds.  Updates are sent via the upd comamnd.", 
+            "title": "feed"
+        }, 
+        {
+            "location": "/protocol/#ask", 
+            "text": "Ask for a single upd on a device, or devices", 
+            "title": "ask"
+        }, 
+        {
+            "location": "/protocol/#cactiask", 
+            "text": "Ask for a single upd on a device, or devices, but reply in cacti format.", 
+            "title": "cactiask"
+        }, 
+        {
+            "location": "/protocol/#disconnect", 
+            "text": "Disconnect form the gnhastd server", 
+            "title": "disconnect"
+        }, 
+        {
+            "location": "/protocol/#client", 
+            "text": "Tell the server the name of our client (needs client arg)", 
+            "title": "client"
+        }, 
+        {
+            "location": "/protocol/#arguments", 
+            "text": "", 
+            "title": "Arguments"
+        }, 
+        {
+            "location": "/protocol/#uid", 
+            "text": "The unique identifier for this device", 
+            "title": "uid"
+        }, 
+        {
+            "location": "/protocol/#name", 
+            "text": "The human readable name for this device", 
+            "title": "name"
+        }, 
+        {
+            "location": "/protocol/#rrdname", 
+            "text": "The name of the field to store this value in, in an rrd file", 
+            "title": "rrdname"
+        }, 
+        {
+            "location": "/protocol/#rate", 
+            "text": "The rate in seconds of an update (used by feed) (integer)", 
+            "title": "rate"
+        }, 
+        {
+            "location": "/protocol/#devt", 
+            "text": "The device type.  (integer)", 
+            "title": "devt"
+        }, 
+        {
+            "location": "/protocol/#proto", 
+            "text": "The device protocol. Integer", 
+            "title": "proto"
+        }, 
+        {
+            "location": "/protocol/#subt", 
+            "text": "The device subtype.  Integer", 
+            "title": "subt"
+        }, 
+        {
+            "location": "/protocol/#switch", 
+            "text": "The status of a switch.  0=off, 1=on. Integer", 
+            "title": "switch"
+        }, 
+        {
+            "location": "/protocol/#dimmer", 
+            "text": "Status of a dimmer.  0.0-1.0 float", 
+            "title": "dimmer"
+        }, 
+        {
+            "location": "/protocol/#temp", 
+            "text": "Temperature.  Float", 
+            "title": "temp"
+        }, 
+        {
+            "location": "/protocol/#humid", 
+            "text": "Humidity.  Float", 
+            "title": "humid"
+        }, 
+        {
+            "location": "/protocol/#lux", 
+            "text": "Light level in LUX. Float", 
+            "title": "lux"
+        }, 
+        {
+            "location": "/protocol/#pres", 
+            "text": "Pressure.  (air pressure)  Float.", 
+            "title": "pres"
+        }, 
+        {
+            "location": "/protocol/#speed", 
+            "text": "A speed value, used for windspeed for now. Float.", 
+            "title": "speed"
+        }, 
+        {
+            "location": "/protocol/#dir", 
+            "text": "Wind direction", 
+            "title": "dir"
+        }, 
+        {
+            "location": "/protocol/#count", 
+            "text": "A count, for a counter type device.  Integer.", 
+            "title": "count"
+        }, 
+        {
+            "location": "/protocol/#wet", 
+            "text": "Wetness, for leaf wetness sensors.  Float.", 
+            "title": "wet"
+        }, 
+        {
+            "location": "/protocol/#moist", 
+            "text": "Moisture.  For soil moisture sensors.  Float.", 
+            "title": "moist"
+        }, 
+        {
+            "location": "/protocol/#wsec", 
+            "text": "Wattseconds.  (aka joules)  Long long.", 
+            "title": "wsec"
+        }, 
+        {
+            "location": "/protocol/#volts", 
+            "text": "Voltage.  Float.", 
+            "title": "volts"
+        }, 
+        {
+            "location": "/protocol/#watt", 
+            "text": "Wattage. Float.", 
+            "title": "watt"
+        }, 
+        {
+            "location": "/protocol/#amps", 
+            "text": "Amperage.  Float.", 
+            "title": "amps"
+        }, 
+        {
+            "location": "/protocol/#rain", 
+            "text": "Rain rate.  Float.", 
+            "title": "rain"
+        }, 
+        {
+            "location": "/protocol/#weather", 
+            "text": "For weather stations that report cloudy/overcast/etc.  Integer, reports values of:\n0 - sunny\n1 - partly cloudy\n2 - cloudy\n3 - rainy", 
+            "title": "weather"
+        }, 
+        {
+            "location": "/protocol/#client_1", 
+            "text": "Client name.  Used by collectors so gnhastd knows which collector is on which connection.", 
+            "title": "client"
+        }, 
+        {
+            "location": "/protocol/#scale", 
+            "text": "Used to determine scale of incoming data, or set scale of outgoing data. Currently supports the following scale values:  temperature, barometer, length, speed, light.  All scale values cont from zero, so, for temperature in celcius, send a \"1\" as the value.  Integer.", 
+            "title": "scale"
+        }, 
+        {
+            "location": "/protocol/#temperature-scales", 
+            "text": "Currently F, C, K, R. (count from 0)", 
+            "title": "temperature scales"
+        }, 
+        {
+            "location": "/protocol/#barometer-scales", 
+            "text": "Currently Inches, millimeters, millibars (of mercury for the in/mm).", 
+            "title": "Barometer scales"
+        }, 
+        {
+            "location": "/protocol/#length-scales", 
+            "text": "Currently inches or millimeters", 
+            "title": "Length scales"
+        }, 
+        {
+            "location": "/protocol/#speed-scales", 
+            "text": "MPH, Knots, Meters/Sec, KPH.", 
+            "title": "Speed scales"
+        }, 
+        {
+            "location": "/protocol/#light-scales", 
+            "text": "Lux, Watts/Meter squared", 
+            "title": "Light scales"
+        }, 
+        {
+            "location": "/protocol/#hiwat", 
+            "text": "Sensor high water mark. Float.", 
+            "title": "hiwat"
+        }, 
+        {
+            "location": "/protocol/#lowat", 
+            "text": "Sensor Low water mark.  Float", 
+            "title": "lowat"
+        }, 
+        {
+            "location": "/protocol/#handler", 
+            "text": "Path to a handler routine.  String.", 
+            "title": "handler"
+        }, 
+        {
+            "location": "/protocol/#hargs", 
+            "text": "Handler arguments.  comma separated string of arguments.  String.  Example:\nargument1,argument2", 
+            "title": "hargs"
+        }, 
+        {
+            "location": "/protocol/#flow", 
+            "text": "Flow rate. Float", 
+            "title": "flow"
+        }, 
+        {
+            "location": "/protocol/#distance", 
+            "text": "Distance. Float", 
+            "title": "distance"
+        }, 
+        {
+            "location": "/protocol/#alarm", 
+            "text": "For alarm devices.  Integer, reports values of:\n0 - Alarm Ready\n1 - Alarm Stay\n2 - Alarm Night/Stay\n3 - Alarm Instant Max\n4 - Alarm Away\n5 - Alarm Fault", 
+            "title": "alarm"
+        }, 
+        {
+            "location": "/protocol/#number", 
+            "text": "int64 number", 
+            "title": "number"
+        }, 
+        {
+            "location": "/protocol/#pct", 
+            "text": "Percentage. Float", 
+            "title": "pct"
+        }, 
+        {
+            "location": "/protocol/#volume", 
+            "text": "Sound volume.  Float", 
+            "title": "volume"
+        }, 
+        {
+            "location": "/protocol/#timer", 
+            "text": "Countdown timer.  Counts to zero automatically in seconds.  Unsigned int", 
+            "title": "timer"
+        }, 
+        {
+            "location": "/protocol/#thmode", 
+            "text": "Thermostat mode.  Integer, reports values of:\n0 - Off\n1 - Heat\n2 - Cool\n3 - Auto", 
+            "title": "thmode"
+        }, 
+        {
+            "location": "/protocol/#thstate", 
+            "text": "Themostat state.  Integer, reports values of:\n0 - Idle\n1 - Heating\n2 - Cooling\n3 - Lockout\n4 - Error", 
+            "title": "thstate"
+        }, 
+        {
+            "location": "/protocol/#smnum", 
+            "text": "Small number. 0-255", 
+            "title": "smnum"
+        }, 
+        {
+            "location": "/protocol/#glist", 
+            "text": "Group list.  Comma separated list of group UID's", 
+            "title": "glist"
+        }, 
+        {
+            "location": "/protocol/#dlist", 
+            "text": "Device list.  Comma separated list of device UID's", 
+            "title": "dlist"
+        }, 
+        {
+            "location": "/gnhastweb/", 
+            "text": "How to install gnhastweb\n\n\n\n\nRun the normal gnhast build.  This will substitute the @PERL@ with your real perl path.\n\n\nEdit cgi-bin/rrdjson.cgi.  Change $path to the location of your generated rrd files.  These would be wherever you told rrdcoll to put them.\n\n\nCopy all the \ncgi-bin/*\n scripts to the cgi-bin dir of your webserver.\n\n\nCopy the \"css\", \"scripts\" and \"fonts\" directories to the docroot of your webserver. (ie, like /htdocs/css, etc)\n\n\nCopy favicon.png (if you want) and gnhast-icon-48.png to the docroot.\n\n\nCopy jsoncoll.cgi from your installed bin directory to your cgi-bin directory.\n\n\nEdit your jsoncgicoll.conf file in your etc directory.  An example:\n\n\n\n\n\njsoncgicoll {\n        instance = 1\n}\ngnhastd {\n  hostname = \nelectra\n\n  port = 2920\n}\n\n\n\n\n\n\nCopy the example gnhastweb.conf file to the cgi-bin directory of your webserver.  Edit it to your heart's content.  The example activates most of the features, many can be disabled.\n\n\nCopy header.html to the cgi-bin directory of your webserver.\n\n\nConnect to your webserver, it should work?", 
+            "title": "GnhastWeb"
+        }, 
+        {
+            "location": "/gnhastweb/#how-to-install-gnhastweb", 
+            "text": "Run the normal gnhast build.  This will substitute the @PERL@ with your real perl path.  Edit cgi-bin/rrdjson.cgi.  Change $path to the location of your generated rrd files.  These would be wherever you told rrdcoll to put them.  Copy all the  cgi-bin/*  scripts to the cgi-bin dir of your webserver.  Copy the \"css\", \"scripts\" and \"fonts\" directories to the docroot of your webserver. (ie, like /htdocs/css, etc)  Copy favicon.png (if you want) and gnhast-icon-48.png to the docroot.  Copy jsoncoll.cgi from your installed bin directory to your cgi-bin directory.  Edit your jsoncgicoll.conf file in your etc directory.  An example:   \njsoncgicoll {\n        instance = 1\n}\ngnhastd {\n  hostname =  electra \n  port = 2920\n}   Copy the example gnhastweb.conf file to the cgi-bin directory of your webserver.  Edit it to your heart's content.  The example activates most of the features, many can be disabled.  Copy header.html to the cgi-bin directory of your webserver.  Connect to your webserver, it should work?", 
+            "title": "How to install gnhastweb"
+        }, 
+        {
+            "location": "/subtype/", 
+            "text": "Adding a new subtype\n\n\nTo add a new subtype, you need to edit a few files. I'm listing them here for future convenience, as well as the function or type in the file that must be edited.\n\n\ngnhast.h\n subtype enum\n device union\n\n\ncommands.h\n SC_COMMANDS enum\n\n\ndevices.c\n store_data_dev()\n get_data_dev()\n\n\nnetparser.c\n argtable[]\n find_arg_bydev()\n\n\ncollcmd.c\n cmd_update()\n\n\nconfparser.c\n conf_parse_subtype()\n conf_print_subtype()\n\n\ncmdhandler.c\n cmd_update()\n cmd_change()", 
+            "title": "Adding a new subtype"
+        }, 
+        {
+            "location": "/subtype/#adding-a-new-subtype", 
+            "text": "To add a new subtype, you need to edit a few files. I'm listing them here for future convenience, as well as the function or type in the file that must be edited.  gnhast.h\n subtype enum\n device union  commands.h\n SC_COMMANDS enum  devices.c\n store_data_dev()\n get_data_dev()  netparser.c\n argtable[]\n find_arg_bydev()  collcmd.c\n cmd_update()  confparser.c\n conf_parse_subtype()\n conf_print_subtype()  cmdhandler.c\n cmd_update()\n cmd_change()", 
+            "title": "Adding a new subtype"
+        }, 
+        {
+            "location": "/config/device/", 
+            "text": "Example devices\n\n\ndevice \n26.BCA421010000\n {\n  name = \nBig Aquarium Humidity\n\n  # loc = \n\n  rrdname = \nBAQ_Humid\n\n  subtype = humid\n  type = sensor\n  proto = sensor-owfs\n  multimodel = \nHIH4000\n\n}\ndevice \n1D.7EC20F000000-A\n {\n  name = \nLightning Detector A\n\n  loc = \n1D.7EC20F000000\n\n  rrdname = \nLightStrikeA\n\n  subtype = \ncounter\n\n  type = sensor\n  proto = sensor-owfs\n  multimodel = \ncounters.A\n\n}\n\n\n\n\nThe device section\n\n\nThe device section starts with device \"UID\".  UID is a Unique ID.  This must be an ID number of some kind that will uniquely identify the device to gnhastd.  For most devices, you can leave this alone, but in a few certain types of devices, you may need to edit it.\n\n\nname\n\n\nThe friendly name of the device.  Enclose in quotes if you embed spaces.\n\n\nloc\n\n\nCertain devices might have multiple sensors on the same address.  For example, a HobbyBoards lightning sensor has two counter chips, but only one one-wire address.  For gnhastd, you want each counter to be a separate device.  To do this, we create two entries for the lightning strike detector, with different UID's, and then in the loc field, we give the real address of the one-wire device.\n\n\nrrdname\n\n\nIf you wish to store your data in an rrd eventually, you can set rrdnames in the config file.  This will assist gnhastd/rrdcoll in creating config files automatically.  The rrdname does not need to be unique.  It corresponds to the DS in an rrd.\n\n\nsubtype\n\n\nThe subtype of the device.  Examples: \"counter\", \"temp\", \"lux\".\n\n\n[list of valid subtypes]\n\n\ntype\n\n\nThe type of device.  Currently, switch, sensor, or dimmer.\n\n\nproto\n\n\nThe communications protocol for the device.  This is usually unique to the collector. For example, a one-wire device connected via owsrvcoll would use protocol \"sensor-owfs\".\n\n\nmultimodel\n\n\nUsed in certain collectors, can be used to give additional information to the collector about the device.  In the example of the humidity sensor, it is used to decide which humidity node to read from the one-wire sensor.\n\n\nhandler\n\n\nUsed only in gnhastd.  This is the path to a script, which will be executed when data is recieved from a collector pertaining to this device.  The script can be any executable, in any language.\n\n\nhiwat / lowat\n\n\nHigh water / Low water marks.  A value used by gnhastd only, to determine if a handler should be fired. If the value of the sensed device exceeds hiwat, or is below lowat, the handler will be executed.  If both hiwat and lowat are 0.0, the handler will fire on every update.", 
+            "title": "device section"
+        }, 
+        {
+            "location": "/config/device/#example-devices", 
+            "text": "device  26.BCA421010000  {\n  name =  Big Aquarium Humidity \n  # loc =  \n  rrdname =  BAQ_Humid \n  subtype = humid\n  type = sensor\n  proto = sensor-owfs\n  multimodel =  HIH4000 \n}\ndevice  1D.7EC20F000000-A  {\n  name =  Lightning Detector A \n  loc =  1D.7EC20F000000 \n  rrdname =  LightStrikeA \n  subtype =  counter \n  type = sensor\n  proto = sensor-owfs\n  multimodel =  counters.A \n}", 
+            "title": "Example devices"
+        }, 
+        {
+            "location": "/config/device/#the-device-section", 
+            "text": "The device section starts with device \"UID\".  UID is a Unique ID.  This must be an ID number of some kind that will uniquely identify the device to gnhastd.  For most devices, you can leave this alone, but in a few certain types of devices, you may need to edit it.", 
+            "title": "The device section"
+        }, 
+        {
+            "location": "/config/device/#name", 
+            "text": "The friendly name of the device.  Enclose in quotes if you embed spaces.", 
+            "title": "name"
+        }, 
+        {
+            "location": "/config/device/#loc", 
+            "text": "Certain devices might have multiple sensors on the same address.  For example, a HobbyBoards lightning sensor has two counter chips, but only one one-wire address.  For gnhastd, you want each counter to be a separate device.  To do this, we create two entries for the lightning strike detector, with different UID's, and then in the loc field, we give the real address of the one-wire device.", 
+            "title": "loc"
+        }, 
+        {
+            "location": "/config/device/#rrdname", 
+            "text": "If you wish to store your data in an rrd eventually, you can set rrdnames in the config file.  This will assist gnhastd/rrdcoll in creating config files automatically.  The rrdname does not need to be unique.  It corresponds to the DS in an rrd.", 
+            "title": "rrdname"
+        }, 
+        {
+            "location": "/config/device/#subtype", 
+            "text": "The subtype of the device.  Examples: \"counter\", \"temp\", \"lux\".  [list of valid subtypes]", 
+            "title": "subtype"
+        }, 
+        {
+            "location": "/config/device/#type", 
+            "text": "The type of device.  Currently, switch, sensor, or dimmer.", 
+            "title": "type"
+        }, 
+        {
+            "location": "/config/device/#proto", 
+            "text": "The communications protocol for the device.  This is usually unique to the collector. For example, a one-wire device connected via owsrvcoll would use protocol \"sensor-owfs\".", 
+            "title": "proto"
+        }, 
+        {
+            "location": "/config/device/#multimodel", 
+            "text": "Used in certain collectors, can be used to give additional information to the collector about the device.  In the example of the humidity sensor, it is used to decide which humidity node to read from the one-wire sensor.", 
+            "title": "multimodel"
+        }, 
+        {
+            "location": "/config/device/#handler", 
+            "text": "Used only in gnhastd.  This is the path to a script, which will be executed when data is recieved from a collector pertaining to this device.  The script can be any executable, in any language.", 
+            "title": "handler"
+        }, 
+        {
+            "location": "/config/device/#hiwat-lowat", 
+            "text": "High water / Low water marks.  A value used by gnhastd only, to determine if a handler should be fired. If the value of the sensed device exceeds hiwat, or is below lowat, the handler will be executed.  If both hiwat and lowat are 0.0, the handler will fire on every update.", 
+            "title": "hiwat / lowat"
+        }, 
+        {
+            "location": "/config/gnhastd_sec/", 
+            "text": "gnhastd {\n  hostname = \n127.0.0.1\n\n  port = 2920\n}\n\n\n\n\nhostname\n\n\nThe name or IP addre\nss of the gnhastd server\n\n\nport\n\n\nThe port number (normally 2920)", 
+            "title": "gnhastd section"
+        }, 
+        {
+            "location": "/config/gnhastd_sec/#hostname", 
+            "text": "The name or IP addre\nss of the gnhastd server", 
+            "title": "hostname"
+        }, 
+        {
+            "location": "/config/gnhastd_sec/#port", 
+            "text": "The port number (normally 2920)", 
+            "title": "port"
+        }, 
+        {
+            "location": "/config/brulcoll/", 
+            "text": "brultech {\n  hostname = \nwezen\n\n  port = 80\n  model = gem\n  connection = net\n  serialdev = \n/dev/dty01\n\n}\ngnhastd {\n  hostname = \n127.0.0.1\n\n  port = 2920\n}\nbrulcoll {\n  tscale = \nF\n\n  update = 10\n  pkttype = 8\n}\n\n\n\n\nbrulcoll section\n\n\ntscale (F|C)\n\n\nTemperature scale, Farenhiet or Celcius\n\n\nupdate (seconds)\n\n\nUpdate speed of the GEM in seconds\n\n\npkttype (integer)\n\n\nThe packet format for the GEM.  Valid formats are: 8 for a 32-device GEM, or 4 for a 48-device GEM.\n\n\ngnhastd section\n\n\ngnhastd section\n\n\nbrultech section\n\n\nhostname (IP)\n\n\nIP or hostname of the GEM, defaults to 127.0.0.1\n\n\nport (port)\n\n\nPort number of the GEM, defaults to 80\n\n\nmodel (GEM|ecm1240)\n\n\nOnly the GEM is currently supported\n\n\nconnection (net|serial)\n\n\nCurrently only \"net\" is supported, future versions may include serial support for ecm1240's\n\n\nserialdev (path)\n\n\nDevice name for the serial device.  Currently unused, but future versions may support for ecm1240's\n\n\ndevice section\n\n\ndevice section\n\n\ngeneral options\n\n\nlogfile (file)\n\n\nYou can override the default path of the logfile here. $PREFIX/var/log/brulcoll.log\n\n\npidfile (file)\n\n\nYou can override the default path of the pid file here. $PREFIX/var/run/brulcoll.pid", 
+            "title": "brulcoll.conf"
+        }, 
+        {
+            "location": "/config/brulcoll/#brulcoll-section", 
+            "text": "", 
+            "title": "brulcoll section"
+        }, 
+        {
+            "location": "/config/brulcoll/#tscale-fc", 
+            "text": "Temperature scale, Farenhiet or Celcius", 
+            "title": "tscale (F|C)"
+        }, 
+        {
+            "location": "/config/brulcoll/#update-seconds", 
+            "text": "Update speed of the GEM in seconds", 
+            "title": "update (seconds)"
+        }, 
+        {
+            "location": "/config/brulcoll/#pkttype-integer", 
+            "text": "The packet format for the GEM.  Valid formats are: 8 for a 32-device GEM, or 4 for a 48-device GEM.", 
+            "title": "pkttype (integer)"
+        }, 
+        {
+            "location": "/config/brulcoll/#gnhastd-section", 
+            "text": "gnhastd section", 
+            "title": "gnhastd section"
+        }, 
+        {
+            "location": "/config/brulcoll/#brultech-section", 
+            "text": "", 
+            "title": "brultech section"
+        }, 
+        {
+            "location": "/config/brulcoll/#hostname-ip", 
+            "text": "IP or hostname of the GEM, defaults to 127.0.0.1", 
+            "title": "hostname (IP)"
+        }, 
+        {
+            "location": "/config/brulcoll/#port-port", 
+            "text": "Port number of the GEM, defaults to 80", 
+            "title": "port (port)"
+        }, 
+        {
+            "location": "/config/brulcoll/#model-gemecm1240", 
+            "text": "Only the GEM is currently supported", 
+            "title": "model (GEM|ecm1240)"
+        }, 
+        {
+            "location": "/config/brulcoll/#connection-netserial", 
+            "text": "Currently only \"net\" is supported, future versions may include serial support for ecm1240's", 
+            "title": "connection (net|serial)"
+        }, 
+        {
+            "location": "/config/brulcoll/#serialdev-path", 
+            "text": "Device name for the serial device.  Currently unused, but future versions may support for ecm1240's", 
+            "title": "serialdev (path)"
+        }, 
+        {
+            "location": "/config/brulcoll/#device-section", 
+            "text": "device section", 
+            "title": "device section"
+        }, 
+        {
+            "location": "/config/brulcoll/#general-options", 
+            "text": "", 
+            "title": "general options"
+        }, 
+        {
+            "location": "/config/brulcoll/#logfile-file", 
+            "text": "You can override the default path of the logfile here. $PREFIX/var/log/brulcoll.log", 
+            "title": "logfile (file)"
+        }, 
+        {
+            "location": "/config/brulcoll/#pidfile-file", 
+            "text": "You can override the default path of the pid file here. $PREFIX/var/run/brulcoll.pid", 
+            "title": "pidfile (file)"
+        }, 
+        {
+            "location": "/config/insteon/", 
+            "text": "Setting up the insteon devices is a bit more complex, as they are inherently more complex devices.  There are a few steps to this process.\n\n\n\"discover\" insteon devices.\n\n\nThere is no way to actually probe a network for insteon devices.  You must write down the addresses of all the devices as you install them.  Make a list of device addresses, in the form:\n\n\nABCDEF\n123456\nAC12FC\n\n\n\n\nAnd save that in a file.  Then run insteon_discover -f (file from above) -s /dev/serialport -m file.conf\nThis will connect to each device in the file, send an ALL LINK request to that device, linking it to the PLM, and then write a conf file out that can be used as an initial insteoncoll.conf file.\n\n\nThe insteon_discover process needs to find the insteon.db configuration file in $PREFIX/etc/insteon.db in order to properly identify devices.  If you have a device it cannot identify, you may add an entry to this file.  An example insteon.db is below:\n\n\nmodel \n2477D\n {\n        name = \nSwitchLinc Dimmer (Dual-Band) (600W)\n\n        devcat = 0x01\n        subcat = 0x20\n        type = \ndimmer\n\n        subtype = \nswitch\n\n}\nmodel \n2475DA1\n {\n        name = \nIn-LineLinc Dimmer\n\n        devcat = 0x01\n        subcat = 0x1A\n        type = \ndimmer\n\n        subtype = \nswitch\n\n}\nmodel \n2486DWH6\n {\n        name = \nKeypadLinc Dimmer, 6-button\n\n        devcat = 0x01\n        subcat = 0x1B\n        type = \ndimmer\n\n        subtype = \nswitch\n\n}\n\n\n\n\nedit generated insteoncoll.conf file, an install\n\n\nYou now need to edit the conf file the previous program generated, and install it as $PREFIX/insteoncoll.conf.  You will likely only need to edit the [gnhastd section].\n\n\ngnhastd {\n  hostname = \n127.0.0.1\n\n#  hostname = \n192.168.10.1\n\n  port = 2920\n}\ninsteoncoll {\n  device = \n/dev/ttyU2\n\n}\ndevice \n1C.AF.58\n {\n  name = \nSpa Room - Spa Lights SwitchLinc Dimmer\n\n  loc = \n1C.AF.58\n\n  # rrdname = \n\n  subtype = switch\n  type = dimmer\n  proto = insteon-v2\n  # multimodel = \n\n  # handler = \n\n  hiwat = 0.000000\n  lowat = 0.000000\n}\n\n\n\n\nConf file format\n\n\ngnhastd section\n\n\n[gnhastd section]\n\n\ndevice section\n\n\n[device section]\n\n\ninsteoncoll section\n\n\ndevice (path)\n\n\nPathname of serial device PLM is connected to\n\n\ngeneral options\n\n\nlogfile (file)\n\n\nYou can override the default path of the logfile here. $PREFIX/var/log/insteoncoll.log\n\n\npidfile (file)\n\n\nYou can override the default path of the pid file here. $PREFIX/var/run/insteoncoll.pid\n\n\ninsteon_aldb program\n\n\nThe insteon_aldb program lets you directly edit the ALDB of a device.  The first mode of operation queries the device, and dumps the ALDB to a file:\n\n\ninsteon_aldb -a AB12CD -s /dev/serial -f dumpfile\n\n\nThis will query device AB12CD, and generate a file named dumpfile with the ALDB.  Example:\n\n\n1C.17.A0 03 32 18 00 A2\n1C.17.A0 06 FE 1C 00 A2\n1C.17.A0 04 7D 18 00 A2\n1C.17.A0 01 00 1A 00 A2\n1C.17.A0 05 C8 18 00 A2\n1C.17.A0 03 32 18 00 A2\n1B.D4.4C 01 00 1A 00 E2\n1B.FA.84 75 00 1A 00 A2\n1B.FA.84 76 00 1A 00 E2\n00.00.00 00 00 00 00 00\n\n\n\n\nThe format is:\naddress of linked device, group number, link data 1, link data 2, link data 3, link flags.\nThe last line should be all zeros.\n\n\nNote, that when editing the ALDB file, you should keep the number of lines the same. If you wanted to delete line 4, add an additional line of all zeros at the end, so the DB is properly wiped.  The program simply writes the new DB to the device, and does not attempt to figure out what you meant for it to do.\n\n\nTo write the new ALDB to your device:\n\n\ninsteon_aldb -a AB12CD -s /dev/serial -w -f aldbfile\n\n\nThis will write the new ALDB record to your device.", 
+            "title": "Insteon"
+        }, 
+        {
+            "location": "/config/insteon/#discover-insteon-devices", 
+            "text": "There is no way to actually probe a network for insteon devices.  You must write down the addresses of all the devices as you install them.  Make a list of device addresses, in the form:  ABCDEF\n123456\nAC12FC  And save that in a file.  Then run insteon_discover -f (file from above) -s /dev/serialport -m file.conf\nThis will connect to each device in the file, send an ALL LINK request to that device, linking it to the PLM, and then write a conf file out that can be used as an initial insteoncoll.conf file.  The insteon_discover process needs to find the insteon.db configuration file in $PREFIX/etc/insteon.db in order to properly identify devices.  If you have a device it cannot identify, you may add an entry to this file.  An example insteon.db is below:  model  2477D  {\n        name =  SwitchLinc Dimmer (Dual-Band) (600W) \n        devcat = 0x01\n        subcat = 0x20\n        type =  dimmer \n        subtype =  switch \n}\nmodel  2475DA1  {\n        name =  In-LineLinc Dimmer \n        devcat = 0x01\n        subcat = 0x1A\n        type =  dimmer \n        subtype =  switch \n}\nmodel  2486DWH6  {\n        name =  KeypadLinc Dimmer, 6-button \n        devcat = 0x01\n        subcat = 0x1B\n        type =  dimmer \n        subtype =  switch \n}", 
+            "title": "\"discover\" insteon devices."
+        }, 
+        {
+            "location": "/config/insteon/#edit-generated-insteoncollconf-file-an-install", 
+            "text": "You now need to edit the conf file the previous program generated, and install it as $PREFIX/insteoncoll.conf.  You will likely only need to edit the [gnhastd section].  gnhastd {\n  hostname =  127.0.0.1 \n#  hostname =  192.168.10.1 \n  port = 2920\n}\ninsteoncoll {\n  device =  /dev/ttyU2 \n}\ndevice  1C.AF.58  {\n  name =  Spa Room - Spa Lights SwitchLinc Dimmer \n  loc =  1C.AF.58 \n  # rrdname =  \n  subtype = switch\n  type = dimmer\n  proto = insteon-v2\n  # multimodel =  \n  # handler =  \n  hiwat = 0.000000\n  lowat = 0.000000\n}", 
+            "title": "edit generated insteoncoll.conf file, an install"
+        }, 
+        {
+            "location": "/config/insteon/#conf-file-format", 
+            "text": "", 
+            "title": "Conf file format"
+        }, 
+        {
+            "location": "/config/insteon/#gnhastd-section", 
+            "text": "[gnhastd section]", 
+            "title": "gnhastd section"
+        }, 
+        {
+            "location": "/config/insteon/#device-section", 
+            "text": "[device section]", 
+            "title": "device section"
+        }, 
+        {
+            "location": "/config/insteon/#insteoncoll-section", 
+            "text": "", 
+            "title": "insteoncoll section"
+        }, 
+        {
+            "location": "/config/insteon/#device-path", 
+            "text": "Pathname of serial device PLM is connected to", 
+            "title": "device (path)"
+        }, 
+        {
+            "location": "/config/insteon/#general-options", 
+            "text": "", 
+            "title": "general options"
+        }, 
+        {
+            "location": "/config/insteon/#logfile-file", 
+            "text": "You can override the default path of the logfile here. $PREFIX/var/log/insteoncoll.log", 
+            "title": "logfile (file)"
+        }, 
+        {
+            "location": "/config/insteon/#pidfile-file", 
+            "text": "You can override the default path of the pid file here. $PREFIX/var/run/insteoncoll.pid", 
+            "title": "pidfile (file)"
+        }, 
+        {
+            "location": "/config/insteon/#insteon_aldb-program", 
+            "text": "The insteon_aldb program lets you directly edit the ALDB of a device.  The first mode of operation queries the device, and dumps the ALDB to a file:  insteon_aldb -a AB12CD -s /dev/serial -f dumpfile  This will query device AB12CD, and generate a file named dumpfile with the ALDB.  Example:  1C.17.A0 03 32 18 00 A2\n1C.17.A0 06 FE 1C 00 A2\n1C.17.A0 04 7D 18 00 A2\n1C.17.A0 01 00 1A 00 A2\n1C.17.A0 05 C8 18 00 A2\n1C.17.A0 03 32 18 00 A2\n1B.D4.4C 01 00 1A 00 E2\n1B.FA.84 75 00 1A 00 A2\n1B.FA.84 76 00 1A 00 E2\n00.00.00 00 00 00 00 00  The format is:\naddress of linked device, group number, link data 1, link data 2, link data 3, link flags.\nThe last line should be all zeros.  Note, that when editing the ALDB file, you should keep the number of lines the same. If you wanted to delete line 4, add an additional line of all zeros at the end, so the DB is properly wiped.  The program simply writes the new DB to the device, and does not attempt to figure out what you meant for it to do.  To write the new ALDB to your device:  insteon_aldb -a AB12CD -s /dev/serial -w -f aldbfile  This will write the new ALDB record to your device.", 
+            "title": "insteon_aldb program"
+        }, 
+        {
+            "location": "/config/gnhastd/", 
+            "text": "network {\n  listen = \n0.0.0.0\n\n  port = 2920\n}\ninfodump = 600\n\n\n\n\nnetwork section\n\n\nlisten (ip)\n\n\nThe listen address.  The IP of an interface, or 127.0.0.1, or 0.0.0.0 to listen on all.\n\n\nsslport (port)\n\n\nFor future use of SSL, defaults to 2921\n\n\nport (port)\n\n\nFor the unsecured port, defaults to 2920\n\n\ncertchain (file)\n\n\nfile containing the certchain. (for future SSL use)\n\n\nprivkey (file)\n\n\nfile containing the private key. (for future SSL use)\n\n\nusessl (true/false)\n\n\nSet to true if you want to enable the SSL port (currently broken, default false)\n\n\nusenonssl (true/false)\n\n\nSet to true to enable the unsecured port. (default true)\n\n\ndevice section\n\n\nYou may include a device section with the standard [device section] definitions.  You may define as many devices as you like here.\n\n\ngeneral options\n\n\ndevconf (file)\n\n\nPathname to the devices.conf file, defaults to $PREFIX/etc/devices.conf\n\n\ndevconf_update (seconds)\n\n\nGnhastd will auto-save the devices.conf file every 300 seconds by default.  This way you can set up collectors, have them tell gnhastd about the devices, and have it just magically work.\n\n\ninfodump (seconds)\n\n\nBy default, every 600 seconds gnhastd will dump statistics to the logfile, you may change that value here.\n\n\ninclude(file)\n\n\nYou may include a config file here.  Generally you want to include the devices.conf file here, so it is loaded automatically.  Format is: include(/usr/local/etc/devices.conf)\n\n\nlogfile (file)\n\n\nYou can override the default path of the logfile here. $PREFIX/var/log/gnhastd.log\n\n\npidfile (file)\n\n\nYou can override the default path of the pid file here. $PREFIX/var/run/gnhastd.pid", 
+            "title": "gnhastd.conf"
+        }, 
+        {
+            "location": "/config/gnhastd/#network-section", 
+            "text": "", 
+            "title": "network section"
+        }, 
+        {
+            "location": "/config/gnhastd/#listen-ip", 
+            "text": "The listen address.  The IP of an interface, or 127.0.0.1, or 0.0.0.0 to listen on all.", 
+            "title": "listen (ip)"
+        }, 
+        {
+            "location": "/config/gnhastd/#sslport-port", 
+            "text": "For future use of SSL, defaults to 2921", 
+            "title": "sslport (port)"
+        }, 
+        {
+            "location": "/config/gnhastd/#port-port", 
+            "text": "For the unsecured port, defaults to 2920", 
+            "title": "port (port)"
+        }, 
+        {
+            "location": "/config/gnhastd/#certchain-file", 
+            "text": "file containing the certchain. (for future SSL use)", 
+            "title": "certchain (file)"
+        }, 
+        {
+            "location": "/config/gnhastd/#privkey-file", 
+            "text": "file containing the private key. (for future SSL use)", 
+            "title": "privkey (file)"
+        }, 
+        {
+            "location": "/config/gnhastd/#usessl-truefalse", 
+            "text": "Set to true if you want to enable the SSL port (currently broken, default false)", 
+            "title": "usessl (true/false)"
+        }, 
+        {
+            "location": "/config/gnhastd/#usenonssl-truefalse", 
+            "text": "Set to true to enable the unsecured port. (default true)", 
+            "title": "usenonssl (true/false)"
+        }, 
+        {
+            "location": "/config/gnhastd/#device-section", 
+            "text": "You may include a device section with the standard [device section] definitions.  You may define as many devices as you like here.", 
+            "title": "device section"
+        }, 
+        {
+            "location": "/config/gnhastd/#general-options", 
+            "text": "", 
+            "title": "general options"
+        }, 
+        {
+            "location": "/config/gnhastd/#devconf-file", 
+            "text": "Pathname to the devices.conf file, defaults to $PREFIX/etc/devices.conf", 
+            "title": "devconf (file)"
+        }, 
+        {
+            "location": "/config/gnhastd/#devconf_update-seconds", 
+            "text": "Gnhastd will auto-save the devices.conf file every 300 seconds by default.  This way you can set up collectors, have them tell gnhastd about the devices, and have it just magically work.", 
+            "title": "devconf_update (seconds)"
+        }, 
+        {
+            "location": "/config/gnhastd/#infodump-seconds", 
+            "text": "By default, every 600 seconds gnhastd will dump statistics to the logfile, you may change that value here.", 
+            "title": "infodump (seconds)"
+        }, 
+        {
+            "location": "/config/gnhastd/#includefile", 
+            "text": "You may include a config file here.  Generally you want to include the devices.conf file here, so it is loaded automatically.  Format is: include(/usr/local/etc/devices.conf)", 
+            "title": "include(file)"
+        }, 
+        {
+            "location": "/config/gnhastd/#logfile-file", 
+            "text": "You can override the default path of the logfile here. $PREFIX/var/log/gnhastd.log", 
+            "title": "logfile (file)"
+        }, 
+        {
+            "location": "/config/gnhastd/#pidfile-file", 
+            "text": "You can override the default path of the pid file here. $PREFIX/var/run/gnhastd.pid", 
+            "title": "pidfile (file)"
+        }, 
+        {
+            "location": "/config/owsrvcoll/", 
+            "text": "#\nowserver {\n  hostname = \n127.0.0.1\n\n  port = 4304\n}\ngnhastd {\n  hostname = \n127.0.0.1\n\n  port = 2920\n}\nowsrvcoll {\n  tscale = \nF\n\n  update = 60\n  rescan = 30\n}\ndevice \n10.4ED0A0020800\n {\n  name = \nBig Aquarium LED Wall Temp\n\n  # loc = \n\n  rrdname = \nBAQ_WallTemp\n\n  subtype = temp\n  type = sensor\n  proto = sensor-owfs\n  # multimodel = \n\n}\ndevice \n1D.7EC20F000000-B\n {\n  name = \nLightning Detector B\n\n  loc = \n1D.7EC20F000000\n\n  rrdname = \nLightStrikeB\n\n  subtype = \ncounter\n\n  type = sensor\n  proto = sensor-owfs\n  multimodel = \ncounters.B\n\n}\n\n\n\n\nowserver section\n\n\nhostname (host)\n\n\nIP or hostname of OWFS owserver, defaults to 127.0.0.1\n\n\nport (port)\n\n\nPort number of OWFS owserver, defaults to 4304\n\n\ngnhastd section\n\n\n[gnhastd section]\n\n\ndevice section\n\n\n[device section]\n\n\nowsrvcoll section\n\n\ntscale (F|C|K|R)\n\n\nTemperature scale one of:\nF = Farenheit\nC = Celcius\nK = Kelvin\nR = Rankine\n\n\n\n\nupdate (seconds)\n\n\nSeconds between device queries.  Defaults to 60\n\n\nrescan (loops)\n\n\nEvery X updates, the system will ask the owserver for a list of devices, and if new ones are found, start probing them.  Defaults to 15.\n\n\ngeneral options\n\n\nlogfile (file)\n\n\nYou can override the default path of the logfile here. $PREFIX/var/log/owsrvcoll.log\n\n\npidfile (file)\n\n\nYou can override the default path of the pid file here. $PREFIX/var/run/owsrvcoll.pid", 
+            "title": "owsrvcoll.conf"
+        }, 
+        {
+            "location": "/config/owsrvcoll/#owserver-section", 
+            "text": "", 
+            "title": "owserver section"
+        }, 
+        {
+            "location": "/config/owsrvcoll/#hostname-host", 
+            "text": "IP or hostname of OWFS owserver, defaults to 127.0.0.1", 
+            "title": "hostname (host)"
+        }, 
+        {
+            "location": "/config/owsrvcoll/#port-port", 
+            "text": "Port number of OWFS owserver, defaults to 4304", 
+            "title": "port (port)"
+        }, 
+        {
+            "location": "/config/owsrvcoll/#gnhastd-section", 
+            "text": "[gnhastd section]", 
+            "title": "gnhastd section"
+        }, 
+        {
+            "location": "/config/owsrvcoll/#device-section", 
+            "text": "[device section]", 
+            "title": "device section"
+        }, 
+        {
+            "location": "/config/owsrvcoll/#owsrvcoll-section", 
+            "text": "", 
+            "title": "owsrvcoll section"
+        }, 
+        {
+            "location": "/config/owsrvcoll/#tscale-fckr", 
+            "text": "Temperature scale one of:\nF = Farenheit\nC = Celcius\nK = Kelvin\nR = Rankine", 
+            "title": "tscale (F|C|K|R)"
+        }, 
+        {
+            "location": "/config/owsrvcoll/#update-seconds", 
+            "text": "Seconds between device queries.  Defaults to 60", 
+            "title": "update (seconds)"
+        }, 
+        {
+            "location": "/config/owsrvcoll/#rescan-loops", 
+            "text": "Every X updates, the system will ask the owserver for a list of devices, and if new ones are found, start probing them.  Defaults to 15.", 
+            "title": "rescan (loops)"
+        }, 
+        {
+            "location": "/config/owsrvcoll/#general-options", 
+            "text": "", 
+            "title": "general options"
+        }, 
+        {
+            "location": "/config/owsrvcoll/#logfile-file", 
+            "text": "You can override the default path of the logfile here. $PREFIX/var/log/owsrvcoll.log", 
+            "title": "logfile (file)"
+        }, 
+        {
+            "location": "/config/owsrvcoll/#pidfile-file", 
+            "text": "You can override the default path of the pid file here. $PREFIX/var/run/owsrvcoll.pid", 
+            "title": "pidfile (file)"
+        }
+    ]
+}

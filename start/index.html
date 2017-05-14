@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <meta name="author" content="Tim Rightnour">
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+
+	<title>The Basics - gnhast</title>
+
+        <link href="../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../css/font-awesome-4.5.0.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="../css/highlight.css">
+
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+        <![endif]-->
+
+        
+    </head>
+
+    <body>
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+
+        <!-- Collapsed navigation -->
+        <div class="navbar-header">
+            
+            <!-- Expander button -->
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            
+
+            <!-- Main title -->
+            <a class="navbar-brand" href="..">gnhast</a>
+        </div>
+
+        <!-- Expanded navigation -->
+        <div class="navbar-collapse collapse">
+            
+                <!-- Main navigation -->
+                <ul class="nav navbar-nav">
+                
+                
+                    <li >
+                        <a href="..">Home</a>
+                    </li>
+                
+                
+                
+                    <li >
+                        <a href="../screenshots/">Screenshots</a>
+                    </li>
+                
+                
+                
+                    <li class="dropdown active">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">Getting Started <b class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                        
+                            
+<li class="active">
+    <a href="./">The Basics</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../ideas/">Ideas</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../collectors/">The Collectors</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../dependencies/">Dependencies</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../protocol/">Protocol Design</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../gnhastweb/">GnhastWeb</a>
+</li>
+
+                        
+                        </ul>
+                    </li>
+                
+                
+                
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">Programming Gnhast <b class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                        
+                            
+<li >
+    <a href="../subtype/">Adding a new subtype</a>
+</li>
+
+                        
+                        </ul>
+                    </li>
+                
+                
+                
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">Configuration <b class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                        
+                            
+<li >
+    <a href="../config/device/">device section</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../config/gnhastd_sec/">gnhastd section</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../config/brulcoll/">brulcoll.conf</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../config/insteon/">Insteon</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../config/gnhastd/">gnhastd.conf</a>
+</li>
+
+                        
+                            
+<li >
+    <a href="../config/owsrvcoll/">owsrvcoll.conf</a>
+</li>
+
+                        
+                        </ul>
+                    </li>
+                
+                
+                </ul>
+            
+
+            <ul class="nav navbar-nav navbar-right">
+                <li>
+                    <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                        <i class="fa fa-search"></i> Search
+                    </a>
+                </li>
+                
+                    <li >
+                        <a rel="next" href="../screenshots/">
+                            <i class="fa fa-arrow-left"></i> Previous
+                        </a>
+                    </li>
+                    <li >
+                        <a rel="prev" href="../ideas/">
+                            Next <i class="fa fa-arrow-right"></i>
+                        </a>
+                    </li>
+                
+                
+                    <li>
+                        <a href="https://github.com/garbled1/gnhast/">
+                            
+                                <i class="fa fa-github"></i>
+                            
+                            GitHub
+                        </a>
+                    </li>
+                
+            </ul>
+        </div>
+    </div>
+</div>
+
+        <div class="container">
+            
+                <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+    
+        <li class="main active"><a href="#getting-started">Getting Started</a></li>
+        
+    
+        <li class="main "><a href="#compile-and-install">Compile and install</a></li>
+        
+    
+        <li class="main "><a href="#build-config-files-for-the-collectors">Build config files for the collectors</a></li>
+        
+            <li><a href="#general-config-file-format">General config file format</a></li>
+        
+            <li><a href="#generate-basic-gnhastd-config-file">Generate basic gnhastd config file</a></li>
+        
+            <li><a href="#generate-owsrvcoll-config-file">Generate owsrvcoll config file</a></li>
+        
+            <li><a href="#generate-brulcoll-config-file">Generate brulcoll config file</a></li>
+        
+            <li><a href="#setup-the-insteon-stuff">Setup the insteon stuff</a></li>
+        
+            <li><a href="#setup-the-web-interface">Setup the web interface</a></li>
+        
+    
+    </ul>
+</div></div>
+                <div class="col-md-9" role="main">
+
+<h1 id="getting-started">Getting Started</h1>
+<h1 id="compile-and-install">Compile and install</h1>
+<p>First, you will need to compile and install gnhast.  You should just need to run ./configure and make, followed by make install.  The default install prefix is /usr/local. You may want to create /usr/local/var/log, and /usr/local/etc, if they do not exist.</p>
+<h1 id="build-config-files-for-the-collectors">Build config files for the collectors</h1>
+<h2 id="general-config-file-format">General config file format</h2>
+<p>The general config file format is pretty simple.  An example config is pasted below:</p>
+<pre><code>#
+owserver {
+  hostname = &quot;127.0.0.1&quot;
+  port = 4304
+}
+gnhastd {
+  hostname = &quot;127.0.0.1&quot;
+  port = 2920
+}
+owsrvcoll {
+  tscale = &quot;F&quot;
+  update = 60
+  rescan = 30
+}
+device &quot;10.4ED0A0020800&quot; {
+  name = &quot;Big Aquarium LED Wall Temp&quot;
+  # loc = &quot;&quot;
+  rrdname = &quot;BAQ_WallTemp&quot;
+  subtype = temp
+  type = sensor
+  proto = sensor-owfs
+  # multimodel = &quot;&quot;
+}
+</code></pre>
+
+<ul>
+<li><a href="../config/device/">device section</a> - Details on the device section of the config file</li>
+<li><a href="../config/gnhastd_sec/">gnhastd section</a> - Details on the gnhastd section of the config file</li>
+</ul>
+<p>Other sections are detailed in the documentation for the collector config files below.</p>
+<h2 id="generate-basic-gnhastd-config-file">Generate basic gnhastd config file</h2>
+<p>The next thing you need to do, is build configuration files for all of your collectors, and gnhastd itself. You should start with a very basic config for gnhastd.  Decide where your gnhastd server will run, and if it needs to be accessable from outside it's host. By default, gnhastd listens on port 2920, localhost (127.0.0.1).  If you wish for it to accept connections from other hosts, you will probably want to set the listen address to 0.0.0.0.</p>
+<p><a href="../config/gnhastd/">gnhastd config file format</a></p>
+<h2 id="generate-owsrvcoll-config-file">Generate owsrvcoll config file</h2>
+<p>If you have one-wire devices connected to your system, you will want to run the owsrvcoll collector.  First, install and configure OWFS, and run the owserver.  http://www.owfs.org
+Once you have that running, you can connect to it, and generate an initial owsrvcoll config file.  owsrvcoll assumes that the owserver process is on the same host (127.0.0.1) and is running on the standard owserver port (4304).  If you run "owsrvcoll -m file.conf", the collector will connect to a local owserver, issue a command to get a list of devices from the server, and write the config file to "file.conf".  You can then copy this generated config file to $PREFIX/etc/owsrvcoll.conf and edit it.  Note that for certain devices (counters, humidity probes, pressure probes, etc) you will need to edit the conf file so the collector knows how to get the data.</p>
+<p><a href="../config/owsrvcoll/">owsrvcoll config file format</a></p>
+<h2 id="generate-brulcoll-config-file">Generate brulcoll config file</h2>
+<p>For the brultech GEM, you will need to create a basic config file with the hostname/IP of the brultech GEM, and then use that to generate the initial config file.  Create a config file similar to:</p>
+<pre><code>brultech {
+  hostname = 192.168.1.45
+}
+</code></pre>
+
+<p>Then run brulcoll -c conffile -m file.conf</p>
+<p>This will connect to the brultech GEM, probe all the devices connected to it, and write out a new config at file.conf.  You may then copy this to $PREFIX/etc/brulcoll.conf and edit to taste.</p>
+<p><a href="../config/brulcoll/">brulcoll config file format</a></p>
+<h2 id="setup-the-insteon-stuff">Setup the insteon stuff</h2>
+<p>Setting up the insteon devices is a bit more complex, and it has it's own section.
+<a href="../config/insteon/">insteon collector</a></p>
+<h2 id="setup-the-web-interface">Setup the web interface</h2>
+<p>This also has it's own section.
+<a href="../gnhastweb/">gnhastweb</a></p></div>
+            
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            
+            <p>Documentation built with <a href="http://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+
+        <script src="../js/jquery-1.10.2.min.js"></script>
+        <script src="../js/bootstrap-3.0.3.min.js"></script>
+        <script src="../js/highlight.pack.js"></script>
+        <script>var base_url = '..';</script>
+        <script data-main="../mkdocs/js/search.js" src="../mkdocs/js/require.js"></script>
+        <script src="../js/base.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="Search Modal" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                        <h4 class="modal-title" id="exampleModalLabel">Search</h4>
+                    </div>
+                    <div class="modal-body">
+                        <p>
+                            From here you can search these documents. Enter
+                            your search terms below.
+                        </p>
+                        <form role="form">
+                            <div class="form-group">
+                                <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query">
+                            </div>
+                        </form>
+                        <div id="mkdocs-search-results"></div>
+                    </div>
+                    <div class="modal-footer">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </body>
+</html>
