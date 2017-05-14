@@ -10,9 +10,9 @@ Garbled's Nifty Home Automation Scripting Tools
 
 Gnhast is an event based home automation suite of tools.  It relies on a
 central daemon, which handles all the coordination of work, and collectors
-which handle all the actual work.  While the primary development
-environment is NetBSD, it should also work on any other version of UNIX or
-Linux. 
+which handle all the actual work.  Gnhast is designed to be run from a
+UNIX/Linux server, and is designed to be fairly lightweight, so it could
+easily be (and is!) deployed on a Raspbery PI to run your whole house.
 
 ![Image](docs/img/gnweb1-small.png)
 
