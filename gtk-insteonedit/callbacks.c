@@ -28,7 +28,7 @@
  */
 
 /**
-   \file callbacks.c
+   \file gtk-insteonedit/callbacks.c
    \brief Callbacks for gtk-insteonedit
    \author Tim Rightnour
 */

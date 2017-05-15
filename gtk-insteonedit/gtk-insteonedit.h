@@ -1,3 +1,9 @@
+/**
+   \file gtk-insteonedit/gtk-insteonedit.h
+   \author Tim Rightnour
+   \brief Defines for the insteon editor
+*/
+
 #ifndef _GTK_INSTEONEDIT_
 #define _GTK_INSTEONEDIT_
 

@@ -28,7 +28,7 @@
  */
 
 /**
-   \file main.c
+   \file gtk-insteonedit/main.c
    \brief Main for gtk-insteonedit
    \author Tim Rightnour
 */
