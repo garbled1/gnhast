@@ -61,31 +61,59 @@ extern argtable_t argtable[];
    common/gnhast.h (bump GNHASTD_PROTO_VERS)
 */
 
-/** The command table */
+/** \page api API Documentation
+    \brief API Documentation
+
+    \sapi chg - Request a change in the status of a device. For example, ask for an outlet to be turned off. Sent to and by the server.
+     \arg chg uid:XXX humid:Y
+    \sapi reg - Register a device with the server, or, tell the collector about a device
+     \arg reg uid:XXX name:"A device" subtype:5 type:1
+    \sapi regg - Register a group with the server, or, tell the collector about a group
+    \sapi upd - Update the status of a device. Sent to, and by the server
+    \sapi mod - Modify a setting of a device. (Currently only name, rrdname, hargs, and handler). Sent to and by the server.
+    \sapi feed - Request a continuous stream of updates from the server for a particular device. rate argument sets the update speed in seconds. Updates are sent via the upd comamnd.
+    \sapi cfeed - Request a stream of updates whenever the device changes state.
+    \sapi ldevs - Request a list of devices from the server. Can give it arguments such as protocol, type, etc, to narrow the list. Devices are sent back to the collector as reg commands.
+    \sapi lgrps - Request a list of groups from the server. Groups are sent back as regg commands.
+    \sapi ask - Ask for a single upd on a device, or devices
+    \sapi askf - Ask, but with full device details
+    \sapi cactiask - Ask for a single upd on a device, or devices, but reply in cacti format.
+    \sapi disconnect - Disconnect form the gnhastd server
+    \sapi client - Tell the server the name of our client (needs client arg)
+    \sapi ping - Send a ping to server (ignored by server)
+    \sapi imalive - Tell the server we are still alive
+    \sapi setalarm - Set, or clear an alarm, or edit details of an alarm
+    \sapi listenalarms - Listen to an alarm channel for new alarms
+    \sapi dumpalarms - Dump all, or some of the alarms
+    \sapi getapiv - Ask for the API version from gnhastd
+
+*/
+
+/** \brief The command table */
 commands_t commands[] = {
-	{"chg", cmd_change, 0},
-	{"reg", cmd_register, 0},
-	{"regg", cmd_register_group, 0},
-	{"upd", cmd_update, 0},
-	{"mod", cmd_modify, 0},
-	{"feed", cmd_feed, 0},
-	{"cfeed", cmd_cfeed, 0},
-	{"ldevs", cmd_list_devices, 0},
-	{"lgrps", cmd_list_groups, 0},
-	{"ask", cmd_ask_device, 0},
-	{"askf", cmd_ask_full_device, 0},
-	{"cactiask", cmd_cactiask_device, 0},
-	{"disconnect", cmd_disconnect, 0},
-	{"client", cmd_client, 0},
-	{"ping", cmd_ping, 0},
-	{"imalive", cmd_imalive, 0},
-	{"setalarm", cmd_setalarm, 0},
-	{"listenalarms", cmd_listen_alarms, 0},
-	{"dumpalarms", cmd_dump_alarms, 0},
-	{"getapiv", cmd_get_apiv, 0},
+    {"chg", cmd_change, 0}, /** \brief Change a device */
+    {"reg", cmd_register, 0}, /** \brief Register a device */
+    {"regg", cmd_register_group, 0}, /** \brief Register a group */
+    {"upd", cmd_update, 0}, /** \brief Update a device */
+    {"mod", cmd_modify, 0}, /** \brief Modify a device */
+    {"feed", cmd_feed, 0}, /** \brief Start a feed for a device */
+    {"cfeed", cmd_cfeed, 0}, /** \brief Start a change-only feed */
+    {"ldevs", cmd_list_devices, 0}, /** \brief list devices */
+    {"lgrps", cmd_list_groups, 0}, /** \brief list groups */
+    {"ask", cmd_ask_device, 0}, /** \brief ask about a device */
+    {"askf", cmd_ask_full_device, 0}, /** \brief ask for full details */
+    {"cactiask", cmd_cactiask_device, 0}, /** \brief ask in cacti format */
+    {"disconnect", cmd_disconnect, 0}, /** \brief disconnect from gnhastd */
+    {"client", cmd_client, 0}, /** \brief tell me your client name */
+    {"ping", cmd_ping, 0}, /** \brief A ping, server ignores */
+    {"imalive", cmd_imalive, 0}, /** \brief tell the server I'm alvie */
+    {"setalarm", cmd_setalarm, 0}, /** \brief set or clear alarm details */
+    {"listenalarms", cmd_listen_alarms, 0}, /** \brief listen to an alarm channel */
+    {"dumpalarms", cmd_dump_alarms, 0}, /** \brief dump all alarms */
+    {"getapiv", cmd_get_apiv, 0}, /** \brief get server api version */
 };
 
-/** The size of the command table */
+/** \brief The size of the command table */
 const size_t commands_size = sizeof(commands) / sizeof(commands_t);
 
 
