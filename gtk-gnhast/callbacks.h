@@ -1,3 +1,9 @@
+/**
+   \file gtk-gnhast/callbacks.h
+   \author Tim Rightnour
+   \brief Callback prototypes
+*/
+
 #include <gtk/gtk.h>
 
 
