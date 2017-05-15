@@ -1,5 +1,4 @@
 ![logo](data/gnhast-icon-48.png)
-
 gnhast
 ======
 
@@ -86,3 +85,5 @@ More Documentation
 
 * [Doxygen Source Documentation](https://codedocs.xyz/garbled1/gnhast/)
 * [Full Documentation](https://garbled1.github.io/gnhast/)
+* [Change Log](CHANGELOG.md)
+* [Gnhast Blog](http://gnhast.blogspot.com/)
