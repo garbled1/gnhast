@@ -1,3 +1,10 @@
+/**
+   \file gtk-gnhast/gtk-gnhast.h
+   \author Tim Rightnour
+   \brief Structures and defines used in gtk-gnhast
+*/
+
+
 #ifndef _GTK_GNHAST_H_
 #define _GKT_GNHAST_H_
 

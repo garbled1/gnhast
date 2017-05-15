@@ -28,7 +28,7 @@
  */
 
 /**
-   \file callbacks.c
+   \file gtk-gnhast/callbacks.c
    \brief gtk+ callback handling code for gtk-gnhast
    \author Tim Rightnour
 */

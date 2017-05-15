@@ -28,7 +28,7 @@
  */
 
 /**
-   \file main.c
+   \file gtk-gnhast/main.c
    \brief Main for gtk-gnhast
    \author Tim Rightnour
 */
