@@ -7,3 +7,6 @@ ENABLE_PREPROCESSING   = YES
 MACRO_EXPANSION        = YES
 EXPAND_ONLY_PREDEF     = YES
 PREDEFINED             = __attribute__(x)=
+ALIASES += "capi=\xrefitem capi \"Client API\" \"Client API Documentation\""
+ALIASES += "sapi=\xrefitem sapi \"Server API\" \"Server API Documentation\""
+

@@ -75,9 +75,16 @@ extern char *conffile;
 extern cfg_t *cfg;
 extern struct bufferevent *gnhastd_bev;
 
-int min_proto_version = 0;
+int min_proto_version = 0; /**< \brief the minimum protocol version we will accept */
 
-/** The command table */
+/**
+   \capi endldevs - Sent to client when a ldevs command finishes sending all listed devices.
+   \capi endlgrps - Sent to client when a lgrps command finishes sending all listed groups.
+   \capi die - Tell the client to shutdown and die.
+   \capi ping - Ping the client to see if it's alive still
+*/
+
+/** \brief The command table */
 commands_t commands[] = {
 	{"chg", cmd_change, 0},
 	{"reg", cmd_register, 0},
