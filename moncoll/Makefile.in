@@ -374,9 +374,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu moncoll/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign moncoll/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --gnu moncoll/Makefile
+	  $(AUTOMAKE) --foreign moncoll/Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
 	  *config.status*) \

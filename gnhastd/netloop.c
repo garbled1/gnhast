@@ -32,6 +32,7 @@
    \author Tim Rightnour
    \brief Network code for the server
 */
+#include "config.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -45,7 +46,17 @@
 #include <unistd.h>
 #include <sys/time.h>
 /* #define QUEUEDEBUG 1 */
-#include <sys/queue.h>
+
+#if HAVE_BSD_SYS_QUEUE_H
+ #include <bsd/sys/queue.h>
+#else
+ #if LOCAL_QUEUE_H
+  #include "../linux/queue.h"
+ #else
+  #include <sys/queue.h>
+ #endif
+#endif
+
 #include <sys/wait.h>
 #ifdef HAVE_SYS_RBTREE_H
  #include <sys/rbtree.h>

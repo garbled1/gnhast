@@ -33,6 +33,8 @@
    \brief Astronomical Phenomenon Collector
 */
 
+#include "config.h"
+
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -278,6 +280,28 @@ static inline char *print_time(time_t offset)
 }
 
 /**
+   \brief Calculate time offset between now and an ISO string
+   \param str ISO 8601 time formatted string
+*/
+
+static int time_offset(char *str)
+{
+	struct tm event_tm;
+	time_t curtime, event_time;
+	double difft;
+
+	memset(&event_tm, 0, sizeof(event_tm));
+	strptime(str, "%FT%T%z", &event_tm);
+#if HAVE_MKTIME_Z
+	event_time = mktime_z(NULL, &event_tm);
+#else
+	event_time = mktime(&event_tm);
+#endif	
+	difft = difftime(event_time, curtime);
+	return((int)round(difft));
+}
+
+/**
    \brief Callback to modify sunrise device
    \param fd fd
    \param what why did it fire?
@@ -336,22 +360,13 @@ void modify_moonrise_cb(int fd, short what, void *arg)
 
 void convert_sunrise_data(char *str, int daylight, int field)
 {
-	time_t curtime, event_time;
-	double difft;
-	struct tm event_tm;
 	struct timeval secs = { 0, 0 };
 
-	curtime = time(NULL);
-
-	memset(&event_tm, 0, sizeof(event_tm));
-	strptime(str, "%FT%T%z", &event_tm);
-	event_time = mktime_z(NULL, &event_tm);
-	difft = difftime(event_time, curtime);
-	sunrise_offsets[field] = (int)round(difft);
-	LOG(LOG_DEBUG, "Field:%d Dayl:%d offset:%f str:%s",
-	    field, daylight, difft, str);
+	sunrise_offsets[field] = time_offset(str);
+	LOG(LOG_DEBUG, "Field:%d Dayl:%d offset:%d str:%s",
+	    field, daylight, sunrise_offsets[field], str);
 	/* special handling for solar noon */
-	if (field == SS_SOLAR_NOON && (difft - 1800.0) > 0.0) {
+	if (field == SS_SOLAR_NOON && (sunrise_offsets[field] - 1800) > 0) {
 		secs.tv_sec = sunrise_offsets[field] - 1800;
 		if (solar_noon_start_ev != NULL)
 			event_free(solar_noon_start_ev);
@@ -370,7 +385,7 @@ void convert_sunrise_data(char *str, int daylight, int field)
 		LOG(LOG_NOTICE, "Create solar noon end at %s",
 		    print_time(secs.tv_sec));
 	}
-	if (difft > 0.0 && field != SS_SOLAR_NOON) {
+	if (sunrise_offsets[field] > 0 && field != SS_SOLAR_NOON) {
 		secs.tv_sec = sunrise_offsets[field];
 		if (sun_ev[field] != NULL)
 			event_free(sun_ev[field]); /* clear old one */
@@ -552,22 +567,13 @@ void modify_moonphase(char *frac)
 
 void convert_usno_data(char *str, int daylight, int field)
 {
-	time_t curtime, event_time;
-	double difft;
-	struct tm event_tm;
 	struct timeval secs = { 0, 0 };
 
-	curtime = time(NULL);
-
-	memset(&event_tm, 0, sizeof(event_tm));
-	strptime(str, "%F %R", &event_tm);
-	event_time = mktime_z(NULL, &event_tm);
-	difft = difftime(event_time, curtime);
-	usno_sun_offsets[field] = (int)round(difft);
-	LOG(LOG_DEBUG, "Field:%d Dayl:%d offset:%f str:%s",
-	    field, daylight, difft, str);
+	usno_sun_offsets[field] = time_offset(str);
+	LOG(LOG_DEBUG, "Field:%d Dayl:%d offset:%d str:%s",
+	    field, daylight, usno_sun_offsets[field], str);
 	/* special handling for solar noon */
-	if (field == USNO_SUN_SOLAR_NOON && (difft - 1800.0) > 0.0) {
+	if (field == USNO_SUN_SOLAR_NOON && (usno_sun_offsets[field] - 1800) > 0) {
 		secs.tv_sec = usno_sun_offsets[field] - 1800;
 		if (solar_noon_start_ev != NULL)
 			event_free(solar_noon_start_ev);
@@ -586,7 +592,7 @@ void convert_usno_data(char *str, int daylight, int field)
 		LOG(LOG_NOTICE, "Create solar noon end at %s",
 		    print_time(secs.tv_sec));
 	}
-	if (difft > 0.0 && field != USNO_SUN_SOLAR_NOON) {
+	if (usno_sun_offsets[field] > 0 && field != USNO_SUN_SOLAR_NOON) {
 		secs.tv_sec = usno_sun_offsets[field];
 		if (sun_ev[field] != NULL)
 			event_free(sun_ev[field]); /* clear old one */
@@ -609,22 +615,13 @@ void convert_usno_data(char *str, int daylight, int field)
 
 void convert_usno_moondata(char *str, int daylight, int field)
 {
-	time_t curtime, event_time;
-	double difft;
-	struct tm event_tm;
 	struct timeval secs = { 0, 0 };
 
-	curtime = time(NULL);
-
-	memset(&event_tm, 0, sizeof(event_tm));
-	strptime(str, "%F %R", &event_tm);
-	event_time = mktime_z(NULL, &event_tm);
-	difft = difftime(event_time, curtime);
-	usno_moon_offsets[field] = (int)round(difft);
-	LOG(LOG_DEBUG, "Moon Field:%d Dayl:%d offset:%f str:%s",
-	    field, daylight, difft, str);
+	usno_moon_offsets[field] = time_offset(str);
+	LOG(LOG_DEBUG, "Moon Field:%d Dayl:%d offset:%d str:%s",
+	    field, daylight, usno_moon_offsets[field], str);
 	/* special handling for lunar noon */
-	if (field == USNO_MOON_UPPER_TRANSIT && (difft - 1800.0) > 0.0) {
+	if (field == USNO_MOON_UPPER_TRANSIT && (usno_moon_offsets[field] - 1800) > 0) {
 		secs.tv_sec = usno_moon_offsets[field] - 1800;
 		if (lunar_noon_start_ev != NULL)
 			event_free(lunar_noon_start_ev);
@@ -643,7 +640,7 @@ void convert_usno_moondata(char *str, int daylight, int field)
 		LOG(LOG_NOTICE, "Create lunar noon end at %s",
 		    print_time(secs.tv_sec));
 	}
-	if (difft > 0.0 && field != USNO_MOON_UPPER_TRANSIT) {
+	if (usno_moon_offsets[field] > 0 && field != USNO_MOON_UPPER_TRANSIT) {
 		secs.tv_sec = usno_moon_offsets[field];
 		if (moon_ev[field] != NULL)
 			event_free(moon_ev[field]); /* clear old one */
@@ -796,8 +793,13 @@ void usno_request_cb(struct evhttp_request *req, void *arg)
 	/* mktime auto-adjusts for insanity, so day+1 actually works */
 	sprintf(datestr, "%d-%d-%d 00:00", year, month, day+1);
 	strptime(datestr, "%F %R", &tms);
+#if HAVE_MKTIME_Z
 	mktime_z(NULL, &tms);
 	strftime_z(NULL, dbuf, 256, "%F", &tms);
+#else
+	mktime(&tms);
+	strftime(dbuf, 256, "%F", &tms);
+#endif
 	LOG(LOG_DEBUG, "Day +1 == %s", dbuf);
 
 	for (j=USNO_SUN_CIVIL_BEGIN;  j <= USNO_SUN_SOLAR_NOON; j++) {

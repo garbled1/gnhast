@@ -33,9 +33,15 @@
    \brief General utility functions
 */
 
+#include "config.h"
+
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
+#if HAVE_BSD_STDLIB_H
+ #include <bsd/stdlib.h>
+#else
+ #include <stdlib.h>
+#endif
 #include <time.h>
 #include <stdarg.h>
 #include <errno.h>

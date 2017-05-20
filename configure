@@ -639,6 +639,8 @@ HAVE_GTK2_FALSE
 HAVE_GTK2_TRUE
 NEED_RBTREE_FALSE
 NEED_RBTREE_TRUE
+NEED_QUEUE_FALSE
+NEED_QUEUE_TRUE
 LIBXML2_LIBS
 LIBXML2_CFLAGS
 GTK2_LIBS
@@ -14297,6 +14299,13 @@ if test "x$ac_cv_func_rb_tree_init" = xyes; then :
   HAVE_RBTREE=1
 fi
 
+ac_fn_c_check_func "$LINENO" "mktime_z" "ac_cv_func_mktime_z"
+if test "x$ac_cv_func_mktime_z" = xyes; then :
+
+$as_echo "#define HAVE_MKTIME_Z 1" >>confdefs.h
+
+fi
+
 ac_fn_c_check_func "$LINENO" "getprogname" "ac_cv_func_getprogname"
 if test "x$ac_cv_func_getprogname" = xyes; then :
 
@@ -14347,6 +14356,58 @@ _ACEOF
 else
   as_fn_error $? "\"No libbsd compat lib\"" "$LINENO" 5
 fi
+
+fi
+
+ac_fn_c_check_header_mongrel "$LINENO" "bsd/stdlib.h" "ac_cv_header_bsd_stdlib_h" "$ac_includes_default"
+if test "x$ac_cv_header_bsd_stdlib_h" = xyes; then :
+
+$as_echo "#define HAVE_BSD_STDLIB_H 1" >>confdefs.h
+
+fi
+
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for queue.h containing TAILQ_FOREACH_SAFE macro" >&5
+$as_echo_n "checking for queue.h containing TAILQ_FOREACH_SAFE macro... " >&6; }
+# We need a compliant queue.h
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <sys/queue.h>
+#ifndef TAILQ_FOREACH_SAFE
+# error TAILQ_FOREACH_SAFE not defined
+#endif
+
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  QUEUE_H_FOUND="yes"
+else
+  QUEUE_H_FOUND="no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $QUEUE_H_FOUND" >&5
+$as_echo "$QUEUE_H_FOUND" >&6; }
+ if test "x$QUEUE_H_FOUND" = xno; then
+  NEED_QUEUE_TRUE=
+  NEED_QUEUE_FALSE='#'
+else
+  NEED_QUEUE_TRUE='#'
+  NEED_QUEUE_FALSE=
+fi
+
+if test -z "$NEED_QUEUE_TRUE"; then :
+  ac_fn_c_check_header_mongrel "$LINENO" "bsd/sys/queue.h" "ac_cv_header_bsd_sys_queue_h" "$ac_includes_default"
+if test "x$ac_cv_header_bsd_sys_queue_h" = xyes; then :
+
+$as_echo "#define HAVE_BSD_SYS_QUEUE_H 1" >>confdefs.h
+
+else
+
+$as_echo "#define LOCAL_QUEUE_H 1" >>confdefs.h
+
+fi
+
 
 fi
 
@@ -14611,6 +14672,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${am__fastdepCC_TRUE}" && test -z "${am__fastdepCC_FALSE}"; then
   as_fn_error $? "conditional \"am__fastdepCC\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${NEED_QUEUE_TRUE}" && test -z "${NEED_QUEUE_FALSE}"; then
+  as_fn_error $? "conditional \"NEED_QUEUE\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${NEED_RBTREE_TRUE}" && test -z "${NEED_RBTREE_FALSE}"; then

@@ -3,6 +3,12 @@
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #undef HAVE_ARPA_INET_H
 
+/* libbsd stdlib.h */
+#undef HAVE_BSD_STDLIB_H
+
+/* libbsd sys/queue.h */
+#undef HAVE_BSD_SYS_QUEUE_H
+
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
 
@@ -44,6 +50,9 @@
 
 /* Define to 1 if you have the `memset' function. */
 #undef HAVE_MEMSET
+
+/* Have mktime_z function */
+#undef HAVE_MKTIME_Z
 
 /* Define to 1 if you have the <netdb.h> header file. */
 #undef HAVE_NETDB_H
@@ -107,6 +116,9 @@
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
+
+/* Need compliant queue.h */
+#undef LOCAL_QUEUE_H
 
 /* Define to the sub-directory in which libtool stores uninstalled libraries.
    */

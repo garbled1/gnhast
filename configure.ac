@@ -1,6 +1,6 @@
 
 AC_INIT([gnhast], 0.5)
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([foreign])
 LT_INIT
 #LT_INIT([disable-shared])
 AC_PROG_CC
@@ -70,7 +70,22 @@ AC_CHECK_FUNCS([gethostbyaddr gettimeofday inet_ntoa \
 
 # Check for BSD rbtree implementation
 AC_CHECK_FUNC(rb_tree_init, [HAVE_RBTREE=1],)
+AC_CHECK_FUNC(mktime_z, [AC_DEFINE([HAVE_MKTIME_Z], [1], [Have mktime_z function])])
 AC_CHECK_FUNC(getprogname, , AC_CHECK_LIB(bsd, getprogname,, AC_MSG_ERROR(["No libbsd compat lib"])))
+AC_CHECK_HEADER([bsd/stdlib.h], [AC_DEFINE([HAVE_BSD_STDLIB_H], [1], [libbsd stdlib.h])])
+
+AC_MSG_CHECKING([for queue.h containing TAILQ_FOREACH_SAFE macro])
+# We need a compliant queue.h
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
+#include <sys/queue.h>
+#ifndef TAILQ_FOREACH_SAFE
+# error TAILQ_FOREACH_SAFE not defined
+#endif
+]])], [QUEUE_H_FOUND="yes"], [QUEUE_H_FOUND="no"])
+AC_MSG_RESULT([$QUEUE_H_FOUND])
+AM_CONDITIONAL([NEED_QUEUE], [test "x$QUEUE_H_FOUND" = xno])
+AM_COND_IF([NEED_QUEUE], [AC_CHECK_HEADER([bsd/sys/queue.h], [AC_DEFINE([HAVE_BSD_SYS_QUEUE_H], [1], [libbsd sys/queue.h])], [AC_DEFINE([LOCAL_QUEUE_H], [1], [Need compliant queue.h])])])
+
 AM_CONDITIONAL([NEED_RBTREE], [test "x$HAVE_RBTREE" = x])
 AM_CONDITIONAL([HAVE_GTK2], [test "$HAVE_GTK2" = 1])
 AC_CHECK_FUNC(clock_gettime, , AC_CHECK_LIB(rt, clock_gettime,, AC_MSG_ERROR(["No librt"])))
