@@ -872,10 +872,10 @@ int main(int argc, char **argv)
 		/* We MUST have entropy, or else there's no point to crypto. */
 		if (!RAND_poll())
 			return -1;
-		gnhastd_conn->ssl_ctx = SSL_CTX_new(SSLv3_method());
-		SSL_CTX_use_certificate_chain_file(gnhastd_conn->ssl_ctx,
-		    "../gnhastd/cert");
-		gnhastd_conn->ssl = SSL_new(gnhastd_conn->ssl_ctx);
+		//gnhastd_conn->ssl_ctx = SSL_CTX_new(SSLv3_method());
+		//SSL_CTX_use_certificate_chain_file(gnhastd_conn->ssl_ctx,
+		//    "../gnhastd/cert");
+		//gnhastd_conn->ssl = SSL_new(gnhastd_conn->ssl_ctx);
 	}
 
 	rrdcoll_c = cfg_getsec(cfg, "rrdcoll");
