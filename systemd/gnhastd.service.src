@@ -1,0 +1,10 @@
+[Unit]
+Description=Gnhastd Daemon
+
+[Service]
+Type=forking
+PIDFile=@LOCALSTATEDIR@/run/gnhastd.pid
+ExecStart=@BINDIR@/gnhastd
+
+[Install]
+WantedBy=multi-user.target

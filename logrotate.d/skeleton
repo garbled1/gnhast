@@ -1,0 +1,11 @@
+@LOCALSTATEDIR@/log/@COLLECTOR_NAME@.log {
+    rotate 5
+    missingok
+    notifempty
+    create 0644 root root
+    # create 0644 gnhast gnhast
+    sharedscripts
+    postrotate
+        /usr/bin/killall -HUP @COLLECTOR_NAME@
+    endscript
+}

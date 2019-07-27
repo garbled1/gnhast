@@ -1,0 +1,11 @@
+[Unit]
+Description=Gnhastd Monitoring Daemon
+
+[Service]
+Type=forking
+PIDFile=@LOCALSTATEDIR@/run/moncoll.pid
+ExecStartPre=/bin/sleep 120
+ExecStart=@BINDIR@/moncoll
+
+[Install]
+WantedBy=multi-user.target

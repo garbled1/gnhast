@@ -1,0 +1,11 @@
+[Unit]
+Description=Start Gnhast with the gnhastd.run config
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/start_gnhast
+ExecStop=/usr/local/bin/stop_gnhast
+RemainAfterExit=True
+
+[Install]
+WantedBy=multi-user.target

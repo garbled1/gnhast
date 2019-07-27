@@ -29,5 +29,7 @@ SUBDIRS = libconfuse \
 	tools \
 	data \
 	gnhastweb \
+	systemd \
+	logrotate.d \
 	handlers $(GTKGNHASTDIR) $(GTKINSTDIR)
 

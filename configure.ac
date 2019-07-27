@@ -90,6 +90,24 @@ AM_CONDITIONAL([NEED_RBTREE], [test "x$HAVE_RBTREE" = x])
 AM_CONDITIONAL([HAVE_GTK2], [test "$HAVE_GTK2" = 1])
 AC_CHECK_FUNC(clock_gettime, , AC_CHECK_LIB(rt, clock_gettime,, AC_MSG_ERROR(["No librt"])))
 
+# systemd handling for modern linux
+AC_CHECK_PROG(HAS_SYSTEMD, systemd,
+  [ systemd=true ],
+  [ systemd=false ]
+)
+AC_SUBST(systemd_path, "/lib/systemd/system")
+AM_CONDITIONAL(WITH_SYSTEMD,$systemd)
+
+#logrotate handling for modern linux
+AC_CHECK_PROG(HAS_LOGROTATE, logrotate,
+  [ logrotate=true ],
+  [ logrotate=false ],
+  [ path='$PATH:/usr/sbin' ]
+)
+AC_SUBST(logrotate_path, "/etc/logrotate.d")
+AM_CONDITIONAL(WITH_LOGROTATE, $logrotate)
+
+
 # Enable debugging via mudflap.  This option will cause most libraries
 # to be built as archives which are statically linked into the applications.
 # All code, as far as possible, is compiled instrumented to catch all
@@ -136,6 +154,8 @@ AC_CONFIG_FILES([Makefile \
 		 data/Makefile \
 		 gnhastweb/Makefile \
 		 libconfuse/Makefile \
+		 systemd/Makefile \
+		 logrotate.d/Makefile \
 		 common/Makefile])
 
 AC_OUTPUT

@@ -1,0 +1,12 @@
+[Unit]
+Description=Gnhast Collector @COLLECTOR_NAME@
+Wants=gnhastd.service
+After=gnhastd.service
+
+[Service]
+Type=forking
+PIDfile=@LOCALSTATEDIR@/run/@COLLECTOR_NAME@.pid
+ExecStart=@BINDIR@/@COLLECTOR_NAME@
+
+[Install]
+WantedBy=multi-user.target

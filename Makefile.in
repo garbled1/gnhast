@@ -159,8 +159,8 @@ CSCOPE = cscope
 DIST_SUBDIRS = libconfuse common gnhastd fakecoll owsrvcoll rrdcoll \
 	brulcoll insteoncoll wmr918coll wupwscoll ad2usbcoll \
 	icaddycoll venstarcoll moncoll jsoncgicoll urtsicoll astrocoll \
-	alarmcoll balboacoll tools data gnhastweb handlers gtk-gnhast \
-	gtk-insteonedit
+	alarmcoll balboacoll tools data gnhastweb systemd logrotate.d \
+	handlers gtk-gnhast gtk-insteonedit
 am__DIST_COMMON = $(srcdir)/Makefile.in AUTHORS COPYING INSTALL NEWS \
 	compile config.guess config.sub install-sh ltmain.sh missing \
 	ylwrap
@@ -235,6 +235,8 @@ FGREP = @FGREP@
 GREP = @GREP@
 GTK2_CFLAGS = @GTK2_CFLAGS@
 GTK2_LIBS = @GTK2_LIBS@
+HAS_LOGROTATE = @HAS_LOGROTATE@
+HAS_SYSTEMD = @HAS_SYSTEMD@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -322,6 +324,7 @@ libdir = @libdir@
 libexecdir = @libexecdir@
 localedir = @localedir@
 localstatedir = @localstatedir@
+logrotate_path = @logrotate_path@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
@@ -334,6 +337,7 @@ sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
 sysconfdir = @sysconfdir@
+systemd_path = @systemd_path@
 target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
@@ -362,6 +366,8 @@ SUBDIRS = libconfuse \
 	tools \
 	data \
 	gnhastweb \
+	systemd \
+	logrotate.d \
 	handlers $(GTKGNHASTDIR) $(GTKINSTDIR)
 
 all: all-recursive
