@@ -5,7 +5,7 @@ After=gnhastd.service
 
 [Service]
 Type=forking
-PIDfile=@LOCALSTATEDIR@/run/@COLLECTOR_NAME@.pid
+PIDFile=@LOCALSTATEDIR@/run/@COLLECTOR_NAME@.pid
 ExecStart=@BINDIR@/@COLLECTOR_NAME@
 
 [Install]
