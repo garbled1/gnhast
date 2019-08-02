@@ -308,6 +308,16 @@ void gn_modify_device(device_t *dev, struct bufferevent *out)
 			evbuffer_add_printf(send, "%s", dev->hargs[i]);
 		}
 	}
+
+	if (dev->tags && dev->nroftags > 0) {
+		evbuffer_add_printf(send, " %s:", ARGNM(SC_TAGS));
+		for (i = 0; i < dev->nroftags && dev->tags[i] != NULL; i++) {
+			if (i != 0)
+				evbuffer_add_printf(send, ",");
+			evbuffer_add_printf(send, "%s", dev->tags[i]);
+		}
+	}
+
 	evbuffer_add_printf(send, "\n");
 
 	/* schedule the bufferevent write */
@@ -532,6 +542,14 @@ void gn_update_device(device_t *dev, int what, struct bufferevent *out)
 		evbuffer_add_printf(send, "\"%s\"", dev->hargs[0]);
 		for (i=1; i < dev->nrofhargs; i++)
 			evbuffer_add_printf(send, ",\"%s\"", dev->hargs[i]);
+		evbuffer_add_printf(send, " ");
+	}
+	if ((QUERY_BIT(what, GNC_UPD_TAGS) || QUERY_BIT(what, GNC_UPD_FULL))
+	    && dev->nroftags > 0 && dev->tags != NULL) {
+		evbuffer_add_printf(send, "%s:",  ARGNM(SC_TAGS));
+		evbuffer_add_printf(send, "\"%s\"", dev->tags[0]);
+		for (i=1; i < dev->nroftags; i++)
+			evbuffer_add_printf(send, ",\"%s\"", dev->tags[i]);
 		evbuffer_add_printf(send, " ");
 	}
 	/* do everything else */

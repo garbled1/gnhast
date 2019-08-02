@@ -106,39 +106,39 @@ name_map_t devproto_map[] = {
 	{PROTO_GENERIC, "generic"},
 	{PROTO_UNUSED1, "unused1"},
 	{PROTO_UNUSED2, "unused2"},
-	{PROTO_UNUSED3, "unused3"}
-	{PROTO_UNUSED4, "unused4"}
-	{PROTO_UNUSED5, "unused5"}
-	{PROTO_UNUSED6, "unused6"}
-	{PROTO_UNUSED7, "unused7"}
-	{PROTO_UNUSED8, "unused8"}
-	{PROTO_UNUSED9, "unused9"}
-	{PROTO_UNUSED10, "unused10"}
-	{PROTO_UNUSED11, "unused11"}
-	{PROTO_UNUSED12, "unused12"}
-	{PROTO_UNUSED13, "unused13"}
-	{PROTO_UNUSED14, "unused14"}
-	{PROTO_MAINS_SWITCH, "mains_switch"}
-	{PROTO_WEATHER, "weather"}
-	{PROTO_SENSOR, "sensor"}
-	{PROTO_SENSOR_INDOOR, "sensor_indoor"}
-	{PROTO_SENSOR_OUTDOOR, "sensor_outdoor"}
-	{PROTO_SENSOR_ELEC, "sensor_elec"}
-	{PROTO_POWERUSE, "poweruse"}
-	{PROTO_IRRIGATION, "irrigation"}
-	{PROTO_ENTRY, "entry"}
-	{PROTO_ALARM, "alarm"}
-	{PROTO_BATTERY, "battery"}
-	{PROTO_CAMERA, "camera"}
-	{PROTO_AQUARIUM, "aquarium"}
-	{PROTO_SOLAR, "solar"}
-	{PROTO_POOL, "pool"}
-	{PROTO_WATERHEATER, "waterheater"}
-	{PROTO_LIGHT, "light"}
-	{PROTO_AV, "av"}
-	{PROTO_THERMOSTAT, "thermostat"}
-	{PROTO_SETTINGS, "settings"}
-	{PROTO_BLIND, "blind"}
+	{PROTO_UNUSED3, "unused3"},
+	{PROTO_UNUSED4, "unused4"},
+	{PROTO_UNUSED5, "unused5"},
+	{PROTO_UNUSED6, "unused6"},
+	{PROTO_UNUSED7, "unused7"},
+	{PROTO_UNUSED8, "unused8"},
+	{PROTO_UNUSED9, "unused9"},
+	{PROTO_UNUSED10, "unused10"},
+	{PROTO_UNUSED11, "unused11"},
+	{PROTO_UNUSED12, "unused12"},
+	{PROTO_UNUSED13, "unused13"},
+	{PROTO_UNUSED14, "unused14"},
+	{PROTO_MAINS_SWITCH, "mains_switch"},
+	{PROTO_WEATHER, "weather"},
+	{PROTO_SENSOR, "sensor"},
+	{PROTO_SENSOR_INDOOR, "sensor_indoor"},
+	{PROTO_SENSOR_OUTDOOR, "sensor_outdoor"},
+	{PROTO_SENSOR_ELEC, "sensor_elec"},
+	{PROTO_POWERUSE, "poweruse"},
+	{PROTO_IRRIGATION, "irrigation"},
+	{PROTO_ENTRY, "entry"},
+	{PROTO_ALARM, "alarm"},
+	{PROTO_BATTERY, "battery"},
+	{PROTO_CAMERA, "camera"},
+	{PROTO_AQUARIUM, "aquarium"},
+	{PROTO_SOLAR, "solar"},
+	{PROTO_POOL, "pool"},
+	{PROTO_WATERHEATER, "waterheater"},
+	{PROTO_LIGHT, "light"},
+	{PROTO_AV, "av"},
+	{PROTO_THERMOSTAT, "thermostat"},
+	{PROTO_SETTINGS, "settings"},
+	{PROTO_BLIND, "blind"},
 };
 
 name_map_t devsubtype_map[] = {
@@ -597,15 +597,6 @@ void store_data_dev(device_t *dev, int where, void *data)
 	case DATALOC_LAST:
 		store = &dev->last;
 		break;
-	case DATALOC_MIN:
-		store = &dev->min;
-		break;
-	case DATALOC_MAX:
-		store = &dev->max;
-		break;
-	case DATALOC_AVG:
-		store = &dev->avg;
-		break;
 	case DATALOC_LOWAT:
 		store = &dev->lowat;
 		break;
@@ -794,6 +785,61 @@ void parse_hargs(device_t *dev, char *data)
 		dev->hargs[j] = strdup(p);
 	}
 	free(fhold);
+}
+
+/**
+   \brief parse an tags string and fixup tags
+   \param dev device
+   \param data string to parse
+*/
+
+void parse_tags(device_t *dev, char *data)
+{
+	char *p, *hold, *fhold;
+	int j;
+
+	if (data == NULL)
+		return;
+
+	/* Maybe they want to nuke the tags?  ok. */
+	if (strlen(data) < 1) {
+		/* free the old tags */
+		for (j = 0; j < dev->nroftags; j++)
+			free(dev->tags[j]);
+		if (dev->hargs)
+			free(dev->tags);
+		dev->nroftags = 0;
+		return;
+	}
+
+	fhold = hold = strdup(data);
+
+	/* free the old tags */
+	for (j = 0; j < dev->nroftags; j++)
+		free(dev->tags[j]);
+	if (dev->tags)
+		free(dev->tags);
+
+	/* count the arguments */
+	for ((p = strtok(hold, ",")), j=0; p;
+	     (p = strtok(NULL, ",")), j++);
+	dev->nroftags = j;
+	if (j%2 == 1)
+		dev->nroftags = j+1;
+	dev->tags = safer_malloc(sizeof(char *) *
+				  dev->nroftags);
+	free(fhold);
+	fhold = hold = strdup(data);
+	for ((p = strtok(hold, ",")), j=0;
+	     p && j < dev->nroftags;
+	     (p = strtok(NULL, ",")), j++) {
+		dev->tags[j] = strdup(p);
+	}
+	free(fhold);
+
+	/* tags are pairs, fix it for the user */
+	if (j%2 == 1)
+		dev->tags[j] = "junk";
 }
 
 /**

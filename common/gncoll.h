@@ -9,6 +9,7 @@
 #define GNC_UPD_HARGS	(1<<5)
 #define GNC_UPD_WATER	(1<<6) /* watermarks */
 #define GNC_UPD_FULL	(1<<7)
+#define GNC_UPD_TAGS	(1<<17) /*sigh*/
 
 /* GNC_UPD_XXX bits 8-16 are reserved for scale */
 #define GNC_UPD_SCALE(x)	(1<<(8+x))

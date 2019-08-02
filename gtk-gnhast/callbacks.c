@@ -395,6 +395,11 @@ void on_dd_save_activate(GtkButton *button, gpointer user_data)
 		if (strlen(data) > 0 ||
 		    (strlen(data) == 0 && dev->nrofhargs > 1))
 			parse_hargs(dev, data);
+		/* tags */
+		data = (char *)gtk_entry_get_text(GTK_ENTRY(dd_fields[DD_TAGS].entry));
+		if (strlen(data) > 0 ||
+		    (strlen(data) == 0 && dev->nroftags > 1))
+			parse_tags(dev, data);
 
 		/* lowat & hiwat */
 		data = (char *)gtk_entry_get_text(GTK_ENTRY(dd_fields[DD_LOWAT].entry));

@@ -567,6 +567,16 @@ void update_dd_dev(device_t *dev)
 				   buf);
 	} else
 		gtk_entry_set_text(GTK_ENTRY(dd_fields[DD_HARGS].entry), "");
+	if (dev->tags && dev->tags[0]) {
+		sprintf(buf, "%s", dev->tags[0]);
+		for (i=1; i < dev->nroftags; i++) {
+			sprintf(buf2, ",%s", dev->tags[i]);
+			strcat(buf, buf2);
+		}
+		gtk_entry_set_text(GTK_ENTRY(dd_fields[DD_TAGS].entry),
+				   buf);
+	} else
+		gtk_entry_set_text(GTK_ENTRY(dd_fields[DD_TAGS].entry), "");
 
 	dbuf = print_data_dev(dev, DATALOC_HIWAT);
 	if (dbuf) {

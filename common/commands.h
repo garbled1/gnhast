@@ -87,6 +87,7 @@ enum SC_COMMANDS {
 	SC_LOWAT,	/**< \brief lowater mark */
 	SC_HANDLER,	/**< \brief handler name */
 	SC_HARGS,	/**< \brief handler arguments */
+	SC_TAGS,	/**< \brief handler arguments */
 	SC_ALARMSTATUS,	/**< \brief alarm status */
 	SC_NUMBER,	/**< \brief number */
 	SC_PERCENTAGE,	/**< \brief percentage */

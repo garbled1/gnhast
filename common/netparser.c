@@ -83,6 +83,7 @@ argtable_t argtable[] = {
 	{"lowat", SC_LOWAT, PTDOUBLE},
 	{"handler", SC_HANDLER, PTCHAR},
 	{"hargs", SC_HARGS, PTCHAR},
+	{"tags", SC_TAGS, PTCHAR},
 	{"flow", SC_FLOWRATE, PTDOUBLE},
 	{"distance", SC_DISTANCE, PTDOUBLE},
 	{"alarm", SC_ALARMSTATUS, PTINT},

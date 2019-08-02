@@ -710,6 +710,12 @@ int cmd_modify(pargs_t *args, void *arg)
 		" %d arguments", dev->uid, args[i].arg.c,
 		dev->nrofhargs);
 	    break;
+	case SC_TAGS:
+	    parse_tags(dev, args[i].arg.c);
+	    LOG(LOG_NOTICE, "Tags uid:%s changed to %s,"
+		" %d arguments", dev->uid, args[i].arg.c,
+		dev->nroftags);
+	    break;
 	case SC_SPAM:
 	    LOG(LOG_NOTICE, "Spamhandler for uid:%s changed to %d",
 		dev->uid, args[i].arg.i);
@@ -1069,6 +1075,7 @@ int cmd_ask_device(pargs_t *args, void *arg)
 	case SC_LOWAT: what |= GNC_UPD_WATER; break;
 	case SC_HANDLER: what |= GNC_UPD_HANDLER; break;
 	case SC_HARGS: what |= GNC_UPD_HARGS; break;
+	case SC_TAGS: what |= GNC_UPD_TAGS; break;
 	}
 
     gn_update_device(dev, what|GNC_UPD_SCALE(scale), client->ev);

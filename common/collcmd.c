@@ -452,7 +452,7 @@ int cmd_register_group(pargs_t *args, void *arg)
 
 int cmd_update(pargs_t *args, void *arg)
 {
-	int i, j;
+  int i, j, k;
 	device_t *dev;
 	char *uid=NULL;
 	char *p, *hold, *fhold;
@@ -552,6 +552,36 @@ int cmd_update(pargs_t *args, void *arg)
 			    " %d arguments", dev->uid, args[i].arg.c,
 			    dev->nrofhargs);
 			break;
+		case SC_TAGS:
+			fhold = hold = strdup(args[i].arg.c);
+			/* free the old tags */
+			for (j = 0; j < dev->nroftags; j++)
+				free(dev->tags[j]);
+			if (dev->tags)
+				free(dev->tags);
+			/* count the arguments */
+			for ((p = strtok(hold, ",")), j=0; p;
+			     (p = strtok(NULL, ",")), j++);
+			dev->nroftags = j;
+			if (j % 2 == 1)
+				dev->nroftags += 1;
+			dev->tags = safer_malloc(sizeof(char *) *
+						  dev->nroftags);
+			free(fhold);
+			fhold = hold = strdup(args[i].arg.c);
+			for ((p = strtok(hold, ",")), k=0;
+			     p && k < j;
+			     (p = strtok(NULL, ",")), k++) {
+				dev->tags[k] = strdup(p);
+			}
+			free(fhold);
+			if (j % 2 == 1)
+				dev->tags[k+1] = "";
+			LOG(LOG_NOTICE, "Handler args uid:%s changed to %s,"
+			    " %d arguments", dev->uid, args[i].arg.c,
+			    dev->nroftags);
+			break;
+
 		}
 	}
 

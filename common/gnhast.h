@@ -470,6 +470,8 @@ typedef struct _device_t {
     char *handler;	/**< \brief our external handler */
     char **hargs;	/**< \brief handler arguments */
     int nrofhargs;	/**< \brief number of handler arguments */
+    char **tags;        /**< \brief tags */
+    int nroftags;	/**< \brief number of tags */
     void *localdata;	/**< \brief pointer to program-specific data */
     time_t last_upd;	/**< \brief time of last update */
     struct rb_node rbn;	/**< \brief red black node for dev->uid */

@@ -74,6 +74,7 @@ cfg_opt_t device_opts[] = {
 	CFG_STR("multimodel", 0, CFGF_NODEFAULT),
 	CFG_STR("handler", 0, CFGF_NODEFAULT),
 	CFG_STR_LIST("hargs", 0, CFGF_NODEFAULT),
+	CFG_STR_LIST("tags", 0, CFGF_NODEFAULT),
 	CFG_INT_CB("spamhandler", 0, CFGF_NONE, conf_parse_spamhandler),
 	CFG_FLOAT("hiwat", 0.0, CFGF_NONE),
 	CFG_FLOAT("lowat", 0.0, CFGF_NONE),
@@ -767,7 +768,7 @@ device_t *new_dev_from_conf(cfg_t *cfg, char *uid)
 	double d;
 	uint32_t u;
 	int64_t ll;
-	int i;
+	int i, tn;
 
 	devconf = find_devconf_byuid(cfg, uid);
 	if (devconf == NULL)
@@ -797,6 +798,16 @@ device_t *new_dev_from_conf(cfg_t *cfg, char *uid)
 		dev->hargs = safer_malloc(sizeof(char *) * dev->nrofhargs);
 		for (i = 0; i < cfg_size(devconf, "hargs"); i++)
 			dev->hargs[i] = strdup(cfg_getnstr(devconf, "hargs", i));
+	}
+	if (cfg_size(devconf, "tags") > 0) {
+		tn = dev->nroftags = cfg_size(devconf, "tags");
+		if (dev->nroftags % 2 == 1)
+			dev->nroftags += 1;
+		dev->tags = safer_malloc(sizeof(char *) * tn);
+		for (i = 0; i < cfg_size(devconf, "tags"); i++)
+			dev->tags[i] = strdup(cfg_getnstr(devconf, "tags", i));
+		if (tn % 2 == 1)
+			dev->tags[i+1] = "";
 	}
 	dev->proto = cfg_getint(devconf, "proto");
 	dev->type = cfg_getint(devconf, "type");
@@ -934,7 +945,9 @@ cfg_t *new_conf_from_dev(cfg_t *cfg, device_t *dev)
 	if (dev->nrofhargs > 0 && dev->hargs != NULL)
 		for (i = 0; i < dev->nrofhargs; i++)
 			cfg_setnstr(devconf, "hargs", dev->hargs[i], i);
-
+	if (dev->nroftags > 0 && dev->tags != NULL)
+		for (i = 0; i < dev->nroftags; i++)
+			cfg_setnstr(devconf, "tags", dev->tags[i], i);
 	if (dev->subtype)
 		cfg_setint(devconf, "subtype", dev->subtype);
 	if (dev->subtype && dev->scale) {
