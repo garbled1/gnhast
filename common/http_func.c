@@ -48,6 +48,8 @@
 #include "common.h"
 #include "http_func.h"
 
+#define URL_MAX 4096
+
 /** event base externs */
 extern struct event_base *base;
 extern struct evdns_base *dns_base;
@@ -227,8 +229,6 @@ void cb_http_GET(int fd, short what, void *arg)
 						     evhttp_uri_get_port(uri));
 	
 	req = evhttp_request_new(getinfo->cb, NULL);
-	evhttp_make_request(getinfo->http_cn, req, EVHTTP_REQ_GET,
-			    getinfo->url_suffix);
 	evhttp_add_header(req->output_headers, "Host",
 			  evhttp_uri_get_host(uri));
 	if (http_use_auth == HTTP_AUTH_BASIC && basic_authstring != NULL) {
@@ -236,6 +236,7 @@ void cb_http_GET(int fd, short what, void *arg)
 				  basic_authstring);
 		LOG(LOG_DEBUG, "Authstring: %s", basic_authstring);
 	}
+	evhttp_make_request(getinfo->http_cn, req, EVHTTP_REQ_GET, getinfo->url_suffix);
 	evhttp_uri_free(uri);
 }
 

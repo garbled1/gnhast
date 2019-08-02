@@ -933,7 +933,7 @@ void venstar_startfeed(void)
 
 void cb_notify_read(int fd, short what, void *arg)
 {
-	char buf[2048], buf2[8], *result;
+	char buf[2048], buf2[8], *nresult, *result;
 	char maddr[6][3];
 	char *p, *q;
 	int len, size, i;
@@ -1035,8 +1035,8 @@ void cb_notify_read(int fd, short what, void *arg)
 		goto cbnr_out;
 	}
 	*p = '\0';
-	result += 4;
-	sscanf(result, "%2s:%2s:%2s:%2s:%2s:%2s", maddr[0], maddr[1], maddr[2],
+	nresult = result + 4;
+	sscanf(nresult, "%2s:%2s:%2s:%2s:%2s:%2s", maddr[0], maddr[1], maddr[2],
 	       maddr[3], maddr[4], maddr[5]);
 	sprintf(macaddr, "%s%s%s%s%s%s", maddr[0], maddr[1], maddr[2],
 		maddr[3], maddr[4], maddr[5]);
