@@ -103,6 +103,42 @@ name_map_t devproto_map[] = {
 	{PROTO_NEPTUNE_APEX, "neptuneapex"},
 	{PROTO_CALCULATED, "calculated"},
 	{PROTO_BALBOA, "balboa"},
+	{PROTO_GENERIC, "generic"},
+	{PROTO_UNUSED1, "unused1"},
+	{PROTO_UNUSED2, "unused2"},
+	{PROTO_UNUSED3, "unused3"}
+	{PROTO_UNUSED4, "unused4"}
+	{PROTO_UNUSED5, "unused5"}
+	{PROTO_UNUSED6, "unused6"}
+	{PROTO_UNUSED7, "unused7"}
+	{PROTO_UNUSED8, "unused8"}
+	{PROTO_UNUSED9, "unused9"}
+	{PROTO_UNUSED10, "unused10"}
+	{PROTO_UNUSED11, "unused11"}
+	{PROTO_UNUSED12, "unused12"}
+	{PROTO_UNUSED13, "unused13"}
+	{PROTO_UNUSED14, "unused14"}
+	{PROTO_MAINS_SWITCH, "mains_switch"}
+	{PROTO_WEATHER, "weather"}
+	{PROTO_SENSOR, "sensor"}
+	{PROTO_SENSOR_INDOOR, "sensor_indoor"}
+	{PROTO_SENSOR_OUTDOOR, "sensor_outdoor"}
+	{PROTO_SENSOR_ELEC, "sensor_elec"}
+	{PROTO_POWERUSE, "poweruse"}
+	{PROTO_IRRIGATION, "irrigation"}
+	{PROTO_ENTRY, "entry"}
+	{PROTO_ALARM, "alarm"}
+	{PROTO_BATTERY, "battery"}
+	{PROTO_CAMERA, "camera"}
+	{PROTO_AQUARIUM, "aquarium"}
+	{PROTO_SOLAR, "solar"}
+	{PROTO_POOL, "pool"}
+	{PROTO_WATERHEATER, "waterheater"}
+	{PROTO_LIGHT, "light"}
+	{PROTO_AV, "av"}
+	{PROTO_THERMOSTAT, "thermostat"}
+	{PROTO_SETTINGS, "settings"}
+	{PROTO_BLIND, "blind"}
 };
 
 name_map_t devsubtype_map[] = {

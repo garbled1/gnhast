@@ -76,30 +76,74 @@ enum DEV_TYPES {
 /* Update below when adding new device types */
 #define DEVICE_MAX DEVICE_BLIND
 
-/** The protocol types, used mainly for collectors */
+/**
+   The protocol types, used mainly for collectors
+
+   \note
+    The following files must be changed when adding a protocol:
+    common/devices.c
+    py-gnhast/gnhast/gnhast.py
+*/
 enum PROTO_TYPES {
-    PROTO_NONE, /**< No protocol */
-    PROTO_INSTEON_V1, /**< A version 1 insteon device */
-    PROTO_INSTEON_V2, /**< A version 2 insteon device */
-    PROTO_INSTEON_V2CS, /**< A version 2 insteon device with checksum */
-    PROTO_SENSOR_OWFS, /**< An OWFS presented device */
-    PROTO_SENSOR_BRULTECH_GEM, /**< A brultech GEM */
-    PROTO_SENSOR_BRULTECH_ECM1240, /**< A brultech ECM1240 */
-    PROTO_SENSOR_WMR918, /**< A WMR918 weather station */
-    PROTO_SENSOR_AD2USB, /**< An ad2usb ademco alarm integration */
-    PROTO_SENSOR_ICADDY, /**< Irrigation caddy */
-    PROTO_SENSOR_VENSTAR, /**< Venstar Thermostat */
-    PROTO_CONTROL_URTSI, /**< Somfy URTSI blind controller */
-    PROTO_COLLECTOR, /**< A generic collector */
-    PROTO_CAMERA_AXIS, /**< An AXIS camera */
-    PROTO_TUXEDO, /**< Honeywell Tuxedo Touch */
-    PROTO_NEPTUNE_APEX, /**< Neptune Apex aquarium controller */
-    PROTO_CALCULATED, /**< for calculated values */
-    PROTO_BALBOA, /**< A balboa spa wifi controller */
+    PROTO_NONE, /**< 0 No protocol */
+    PROTO_INSTEON_V1, /**< 1 A version 1 insteon device */
+    PROTO_INSTEON_V2, /**< 2 A version 2 insteon device */
+    PROTO_INSTEON_V2CS, /**< 3 A version 2 insteon device with checksum */
+    PROTO_SENSOR_OWFS, /**< 4 An OWFS presented device */
+    PROTO_SENSOR_BRULTECH_GEM, /**< 5 A brultech GEM */
+    PROTO_SENSOR_BRULTECH_ECM1240, /**< 6 A brultech ECM1240 */
+    PROTO_SENSOR_WMR918, /**< 7 A WMR918 weather station */
+    PROTO_SENSOR_AD2USB, /**< 8 An ad2usb ademco alarm integration */
+    PROTO_SENSOR_ICADDY, /**< 9 Irrigation caddy */
+    PROTO_SENSOR_VENSTAR, /**< 10 Venstar Thermostat */
+    PROTO_CONTROL_URTSI, /**< 11 Somfy URTSI blind controller */
+    PROTO_COLLECTOR, /**< 12 A generic collector */
+    PROTO_CAMERA_AXIS, /**< 13 An AXIS camera */
+    PROTO_TUXEDO, /**< 14 Honeywell Tuxedo Touch */
+    PROTO_NEPTUNE_APEX, /**< 15 Neptune Apex aquarium controller */
+    PROTO_CALCULATED, /**< 16 for calculated values */
+    PROTO_BALBOA, /**< 17 A balboa spa wifi controller */
+    PROTO_GENERIC, /**< 18 A Generic catch-all */
+    PROTO_UNUSED1,
+    PROTO_UNUSED2, /*20*/
+    PROTO_UNUSED3,
+    PROTO_UNUSED4,
+    PROTO_UNUSED5,
+    PROTO_UNUSED6,
+    PROTO_UNUSED7,
+    PROTO_UNUSED8,
+    PROTO_UNUSED9,
+    PROTO_UNUSED10, /*28*/
+    PROTO_UNUSED11,
+    PROTO_UNUSED12,
+    PROTO_UNUSED13,
+    PROTO_UNUSED14, /*32*/
+    /* At this point, starting over, with use based protocols */
+    PROTO_MAINS_SWITCH, /**< 33 A mains switch/outlet/otherwise */
+    PROTO_WEATHER, /**< 34 Weather data */
+    PROTO_SENSOR, /**< 35 Any random sensor */
+    PROTO_SENSOR_INDOOR, /**< 36 A sensor for indoor data collection */
+    PROTO_SENSOR_OUTDOOR, /**< 37 A sensor for outdoor data collection */
+    PROTO_SENSOR_ELEC, /**< 38 A sensor that monitors electronics */
+    PROTO_POWERUSE, /**< 39 Power usage data */
+    PROTO_IRRIGATION, /**< 40 Irrigation data */
+    PROTO_ENTRY, /**< 41 entry/egress, like a door, window, etc */
+    PROTO_ALARM, /**< 42 An alarm of some kind */
+    PROTO_BATTERY, /**< 43 Battery monitor */
+    PROTO_CAMERA, /**< 44 A camera */
+    PROTO_AQUARIUM, /**< 45 Aquarium stuff */
+    PROTO_SOLAR, /**< 46 Solar power */
+    PROTO_POOL, /**< 47 Pools, spas */
+    PROTO_WATERHEATER, /**< 48 Water heaters */
+    PROTO_LIGHT, /**< 49 Lights (bulbs, leds, whatever) */
+    PROTO_AV, /**< 50 Audio/video equipment */
+    PROTO_THERMOSTAT, /**< 51 Thermostat data */
+    PROTO_SETTINGS, /**< 52 Device settings/config */
+    PROTO_BLIND, /**< 53 Blinds, shutters, etc */
     NROF_PROTOS,
 };
 /* Update when adding a new protocol */
-#define PROTO_MAX PROTO_BALBOA
+#define PROTO_MAX PROTO_BLIND
 
 /**
    Subtypes
