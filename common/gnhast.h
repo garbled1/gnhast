@@ -60,7 +60,7 @@
 
 #define HEALTH_CHECK_RATE	60
 /* Bump this whenever you add a new command, type, subtype, or proto */
-#define GNHASTD_PROTO_VERS	0x11
+#define GNHASTD_PROTO_VERS	0x12
 
 /** Basic device types */
 /** \note a type blind should always return BLIND_STOP, for consistency */
@@ -368,9 +368,6 @@ typedef struct _client_t {
 enum DATALOC_TYPES {
     DATALOC_DATA, /**< The current Data */
     DATALOC_LAST, /**< The previous data */
-    DATALOC_MIN, /**< The minimum data */
-    DATALOC_MAX, /**< The maximum data */
-    DATALOC_AVG, /**< The average of the data */
     DATALOC_LOWAT, /**< A low watermark */
     DATALOC_HIWAT, /**< A high watermark */
     DATALOC_CHANGE, /**< used to request a change to a device's data */
@@ -466,9 +463,6 @@ typedef struct _device_t {
     uint8_t scale;	/**< \brief scale (temp/baro/etc) */
     data_t data;	/**< \brief current data */
     data_t last;	/**< \brief previous data */
-    data_t min;		/**< \brief 24h min */
-    data_t max;		/**< \brief 24h max */
-    data_t avg;		/**< \brief 24h avg */
     data_t lowat;	/**< \brief low water mark */
     data_t hiwat;	/**< \brief high water mark */
     data_t change;	/**< \brief data requested to be changed */

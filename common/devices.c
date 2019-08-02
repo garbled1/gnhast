@@ -470,15 +470,6 @@ void get_data_dev(device_t *dev, int where, void *data)
 	case DATALOC_LAST:
 		store = &dev->last;
 		break;
-	case DATALOC_MIN:
-		store = &dev->min;
-		break;
-	case DATALOC_MAX:
-		store = &dev->max;
-		break;
-	case DATALOC_AVG:
-		store = &dev->avg;
-		break;
 	case DATALOC_LOWAT:
 		store = &dev->lowat;
 		break;
