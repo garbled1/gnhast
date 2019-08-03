@@ -598,7 +598,7 @@ void init_balboa_devs(void)
 	for (i=0; i < 2; i++) {
 		if (spacfg.light_array[i]) {
 			sprintf(uid, "%s-light%0.2d", macstr, i);
-			sprintf(name, "Spa Light #0.2d", i);
+			sprintf(name, "Spa Light #%0.2d", i);
 			sprintf(loc, "l%d", i);
 			generic_build_device(cfg, uid, name, NULL,
 					     PROTO_LIGHT, DEVICE_SWITCH,
@@ -610,7 +610,7 @@ void init_balboa_devs(void)
 	for (i=0; i < 2; i++) {
 		if (spacfg.aux_array[i]) {
 			sprintf(uid, "%s-aux%0.2d", macstr, i);
-			sprintf(name, "Spa Aux #0.2d", i);
+			sprintf(name, "Spa Aux #%0.2d", i);
 			sprintf(loc, "a%d", i);
 			generic_build_device(cfg, uid, name, NULL,
 					     PROTO_POOL, DEVICE_SWITCH,
