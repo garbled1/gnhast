@@ -939,18 +939,19 @@ void build_devices(void)
 	mtname = cfg_getstr(astro_c, "moonrisename");
 
 	generic_build_device(cfg, suid, sname, "sunrise",
-			     PROTO_CALCULATED,
+			     PROTO_WEATHER,
 			     DEVICE_SENSOR, SUBTYPE_DAYLIGHT, NULL, 0,
-			     gnhastd_conn->bev);
+			     NULL, 0, gnhastd_conn->bev);
 
 	generic_build_device(cfg, muid, mname, "moonph",
-			     PROTO_CALCULATED, DEVICE_SENSOR,
-			     SUBTYPE_MOONPH, NULL, 0, gnhastd_conn->bev);
+			     PROTO_WEATHER, DEVICE_SENSOR,
+			     SUBTYPE_MOONPH, NULL, 0,
+			     NULL, 0, gnhastd_conn->bev);
 
 	generic_build_device(cfg, mtuid, mtname, "moonrise",
-			     PROTO_CALCULATED,
+			     PROTO_WEATHER,
 			     DEVICE_SENSOR, SUBTYPE_DAYLIGHT, NULL, 0,
-			     gnhastd_conn->bev);
+			     NULL, 0, gnhastd_conn->bev);
 
 	/* are we dumping the conf file? */
 	if (dumpconf != NULL) {

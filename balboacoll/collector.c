@@ -551,6 +551,7 @@ void init_balboa_devs(void)
 	device_t *dev;
 	char uid[256], name[256], macstr[16], loc[16];
 	char *buf2;
+	char **tags;
 	int i;
 
 	/* lets build some basic devices */
@@ -569,6 +570,9 @@ void init_balboa_devs(void)
 	sprintf(macstr, "%0.2X%0.2X%0.2X", mac_suffix[0],
 		mac_suffix[1], mac_suffix[2]);
 
+	tags = build_tags(6, "device_source", "spa",
+			  "device_manufacturer", "balboa",
+			  "device_model", "unset");
 	/* first, pumps */
 	for (i=0; i < MAX_PUMPS; i++) {
 		if (spacfg.pump_array[i]) {
@@ -576,18 +580,19 @@ void init_balboa_devs(void)
 			sprintf(name, "Spa Pump #%0.2d", i);
 			sprintf(loc, "p%0.2d", i);
 			generic_build_device(cfg, uid, name, NULL,
-					     PROTO_BALBOA,
+					     PROTO_POOL,
 					     DEVICE_SWITCH, SUBTYPE_TRISTATE,
-					     loc, 0, gnhastd_conn->bev);
+					     loc, 0, tags, 6,
+					     gnhastd_conn->bev);
 		}
 	}
 	/* the circulation pump */
 	if (spacfg.circpump) {
 		sprintf(uid, "%s-circpump", macstr);
 		sprintf(name, "Spa Circulation Pump");
-		generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
+		generic_build_device(cfg, uid, name, NULL, PROTO_POOL,
 				     DEVICE_SWITCH, SUBTYPE_SWITCH, NULL,
-				     0, gnhastd_conn->bev);
+				     0, tags, 6, gnhastd_conn->bev);
 	}
 	/* the lights */
 	for (i=0; i < 2; i++) {
@@ -596,9 +601,9 @@ void init_balboa_devs(void)
 			sprintf(name, "Spa Light #0.2d", i);
 			sprintf(loc, "l%d", i);
 			generic_build_device(cfg, uid, name, NULL,
-					     PROTO_BALBOA, DEVICE_SWITCH,
-					     SUBTYPE_SWITCH, loc,
-					     0, gnhastd_conn->bev);
+					     PROTO_LIGHT, DEVICE_SWITCH,
+					     SUBTYPE_SWITCH, loc, 0,
+					     tags, 6, gnhastd_conn->bev);
 		}
 	}
 	/* the Aux devices */
@@ -608,9 +613,9 @@ void init_balboa_devs(void)
 			sprintf(name, "Spa Aux #0.2d", i);
 			sprintf(loc, "a%d", i);
 			generic_build_device(cfg, uid, name, NULL,
-					     PROTO_BALBOA, DEVICE_SWITCH,
-					     SUBTYPE_SWITCH, loc,
-					     0, gnhastd_conn->bev);
+					     PROTO_POOL, DEVICE_SWITCH,
+					     SUBTYPE_SWITCH, loc, 0,
+					     tags, 6, gnhastd_conn->bev);
 		}
 	}
 	/* the blower, needs a new type XXX */
@@ -618,16 +623,16 @@ void init_balboa_devs(void)
 	if (spacfg.mister) {
 		sprintf(uid, "%s-mister", macstr);
 		sprintf(name, "Spa Mister");
-		generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
-				     DEVICE_SWITCH, SUBTYPE_SWITCH, "mi",
-				     0, gnhastd_conn->bev);
+		generic_build_device(cfg, uid, name, NULL, PROTO_POOL,
+				     DEVICE_SWITCH, SUBTYPE_SWITCH, "mi", 0,
+				     tags, 6, gnhastd_conn->bev);
 	}
 	/* The current temp */
 	sprintf(uid, "%s-curtemp", macstr);
 	sprintf(name, "Spa Curent Temp");
-	generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
+	generic_build_device(cfg, uid, name, NULL, PROTO_POOL,
 			     DEVICE_SENSOR, SUBTYPE_TEMP, NULL,
-			     spacfg.tscale, gnhastd_conn->bev);
+			     spacfg.tscale, tags, 6, gnhastd_conn->bev);
 	dev = find_device_byuid(uid);
 	if (dev != NULL) {
 		spacfg.tscale = dev->scale;
@@ -636,28 +641,28 @@ void init_balboa_devs(void)
 	/* The settemp */
 	sprintf(uid, "%s-settemp", macstr);
 	sprintf(name, "Spa Set Temp");
-	generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
+	generic_build_device(cfg, uid, name, NULL, PROTO_SETTINGS,
 			     DEVICE_SENSOR, SUBTYPE_TEMP, "st",
-			     spacfg.tscale, gnhastd_conn->bev);
+			     spacfg.tscale, tags, 6, gnhastd_conn->bev);
 
 	/* The heat mode */
 	sprintf(uid, "%s-heatmode", macstr);
 	sprintf(name, "Spa Heating Mode");
-	generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
+	generic_build_device(cfg, uid, name, NULL, PROTO_SETTINGS,
 			     DEVICE_SENSOR, SUBTYPE_TRISTATE, "hm",
-			     0, gnhastd_conn->bev);
+			     0, tags, 6, gnhastd_conn->bev);
 	/* The heat state */
 	sprintf(uid, "%s-heatstate", macstr);
 	sprintf(name, "Spa Heating State");
-	generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
+	generic_build_device(cfg, uid, name, NULL, PROTO_POOL,
 			     DEVICE_SENSOR, SUBTYPE_TRISTATE, NULL,
-			     0, gnhastd_conn->bev);
-	/* The heat state */
+			     0, tags, 6, gnhastd_conn->bev);
+	/* The heat temperature range */
 	sprintf(uid, "%s-temprange", macstr);
 	sprintf(name, "Spa Temperature Range");
-	generic_build_device(cfg, uid, name, NULL, PROTO_BALBOA,
+	generic_build_device(cfg, uid, name, NULL, PROTO_POOL,
 			     DEVICE_SENSOR, SUBTYPE_SWITCH, "tr",
-			     0, gnhastd_conn->bev);
+			     0, tags, 6, gnhastd_conn->bev);
 	devices_ready = 1;
 	/* are we dumping the conf file? */
 	if (dumpconf != NULL) {

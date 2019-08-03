@@ -639,187 +639,192 @@ void build_devices(int commercial)
 {
 	char uid[64], name[256], *tname;
 	device_t *dev;
+	char **tags;
 
 	if (macaddr == NULL || macaddr[0] == '\0')
 		LOG(LOG_FATAL, "macaddr of device not known.  Perhaps "
 		    "discovery failed?");
 
 	tname = cfg_getstr(venstar_c, "name");
+	tags = build_tags(6, "device_source", "thermostat",
+			  "device_manufacturer", "Venstar",
+			  "device_name", tname);
 
 	sprintf(uid, "%s-mode", macaddr);
 	sprintf(name, "%s - Current thermostat mode", tname);
-	generic_build_device(cfg, uid, name, "thermmode", PROTO_SENSOR_VENSTAR,
+	generic_build_device(cfg, uid, name, "thermmode", PROTO_THERMOSTAT,
 			     DEVICE_SWITCH, SUBTYPE_THMODE, "mode", 0,
-			     gnhastd_conn->bev);
+			     tags, 6, gnhastd_conn->bev);
 
 	sprintf(uid, "%s-state", macaddr);
 	sprintf(name, "%s - Current thermostat state", tname);
 	generic_build_device(cfg, uid, name, "thermstate",
-			     PROTO_SENSOR_VENSTAR, DEVICE_SWITCH,
-			     SUBTYPE_THSTATE, "state", 0, gnhastd_conn->bev);
+			     PROTO_THERMOSTAT, DEVICE_SWITCH,
+			     SUBTYPE_THSTATE, "state", 0,
+			     tags, 6, gnhastd_conn->bev);
 
 	sprintf(uid, "%s-fan", macaddr);
 	sprintf(name, "%s - Current fan setting", tname);
-	generic_build_device(cfg, uid, name, "fan", PROTO_SENSOR_VENSTAR,
+	generic_build_device(cfg, uid, name, "fan", PROTO_THERMOSTAT,
 			     DEVICE_SWITCH, SUBTYPE_SWITCH, "fan", 0,
-			     gnhastd_conn->bev);
+			     tags, 6, gnhastd_conn->bev);
 
 	sprintf(uid, "%s-fanstate", macaddr);
 	sprintf(name, "%s - Current fan state", tname);
-	generic_build_device(cfg, uid, name, "fanstate", PROTO_SENSOR_VENSTAR,
+	generic_build_device(cfg, uid, name, "fanstate", PROTO_THERMOSTAT,
 			     DEVICE_SWITCH, SUBTYPE_SWITCH, "fanstate", 0,
-			     gnhastd_conn->bev);
+			     tags, 6, gnhastd_conn->bev);
 
 	sprintf(uid, "%s-tempunits", macaddr);
 	sprintf(name, "%s - Temperature Units", tname);
-	generic_build_device(cfg, uid, name, "tempunits", PROTO_SENSOR_VENSTAR,
+	generic_build_device(cfg, uid, name, "tempunits", PROTO_SETTINGS,
 			     DEVICE_SWITCH, SUBTYPE_SWITCH, "tempunits", 0,
-			     gnhastd_conn->bev);
+			     tags, 6, gnhastd_conn->bev);
 
 	sprintf(uid, "%s-schedule", macaddr);
 	sprintf(name, "%s - Current schedule state", tname);
-	generic_build_device(cfg, uid, name, "schedule", PROTO_SENSOR_VENSTAR,
+	generic_build_device(cfg, uid, name, "schedule", PROTO_THERMOSTAT,
 			     DEVICE_SWITCH, SUBTYPE_SWITCH, "schedule", 0,
-			     gnhastd_conn->bev);
+			     tags, 6, gnhastd_conn->bev);
 
 	sprintf(uid, "%s-schedulepart", macaddr);
 	sprintf(name, "%s - Current schedule part", tname);
 	generic_build_device(cfg, uid, name, "schedulepart",
-			     PROTO_SENSOR_VENSTAR,
+			     PROTO_THERMOSTAT,
 			     DEVICE_SWITCH, SUBTYPE_SMNUMBER, "schedulepart",
-			     0, gnhastd_conn->bev);
+			     0, tags, 6, gnhastd_conn->bev);
 
 	/* the funny ordering here is just done to match the documentation */
 	if (!commercial) {
 		sprintf(uid, "%s-away", macaddr);
 		sprintf(name, "%s - Current away state", tname);
 		generic_build_device(cfg, uid, name, "away",
-				     PROTO_SENSOR_VENSTAR,
+				     PROTO_THERMOSTAT,
 				     DEVICE_SWITCH, SUBTYPE_SWITCH, "away",
-				     0, gnhastd_conn->bev);
+				     0, tags, 6, gnhastd_conn->bev);
 	} else { /* commercial unit */
 		sprintf(uid, "%s-holiday", macaddr);
 		sprintf(name, "%s - Current holiday state", tname);
 		generic_build_device(cfg, uid, name, "holiday",
-				     PROTO_SENSOR_VENSTAR, DEVICE_SWITCH,
+				     PROTO_THERMOSTAT, DEVICE_SWITCH,
 				     SUBTYPE_SWITCH, "holiday", 0,
-				     gnhastd_conn->bev);
+				     tags, 6, gnhastd_conn->bev);
 
 		sprintf(uid, "%s-override", macaddr);
 		sprintf(name, "%s - Current override state", tname);
 		generic_build_device(cfg, uid, name, "override",
-				     PROTO_SENSOR_VENSTAR, DEVICE_SWITCH,
+				     PROTO_THERMOSTAT, DEVICE_SWITCH,
 				     SUBTYPE_SWITCH, "override", 0,
-				     gnhastd_conn->bev);
+				     tags, 6, gnhastd_conn->bev);
 
 		sprintf(uid, "%s-overridetime", macaddr);
 		sprintf(name, "%s - Time left in override", tname);
 		generic_build_device(cfg, uid, name, "overridetime",
-				     PROTO_SENSOR_VENSTAR, DEVICE_TIMER,
+				     PROTO_THERMOSTAT, DEVICE_TIMER,
 				     SUBTYPE_TIMER, "overridetime", 0,
-				     gnhastd_conn->bev);
+				     tags, 6, gnhastd_conn->bev);
 
 		sprintf(uid, "%s-forceunocc", macaddr);
 		sprintf(name, "%s - Current Force Unoccupied state", tname);
 		generic_build_device(cfg, uid, name, "forceunocc",
-				     PROTO_SENSOR_VENSTAR, DEVICE_SWITCH,
+				     PROTO_THERMOSTAT, DEVICE_SWITCH,
 				     SUBTYPE_SWITCH, "forceunocc", 0,
-				     gnhastd_conn->bev);
+				     tags, 6, gnhastd_conn->bev);
 	}
 
 	sprintf(uid, "%s-spacetemp", macaddr);
 	sprintf(name, "%s - Current space temperature", tname);
-	generic_build_device(cfg, uid, name, "spacetemp", PROTO_SENSOR_VENSTAR,
+	generic_build_device(cfg, uid, name, "spacetemp", PROTO_SENSOR_INDOOR,
 			     DEVICE_SENSOR, SUBTYPE_TEMP, "spacetemp",
-			     tempscale, gnhastd_conn->bev);
+			     tempscale, tags, 6, gnhastd_conn->bev);
 
 	sprintf(uid, "%s-heattemp", macaddr);
 	sprintf(name, "%s - Current heat to temperature", tname);
-	generic_build_device(cfg, uid, name, "heattemp", PROTO_SENSOR_VENSTAR,
+	generic_build_device(cfg, uid, name, "heattemp", PROTO_SETTINGS,
 			     DEVICE_SENSOR, SUBTYPE_TEMP, "heattemp",
-			     tempscale, gnhastd_conn->bev);
+			     tempscale, tags, 6, gnhastd_conn->bev);
 
 	sprintf(uid, "%s-cooltemp", macaddr);
 	sprintf(name, "%s - Current cool to temperature", tname);
-	generic_build_device(cfg, uid, name, "cooltemp", PROTO_SENSOR_VENSTAR,
+	generic_build_device(cfg, uid, name, "cooltemp", PROTO_SETTINGS,
 			     DEVICE_SENSOR, SUBTYPE_TEMP, "cooltemp",
-			     tempscale, gnhastd_conn->bev);
+			     tempscale, tags, 6, gnhastd_conn->bev);
 
 	sprintf(uid, "%s-cooltempmin", macaddr);
 	sprintf(name, "%s - Minimum cool to temperature", tname);
-	generic_build_device(cfg, uid, name, "cooltempmin", PROTO_SENSOR_VENSTAR,
+	generic_build_device(cfg, uid, name, "cooltempmin", PROTO_SETTINGS,
 			     DEVICE_SENSOR, SUBTYPE_TEMP, "cooltempmin",
-			     tempscale, gnhastd_conn->bev);
+			     tempscale, tags, 6, gnhastd_conn->bev);
 
 	sprintf(uid, "%s-cooltempmax", macaddr);
 	sprintf(name, "%s - Maximum cool to temperature", tname);
 	generic_build_device(cfg, uid, name, "cooltempmax",
-			     PROTO_SENSOR_VENSTAR,
+			     PROTO_SETTINGS,
 			     DEVICE_SENSOR, SUBTYPE_TEMP, "cooltempmax",
-			     tempscale, gnhastd_conn->bev);
+			     tempscale, tags, 6, gnhastd_conn->bev);
 
 	sprintf(uid, "%s-heattempmin", macaddr);
 	sprintf(name, "%s - Minimum heat to temperature", tname);
 	generic_build_device(cfg, uid, name, "cooltempmin",
-			     PROTO_SENSOR_VENSTAR,
+			     PROTO_SETTINGS,
 			     DEVICE_SENSOR, SUBTYPE_TEMP, "heattempmin",
-			     tempscale, gnhastd_conn->bev);
+			     tempscale, tags, 6, gnhastd_conn->bev);
 
 	sprintf(uid, "%s-heattempmax", macaddr);
 	sprintf(name, "%s - Maximum heat to temperature", tname);
 	generic_build_device(cfg, uid, name, "heattempmax",
-			     PROTO_SENSOR_VENSTAR,
+			     PROTO_SETTINGS,
 			     DEVICE_SENSOR, SUBTYPE_TEMP, "heattempmax",
-			     tempscale, gnhastd_conn->bev);
+			     tempscale, tags, 6, gnhastd_conn->bev);
 
 	sprintf(uid, "%s-setpointdelta", macaddr);
 	sprintf(name, "%s - Minimum heat/cool temperature difference", tname);
 	generic_build_device(cfg, uid, name, "setpointdelta",
-			     PROTO_SENSOR_VENSTAR,
+			     PROTO_SETTINGS,
 			     DEVICE_SENSOR, SUBTYPE_TEMP, "setpointdelta",
-			     tempscale, gnhastd_conn->bev);
+			     tempscale, tags, 6, gnhastd_conn->bev);
 
 	sprintf(uid, "%s-hum", macaddr);
 	sprintf(name, "%s - Current Humidity", tname);
-	generic_build_device(cfg, uid, name, "hum", PROTO_SENSOR_VENSTAR,
+	generic_build_device(cfg, uid, name, "hum", PROTO_SENSOR_INDOOR,
 			     DEVICE_SENSOR, SUBTYPE_HUMID, "hum", 0,
-			     gnhastd_conn->bev);
+			     tags, 6, gnhastd_conn->bev);
 
 	sprintf(uid, "%s-availablemodes", macaddr);
 	sprintf(name, "%s - Available Thermostat Modes", tname);
 	generic_build_device(cfg, uid, name, "availablemodes",
-			     PROTO_SENSOR_VENSTAR,
+			     PROTO_THERMOSTAT,
 			     DEVICE_SENSOR, SUBTYPE_SMNUMBER,
-			     "availablemodes", 0, gnhastd_conn->bev);
+			     "availablemodes", 0, tags, 6, gnhastd_conn->bev);
 
 	sprintf(uid, "%s-outdoortemp", macaddr);
 	sprintf(name, "%s - Current outdoor temperature", tname);
 	generic_build_device(cfg, uid, name, "outdoortemp",
-			     PROTO_SENSOR_VENSTAR,
+			     PROTO_SENSOR_OUTDOOR,
 			     DEVICE_SENSOR, SUBTYPE_TEMP, "outdoortemp",
-			     tempscale, gnhastd_conn->bev);
+			     tempscale, tags, 6, gnhastd_conn->bev);
 
 
 	sprintf(uid, "%s-filteralarm", macaddr);
 	sprintf(name, "%s - Service Air Filter Alarm", tname);
 	generic_build_device(cfg, uid, name, "filteralarm",
-			     PROTO_SENSOR_VENSTAR,
+			     PROTO_ALARM,
 			     DEVICE_SENSOR, SUBTYPE_SWITCH, "Air Filter",
-			     0, gnhastd_conn->bev);
+			     0, tags, 6, gnhastd_conn->bev);
 
 	sprintf(uid, "%s-uvlampalarm", macaddr);
 	sprintf(name, "%s - Service UV Lamp Alarm", tname);
 	generic_build_device(cfg, uid, name, "uvlampalarm",
-			     PROTO_SENSOR_VENSTAR,
+			     PROTO_ALARM,
 			     DEVICE_SENSOR, SUBTYPE_SWITCH, "UV Lamp",
-			     0, gnhastd_conn->bev);
+			     0, tags, 6, gnhastd_conn->bev);
 
 	sprintf(uid, "%s-servicealarm", macaddr);
 	sprintf(name, "%s - Service Alarm", tname);
 	generic_build_device(cfg, uid, name, "servicealarm",
-			     PROTO_SENSOR_VENSTAR,
+			     PROTO_ALARM,
 			     DEVICE_SENSOR, SUBTYPE_SWITCH, "Service",
-			     0, gnhastd_conn->bev);
+			     0, tags, 6, gnhastd_conn->bev);
 
 	/* XXX Unsure how to store runtimes just yet.  yesterday only maybe? */
 

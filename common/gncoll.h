@@ -36,8 +36,10 @@ void gn_imalive(struct bufferevent *bev);
 void gn_get_apiv(struct bufferevent *bev);
 void gn_setalarm(struct bufferevent *bev, char *aluid, char *altext,
 		 int alsev, uint32_t alchan);
+char **build_tags(int num, ...);
 void generic_build_device(cfg_t *cfg, char *uid, char *name, char *rrdname,
 			  int proto, int type, int subtype, char *loc,
-			  int tscale, struct bufferevent *bev);
+			  int tscale, char **tags, int nroftags,
+			  struct bufferevent *bev);
 
 #endif /*_GNCOLL_H_*/

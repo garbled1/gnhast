@@ -741,6 +741,39 @@ void gn_setalarm(struct bufferevent *bev, char *aluid, char *altext,
 	evbuffer_free(send);
 }
 
+/**
+   \brief Routine to build a tags array
+   \param num number of tags
+   \param ... list of strings to make tags from
+   Create a tag set, if you provide an odd number of tags, makes it even.
+   If num does not match the number of tags, this will segfault.  Don't do
+   that.
+
+   Because we malloc and strdup here, you can just set dev->tags to the
+   result.
+*/
+
+char **build_tags(int num, ...)
+{
+	va_list args;
+	char **tags;
+	int i;
+
+	va_start(args, num);
+	if (num % 2 == 1)
+		tags = safer_malloc(sizeof(char *) * num + 1);
+	else
+		tags = safer_malloc(sizeof(char *) * num);
+	for (i=0; i < num; i++)
+		tags[i] = strdup(va_arg(args, char *));
+	va_end(args);
+
+	if (num % 2 == 1)
+		tags[num] = strdup("");
+
+	return(tags);
+}
+
 
 /**
    \brief Generic routine to build a simple device
@@ -753,15 +786,22 @@ void gn_setalarm(struct bufferevent *bev, char *aluid, char *altext,
    \param subtype device subtype
    \param loc device locator string
    \param tscale tempscale, if used
+   \param tags tags, if used
+   \param nroftags number of tags
+   \param bev my bufferevent
    Checks for device in config, loads if found, otherwise creates.
    Fills in loc if missing.
+
+   We copy tags in with malloc/strdup, so you can re-use tags in initialization
 */
 
 void generic_build_device(cfg_t *cfg, char *uid, char *name, char *rrdname,
 			  int proto, int type, int subtype, char *loc,
-			  int tscale, struct bufferevent *bev)
+			  int tscale, char **tags, int nroftags,
+			  struct bufferevent *bev)
 {
 	device_t *dev;
+	int i;
 
 	dev = new_dev_from_conf(cfg, uid);
 	if (dev == NULL) {
@@ -774,6 +814,13 @@ void generic_build_device(cfg_t *cfg, char *uid, char *name, char *rrdname,
 		dev->proto = proto;
 		dev->type = type;
 		dev->subtype = subtype;
+		if (tags != NULL && nroftags > 0) {
+			dev->nroftags = nroftags;
+			dev->tags = safer_malloc(sizeof(char *) *
+						 dev->nroftags);
+			for (i=0; i < nroftags; i++)
+				dev->tags[i] = strdup(tags[i]);
+		}
 		if (subtype == SUBTYPE_TEMP)
 			dev->scale = tscale;
 		if (loc != NULL) {
@@ -784,6 +831,9 @@ void generic_build_device(cfg_t *cfg, char *uid, char *name, char *rrdname,
 		dev->loc = strdup(loc);
 	}
 	insert_device(dev);
-	if (dumpconf == NULL && dev->name != NULL)
+	if (dumpconf == NULL && dev->name != NULL) {
 		gn_register_device(dev, bev);
+		/* Modify the device if we have updated the config file */
+		gn_modify_device(dev, bev);
+	}
 }
