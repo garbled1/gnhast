@@ -956,7 +956,9 @@ void cb_notify_read(int fd, short what, void *arg)
 	if (result == NULL)
 		return;
 
-	if (strcasecmp(result, "colortouch:ecp") != 0) /* not a venstar */
+	if (strcasecmp(result, "colortouch:ecp") != 0 &&
+	    strcasecmp(result, "venstar:thermostat:ecp") != 0)
+		/* not a venstar */
 		return;
 	free(result);
 
@@ -1040,7 +1042,9 @@ void cb_notify_read(int fd, short what, void *arg)
 		goto cbnr_out;
 	}
 	*p = '\0';
-	nresult = result + 4;
+	q = strstr(result, "ecp:");
+	nresult = q + 4;
+	LOG(LOG_DEBUG, "Macaddr result = %s / %s", result, nresult);
 	sscanf(nresult, "%2s:%2s:%2s:%2s:%2s:%2s", maddr[0], maddr[1], maddr[2],
 	       maddr[3], maddr[4], maddr[5]);
 	sprintf(macaddr, "%s%s%s%s%s%s", maddr[0], maddr[1], maddr[2],
@@ -1051,7 +1055,7 @@ void cb_notify_read(int fd, short what, void *arg)
 	/* find the thermostat type */
 	result = find_ssdp_field(buf, "USN:");
 	if (result == NULL) {
-		LOG(LOG_ERROR, "Couldn't find mac address!");
+		LOG(LOG_ERROR, "Couldn't find thermostat type!");
 		goto cbnr_out;
 	}
 	p = strstr(result, ":type:");
