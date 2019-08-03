@@ -84,7 +84,7 @@ http_get_t *usno_get;
 
 
 time_t astro_lastupd;
-int dl_cbarg[DAYL_DUSK_CIVIL_TWILIGHT+1];
+int dl_cbarg[DAYL_DUSK_ASTRO_TWILIGHT+1];
 int sunrise_offsets[SS_SOLAR_NOON+1]; /* used to calculate current point */
 int usno_sun_offsets[USNO_SUN_SOLAR_NOON+1]; /* same */
 int usno_moon_offsets[USNO_MOON_UPPER_TRANSIT+1];
