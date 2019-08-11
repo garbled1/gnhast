@@ -35,6 +35,10 @@
 
 #ifndef _GNHAST_H_
 #define _GNHAST_H_
+
+/* allow this to be included in the arduino library */
+#ifndef _GN_ARDUINO_
+
 /* need queue.h for the devices */
 #include <sys/queue.h>
 
@@ -55,6 +59,8 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/rand.h>
+
+#endif /*_GN_ARDUINO_*/
 
 /* General defines */
 
@@ -316,6 +322,8 @@ enum SALINITY_TYPES {
     SALINITY_COND, /**< Conductivity mS */
 };
 
+#ifndef _GN_ARDUINO_
+
 struct _device_group_t;
 struct _client_t;
 struct _device_t;
@@ -528,4 +536,5 @@ typedef struct _alarm_t {
     TAILQ_ENTRY(_alarm_t) next; /**< \brief next in global alarm list */
 } alarm_t;
 
+#endif /* _GN_ARDUINO_ */
 #endif /* _GNHAST_H_ */
