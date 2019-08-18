@@ -46,6 +46,7 @@
 #include <errno.h>
 #include <time.h>
 #include <signal.h>
+#include <ctype.h>
 #include <event2/dns.h>
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>

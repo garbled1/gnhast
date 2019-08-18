@@ -132,7 +132,8 @@ int device_watermark(device_t *dev);
 void cb_timerdev_update(int fd, short what, void *arg);
 
 /* From serial_common.c */
-int serial_connect(char *devnode, int speed, int cflags);
+#include <termios.h>
+int serial_connect(char *devnode, speed_t speed, int cflags);
 void serial_eventcb(struct bufferevent *bev, short events, void *arg);
 
 /* From alarms.c */

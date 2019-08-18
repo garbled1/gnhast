@@ -56,7 +56,7 @@
    \param cflags control flags
 */
 
-int serial_connect(char *devnode, int speed, int cflags)
+int serial_connect(char *devnode, speed_t speed, int cflags)
 {
 	struct termios tio;
 	int sfd;
