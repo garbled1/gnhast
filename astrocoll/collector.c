@@ -292,6 +292,7 @@ static int time_offset(char *str)
 
 	memset(&event_tm, 0, sizeof(event_tm));
 	strptime(str, "%FT%T%z", &event_tm);
+	curtime = time(NULL);
 #if HAVE_MKTIME_Z
 	event_time = mktime_z(NULL, &event_tm);
 #else
