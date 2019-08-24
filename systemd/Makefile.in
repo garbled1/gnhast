@@ -159,7 +159,7 @@ am__dist_timer_DATA_DIST = ad2usbcoll.timer alarmcoll.timer \
 	astrocoll.timer balboacoll.timer brulcoll.timer \
 	icaddycoll.timer insteoncoll.timer owsrvcoll.timer \
 	rrdcoll.timer urtsicoll.timer venstarcoll.timer \
-	wmr918coll.timer wupwscoll.timer
+	wmr918coll.timer wupwscoll.timer moncoll.timer
 DATA = $(dist_systemd_DATA) $(dist_systemdx_DATA) $(dist_timer_DATA)
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP)
 am__DIST_COMMON = $(srcdir)/Makefile.in
@@ -343,7 +343,8 @@ do_subst = sed -e 's,[@]NETCAT[@],$(NETCAT),g' \
 @WITH_SYSTEMD_TRUE@	urtsicoll.timer \
 @WITH_SYSTEMD_TRUE@	venstarcoll.timer \
 @WITH_SYSTEMD_TRUE@	wmr918coll.timer \
-@WITH_SYSTEMD_TRUE@	wupwscoll.timer
+@WITH_SYSTEMD_TRUE@	wupwscoll.timer \
+@WITH_SYSTEMD_TRUE@	moncoll.timer
 
 @WITH_SYSTEMD_TRUE@dist_systemdx_DATA = gnhastd.service \
 @WITH_SYSTEMD_TRUE@	gnhastd_all.service \

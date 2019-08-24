@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, 2015
+ * Copyright (c) 2013, 2014, 2015, 2019
  *      Tim Rightnour.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,6 +37,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <string.h>
@@ -97,7 +98,10 @@ typedef struct _moncol_t {
 	char *path;
 	char *args;
 	char *pidfile;
+	char *service;
 	pid_t pid;
+	int use_systemd;
+	int systemd_status;
 	int instance;
 	int alive;
 	int kill_attempts;
@@ -126,6 +130,8 @@ cfg_opt_t monitored_coll[] = {
 	CFG_STR("uid", "", CFGF_NODEFAULT),
 	CFG_STR("coll_path", "", CFGF_NODEFAULT),
 	CFG_STR("coll_args", "", CFGF_NODEFAULT),
+	CFG_INT("use_systemd", 0, CFGF_NONE),
+	CFG_STR("service", "", CFGF_NONE),
 	CFG_STR("pidfile", "", CFGF_NODEFAULT),
 	CFG_INT("instance", 1, CFGF_NONE),
 	CFG_END(),
@@ -206,6 +212,9 @@ void setup_monitors(cfg_t *cfg)
 		mon->path = cfg_getstr(mconf, "coll_path");
 		mon->args = cfg_getstr(mconf, "coll_args");
 		mon->pidfile = cfg_getstr(mconf, "pidfile");
+		mon->service = cfg_getstr(mconf, "service");
+		mon->use_systemd = cfg_getint(mconf, "use_systemd");
+		mon->systemd_status = 0;
 		mon->pid = -1;
 		mon->alive = -1;
 		mon->kill_attempts = 0;
@@ -243,6 +252,7 @@ void cb_restart_collectors(int fd, short what, void *arg)
 	struct event *ev;
 	struct timeval secs = { 0, 0 };
 	char cbuf[512], dbuf[512];
+	int sys;
 
 	TAILQ_FOREACH(mon, &collectors, next) {
 		mon->passes++;
@@ -262,9 +272,50 @@ void cb_restart_collectors(int fd, short what, void *arg)
 			}
 			continue;
 		}
-		/* If not alive, try to kill it */
-		if (mon->pid < 1 || (
+
+		/* if we get this far, mon->alive is saying we are dead */
+		
+		/* is it systemd? */
+		if (mon->use_systemd && strlen(mon->service) > 1) {
+			if (mon->systemd_status) { /* it's down */
+				mon->restarts++;
+				mon->kill_attempts = 0;
+				LOG(LOG_NOTICE, "Restarting down collector %s",
+				    mon->name);
+				snprintf(cbuf, 512, "systemctl --no-ask-password --no-pager -q start %s",
+					mon->service);
+				sys = system(cbuf);
+				if (WIFEXITED(sys) && WEXITSTATUS(sys)) {
+					LOG(LOG_ERROR,
+					    "Couldn't restart collector %s"
+					    " with cmd %s", mon->name, cbuf);
+				} else {
+					/* it's up, schedule a reread of the pidfile */
+					secs.tv_sec = 5; /* wait 5 seconds for start */
+					ev = evtimer_new(base, cb_checkpids, NULL);
+					evtimer_add(ev, &secs);
+					mon->alive = 1; /* for now */
+				}
+			} else { /* it's up but broken */
+				mon->kill_attempts++;
+				if (mon->kill_attempts > 5) {
+					LOG(LOG_NOTICE, "Sending SIGKILL to %s",
+					    mon->name);
+					snprintf(cbuf, 512,
+						 "systemctl --no-ask-password --no-pager -q --signal=SIGKILL kill %s",
+						 mon->service);
+				} else {
+					snprintf(cbuf, 512, "systemctl --no-ask-password --no-pager -q stop %s", mon->service);
+				}
+				sys = system(cbuf);
+				/* it's down, schedule a check to be sure */
+				secs.tv_sec = 5; /* wait 5 seconds for start */
+				ev = evtimer_new(base, cb_checkpids, NULL);
+				evtimer_add(ev, &secs);
+			}
+		} else if (mon->pid < 1 || (
 			    kill(mon->pid, SIGTERM) && errno == ESRCH)) {
+			/* If not alive, try to kill it */
 			mon->restarts++;
 			/* no such pid, restart it */
 			mon->kill_attempts = 0;
@@ -324,10 +375,26 @@ void cb_checkpids(int fd, short what, void *arg)
 	FILE *f;
 	char p[128];
 	size_t s;
+	char buf[512];
+	int sys;
 	struct timeval secs = { 0, 0 };
 	struct event *ev;
 
 	TAILQ_FOREACH(mon, &collectors, next) {
+		/* check service first */
+		if (mon->use_systemd && strlen(mon->service) > 1) {
+			sprintf(buf, "systemctl --no-ask-password --no-pager -q is-active %s", mon->service);
+			sys = system(buf);
+			if (WIFEXITED(sys)) {
+				if (WEXITSTATUS(sys) != 0) {
+					mon->alive = 0;
+					LOG(LOG_NOTICE, "Service %s not running",
+					    mon->service);
+				}
+				mon->systemd_status = WEXITSTATUS(sys);
+			}
+			continue;
+		}
 		f = fopen(mon->pidfile, "r");
 		if (f == NULL) {
 			LOG(LOG_ERROR, "Pidfile %s for collector %s not found",

@@ -42,7 +42,8 @@ dist_timer_DATA = ad2usbcoll.timer \
 	urtsicoll.timer \
 	venstarcoll.timer \
 	wmr918coll.timer \
-	wupwscoll.timer
+	wupwscoll.timer \
+	moncoll.timer
 dist_systemdx_DATA = gnhastd.service \
 	gnhastd_all.service \
 	moncoll.service
