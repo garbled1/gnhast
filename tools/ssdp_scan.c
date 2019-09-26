@@ -33,6 +33,8 @@
    \brief SSDP Scanner
 */
 
+#include "config.h"
+
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -51,6 +53,10 @@
 #include <event2/buffer.h>
 #include <event2/event.h>
 #include <event2/util.h>
+
+#ifdef HAVE_BSD_STDLIB_H
+#include <bsd/stdlib.h>
+#endif
 
 #include "common.h"
 #include "ssdp.h"

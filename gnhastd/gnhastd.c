@@ -39,6 +39,9 @@
 
 #include "confuse.h"
 #include "config.h"
+#ifdef HAVE_BSD_STDLIB_H
+#include <bsd/stdlib.h>
+#endif
 #include "gnhast.h"
 #include "gnhastd.h"
 #include "common.h"

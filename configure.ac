@@ -40,6 +40,16 @@ AC_CHECK_LIB(m, lrint,,AC_MSG_ERROR(["Unable to find math library"]))
 #AC_CHECK_LIB(event_pthreads, evthread_use_pthreads,, AC_MSG_ERROR(["Unable to find libevent2 pthreads"]))
 #AC_CHECK_LIB(pthread, pthread_mutex_lock,,AC_MSG_ERROR(["Unable to find pthread library"]))
 
+# Check for libbsd, so that the next function checks pick it as their
+# system implementation.
+dnl PKG_CHECK_MODULES([LIBBSD],[libbsd-overlay],[
+dnl LIBS="$LIBS $LIBBSD_LIBS"
+dnl STUBBY_LIBS="$STUBBY_LIBS $LIBBSD_LIBS"
+dnl CFLAGS="$CFLAGS $LIBBSD_CFLAGS"
+dnl ],[
+dnl AC_MSG_WARN([libbsd not found or usable; using embedded code instead])
+dnl ])
+
 # Checks for programs
 AC_PATH_PROG([NETCAT], [nc], [/usr/pkg/sbin/nc],
 	[$PATH$PATH_SEPARATOR/usr/sbin$PATH_SEPARATOR/usr/pkg/sbin$PATH_SEPARATOR/usr/local/sbin])

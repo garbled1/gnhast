@@ -51,6 +51,9 @@
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
 #endif
+#ifdef HAVE_BSD_STDLIB_H
+#include <bsd/stdlib.h>
+#endif
 #include "gnhast.h"
 #include "common.h"
 #include "confuse.h"

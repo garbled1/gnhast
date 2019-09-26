@@ -35,6 +35,8 @@
    data from selected sensors.
 */
 
+#include "config.h"
+
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -52,6 +54,10 @@
 #include <event2/http_struct.h>
 #include <event2/util.h>
 
+#ifdef HAVE_BSD_STDLIB_H
+#include <bsd/stdlib.h>
+#endif
+
 #include "common.h"
 #include "gnhast.h"
 #include "confuse.h"
@@ -60,6 +66,10 @@
 #include "collcmd.h"
 #include "genconn.h"
 #include "wupws.h"
+
+#ifdef __linux__
+char *strcasestr(const char *haystack, const char *needle);
+#endif
 
 char *conffile = SYSCONFDIR "/" WUPWSCOLL_CONFIG_FILE;
 FILE *logfile;   /** our logfile */

@@ -53,6 +53,10 @@
 #include "common.h"
 #include "ssdp.h"
 
+#ifdef __linux__
+char *strcasestr(const char *haystack, const char *needle);
+#endif
+
 extern int debugmode;
 int ssdp_portnum;
 

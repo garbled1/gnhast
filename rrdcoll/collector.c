@@ -38,6 +38,8 @@
    This collector does not use the generic connection routines.
 */
 
+#include "config.h"
+
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -55,6 +57,10 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/rand.h>
+
+#ifdef HAVE_BSD_STDLIB_H
+#include <bsd/stdlib.h>
+#endif
 
 #include "common.h"
 #include "gnhast.h"

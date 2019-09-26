@@ -36,6 +36,8 @@
    Written for version 3 of the API.
 */
 
+#include "config.h"
+
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -56,6 +58,10 @@
 #include <event2/http.h>
 #include <event2/http_struct.h>
 #include <event2/util.h>
+
+#ifdef HAVE_BSD_STDLIB_H
+#include <bsd/stdlib.h>
+#endif
 
 #include "common.h"
 #include "gnhast.h"

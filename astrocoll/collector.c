@@ -34,6 +34,9 @@
 */
 
 #include "config.h"
+#ifdef HAVE_BSD_STDLIB_H
+#include <bsd/stdlib.h>
+#endif
 
 #include <stdio.h>
 #include <unistd.h>

@@ -44,6 +44,10 @@
 #include <event2/buffer.h>
 #include <event2/event.h>
 
+#include "config.h"
+#ifdef HAVE_BSD_STDLIB_H
+#include <bsd/stdlib.h>
+#endif
 #include "gnhast.h"
 #include "common.h"
 #include "confparser.h"

@@ -33,6 +33,8 @@
    \brief A cgi backend that generates json data of device status
 */
 
+#include "config.h"
+
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -48,6 +50,10 @@
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
 #include <event2/event.h>
+
+#ifdef HAVE_BSD_STDLIB_H
+#include <bsd/stdlib.h>
+#endif
 
 #include "common.h"
 #include "gnhast.h"

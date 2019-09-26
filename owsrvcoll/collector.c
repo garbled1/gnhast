@@ -50,6 +50,10 @@
 #include <event2/buffer.h>
 #include <event2/event.h>
 
+#include "config.h"
+#ifdef HAVE_BSD_STDLIB_H
+#include <bsd/stdlib.h>
+#endif
 #include "common.h"
 #include "gnhast.h"
 #include "confuse.h"

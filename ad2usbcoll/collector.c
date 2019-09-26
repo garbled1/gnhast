@@ -33,6 +33,8 @@
    \brief NUTech AD2USB collector
 */
 
+#include "config.h"
+
 #include <termios.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -47,6 +49,10 @@
 #include <event2/buffer.h>
 #include <event2/event.h>
 
+#ifdef HAVE_BSD_STDLIB_H
+#include <bsd/stdlib.h>
+#endif
+
 #include "common.h"
 #include "gnhast.h"
 #include "confuse.h"
@@ -55,6 +61,10 @@
 #include "genconn.h"
 #include "gncoll.h"
 #include "ad2usb.h"
+
+#ifdef __linux__
+char *strcasestr(const char *haystack, const char *needle);
+#endif
 
 void connect_event_cb(struct bufferevent *ev, short what, void *arg);
 void connect_server_cb(int nada, short what, void *arg);
