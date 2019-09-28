@@ -972,6 +972,14 @@ cfg_t *new_conf_from_dev(cfg_t *cfg, device_t *dev)
 			break;
 		}
 	}
+	/* handle spamhandler */
+	if (QUERY_FLAG(dev->flags, DEVFLAG_CHANGEHANDLER))
+	    cfg_setint(devconf, "spamhandler", 2);
+	else if (QUERY_FLAG(dev->flags, DEVFLAG_SPAMHANDLER))
+	    cfg_setint(devconf, "spamhandler", 1);
+	else
+	    cfg_setint(devconf, "spamhandler", 0);
+
 	if (dev->type)
 		cfg_setint(devconf, "type", dev->type);
 	if (dev->proto)
