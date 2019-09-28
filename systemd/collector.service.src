@@ -7,6 +7,7 @@ After=gnhastd.service
 Type=forking
 PIDFile=@LOCALSTATEDIR@/run/@COLLECTOR_NAME@.pid
 ExecStart=@BINDIR@/@COLLECTOR_NAME@
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target

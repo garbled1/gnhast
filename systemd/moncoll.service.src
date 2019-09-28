@@ -7,6 +7,7 @@ PIDFile=@LOCALSTATEDIR@/run/moncoll.pid
 ExecStartPre=/bin/sleep 120
 ExecStart=@BINDIR@/moncoll
 TimeoutStartSec=300
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target

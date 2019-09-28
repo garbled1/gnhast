@@ -5,6 +5,7 @@ Description=Gnhastd Daemon
 Type=forking
 PIDFile=@LOCALSTATEDIR@/run/gnhastd.pid
 ExecStart=@BINDIR@/gnhastd
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
