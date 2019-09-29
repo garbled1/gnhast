@@ -53,6 +53,7 @@
 
 #include "common.h"
 #include "genconn.h"
+#include "gncoll.h"
 #include "collcmd.h"
 #include "gnhast.h"
 

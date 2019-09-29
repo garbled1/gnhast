@@ -104,7 +104,7 @@ int devices_ready = 0;
 spaconfig_t spacfg;
 uint8_t mac_suffix[3] = { 0x0, 0x0, 0x0 };
 uint8_t prev_stat[23];
-time_t spa_lastupd = NULL;
+time_t spa_lastupd = 0;
 extern int debugmode;
 extern int collector_instance;
 

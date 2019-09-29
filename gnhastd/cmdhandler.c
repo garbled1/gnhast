@@ -31,6 +31,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
+#include <ctype.h>
 /* #define QUEUEDEBUG 1 */
 #include <sys/queue.h>
 
@@ -40,6 +41,8 @@
 #include "cmds.h"
 #include "gncoll.h"
 #include "gnhastd.h"
+
+void run_handler_dev(device_t *dev);
 
 /** \cond NOSHOW */
 extern TAILQ_HEAD(, _device_t) alldevs;

@@ -57,6 +57,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/rand.h>
+#include <rrd.h>
 
 #ifdef HAVE_BSD_STDLIB_H
 #include <bsd/stdlib.h>
@@ -250,7 +251,7 @@ int cmd_endldevs(pargs_t *args, void *arg)
 
 int cmd_endlgrps(pargs_t *args, void *arg)
 {
-	return;
+    return(0);
 }
 
 

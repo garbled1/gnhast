@@ -90,6 +90,12 @@ __END_DECLS
 #endif
 
 
+#ifdef __linux__
+uint16_t bswap16(uint16_t x);
+uint32_t bswap32(uint32_t x);
+uint64_t bswap64(uint64_t x);
+#endif
+
 #if defined(_XOPEN_SOURCE) || defined(_NETBSD_SOURCE)
 /*
  *  Traditional names for byteorder.  These are defined as the numeric
@@ -131,7 +137,7 @@ __END_DECLS
 #define	HTONL(x)	(x) = htonl(__CAST(uint32_t, (x)))
 #define	HTONS(x)	(x) = htons(__CAST(uint16_t, (x)))
 #endif	/* LITTLE_ENDIAN || !defined(__lint__) */
-
+    
 /*
  * Macros to convert to a specific endianness.
  */

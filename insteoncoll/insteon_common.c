@@ -61,6 +61,11 @@
 #include "insteon.h"
 #include "http_func.h"
 
+/* these are provided by the various main's */
+void plm_queue_empty_cb(void *arg);
+void plm_handle_alink_complete(uint8_t *data);
+void plm_handle_aldb_record_resp(uint8_t *data);
+
 extern int errno;
 extern int debugmode;
 extern TAILQ_HEAD(, _device_t) alldevs;

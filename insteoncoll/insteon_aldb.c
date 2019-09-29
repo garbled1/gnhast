@@ -47,6 +47,7 @@
 #include "config.h"
 #ifdef HAVE_BSD_STDLIB_H
 #include <bsd/stdlib.h>
+#include <bsd/stdio.h>
 #endif
 #include "gnhast.h"
 #include "common.h"
@@ -140,7 +141,7 @@ int mode;
 extern SIMPLEQ_HEAD(fifohead, _cmdq_t) cmdfifo;
 extern SIMPLEQ_HEAD(workhead, _workq_t) workfifo;
 
-usage(void)
+int usage(void)
 {
 	(void)fprintf(stderr, "Usage %s: -a <devaddr> -s <device> "
 		      "[-f <aldbfile>]\n", getprogname());

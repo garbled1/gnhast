@@ -42,10 +42,13 @@
 #else
  #include <stdlib.h>
 #endif
+#include <ctype.h>
 #include <time.h>
 #include <stdarg.h>
 #include <errno.h>
 #include <sys/queue.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "common.h"
 #include "confparser.h"

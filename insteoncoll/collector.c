@@ -131,7 +131,7 @@ extern time_t plm_lastupd;
 extern SIMPLEQ_HEAD(fifohead, _cmdq_t) cmdfifo;
 extern SIMPLEQ_HEAD(workhead, _workq_t) workfifo;
 
-usage(void)
+int usage(void)
 {
 	(void)fprintf(stderr, "Usage %s: [-c <conffile>]\n",
 		      getprogname());

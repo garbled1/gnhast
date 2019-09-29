@@ -267,5 +267,7 @@ void plm_handle_extrecv(uint8_t *fromaddr, uint8_t *toaddr, uint8_t flags,
 			uint8_t com1, uint8_t com2, uint8_t *ext);
 void plm_readcb(struct bufferevent *bev, void *arg);
 void plm_run_workq(int fd, short what, void *arg);
+void plm_set_hops(device_t *dev, uint8_t flag);
+void plm_write_aldb(device_t *dev);
 
 #endif /*_INSTEON_H_*/

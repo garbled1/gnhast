@@ -72,6 +72,10 @@
 #include "http_func.h"
 #include "jsmn_func.h"
 
+#ifdef __linux__
+char *strptime(const char *s, const char *format, struct tm *tm);
+#endif
+
 char *conffile = SYSCONFDIR "/" ASTROCOLL_CONFIG_FILE;
 FILE *logfile;   /** our logfile */
 cfg_t *cfg, *gnhastd_c, *astro_c;

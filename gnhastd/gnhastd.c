@@ -46,6 +46,9 @@
 #include "gnhastd.h"
 #include "common.h"
 #include "genconn.h"
+#include "gncoll.h"
+#include "commands.h"
+#include "collcmd.h"
 #include "confparser.h"
 
 /* Globals */

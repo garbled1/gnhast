@@ -58,7 +58,9 @@
 #include "gncoll.h"
 #include "collcmd.h"
 #include "confuse.h"
+#include "confparser.h"
 
+extern int collector_is_ok();
 extern int cmd_endldevs(pargs_t *args, void *arg);
 extern int cmd_endlgrps(pargs_t *args, void *arg);
 extern int cmd_ping(pargs_t *args, void *arg);
@@ -185,7 +187,7 @@ void __attribute__((weak)) coll_chg_cb(device_t *dev, void *arg)
 
 int __attribute__((weak)) cmd_endldevs(pargs_t *args, void *arg)
 {
-	return;
+    return(0);
 }
 
 /**
@@ -196,7 +198,7 @@ int __attribute__((weak)) cmd_endldevs(pargs_t *args, void *arg)
 
 int __attribute__((weak)) cmd_endlgrps(pargs_t *args, void *arg)
 {
-	return;
+    return(0);
 }
 
 /**

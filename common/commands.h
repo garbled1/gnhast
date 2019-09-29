@@ -120,5 +120,6 @@ pargs_t *parse_command(char **words, int count);
 char **parse_netcommand(char *buf, int *arg_count);
 int find_arg_by_id(pargs_t *args, int id);
 int find_arg_bydev(device_t *dev);
+int find_arg_byid(int id);
 
 #endif /*_COMMAND_H_*/

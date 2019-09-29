@@ -39,6 +39,7 @@
 #include <unistd.h>  
 #include <stdlib.h>
 #include <math.h>
+#include <ctype.h>
 
 #include "confuse.h"
 #include "config.h"
@@ -1035,7 +1036,7 @@ cfg_t *dump_conf(cfg_t *cfg, int flags, const char *filename)
 	fp = fopen(filename, "w");
 	if (fp == NULL) {
 		LOG(LOG_ERROR, "Could not open %s for writing", filename);
-		return;
+		return(NULL);
 	}
 	/* Make sure all changes make it in */
 	TAILQ_FOREACH(dev, &alldevs, next_all) {

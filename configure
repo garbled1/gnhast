@@ -633,6 +633,7 @@ ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
 LIBOBJS
+AM_CFLAGS
 MUDFLAP_FALSE
 MUDFLAP_TRUE
 WITH_LOGROTATE_FALSE
@@ -792,6 +793,7 @@ enable_dependency_tracking
 with_gnu_ld
 with_sysroot
 enable_libtool_lock
+enable_werror
 enable_mudflap
 '
       ac_precious_vars='build_alias
@@ -1453,6 +1455,7 @@ Optional Features:
   --disable-dependency-tracking
                           speeds up one-time build
   --disable-libtool-lock  avoid locking (might break parallel builds)
+  --enable-werror         Enable -Werror
   --enable-mudflap        build binaries with mudflap instrumentation
 
 Optional Packages:
@@ -15116,6 +15119,17 @@ fi
 
 
 
+# Check whether --enable-werror was given.
+if test "${enable_werror+set}" = set; then :
+  enableval=$enable_werror;
+else
+  enable_werror=no
+fi
+
+if test "x$enable_werror" = "xyes"; then
+	AM_CFLAGS="$AM_CFLAGS -Werror"
+fi
+
 # Enable debugging via mudflap.  This option will cause most libraries
 # to be built as archives which are statically linked into the applications.
 # All code, as far as possible, is compiled instrumented to catch all
@@ -15163,6 +15177,7 @@ else
   MUDFLAP_TRUE='#'
   MUDFLAP_FALSE=
 fi
+
 
 
 ac_config_files="$ac_config_files Makefile gnhastd/Makefile fakecoll/Makefile owsrvcoll/Makefile rrdcoll/Makefile brulcoll/Makefile insteoncoll/Makefile wmr918coll/Makefile wupwscoll/Makefile ad2usbcoll/Makefile icaddycoll/Makefile venstarcoll/Makefile moncoll/Makefile jsoncgicoll/Makefile urtsicoll/Makefile astrocoll/Makefile alarmcoll/Makefile balboacoll/Makefile handlers/Makefile tools/Makefile gtk-gnhast/Makefile gtk-insteonedit/Makefile data/Makefile gnhastweb/Makefile libconfuse/Makefile systemd/Makefile logrotate.d/Makefile common/Makefile"

@@ -118,6 +118,13 @@ AC_SUBST(logrotate_path, "/etc/logrotate.d")
 AM_CONDITIONAL(WITH_LOGROTATE, $logrotate)
 
 
+AC_ARG_ENABLE([werror],
+	AC_HELP_STRING([--enable-werror], [Enable -Werror]),
+	[], [enable_werror=no])
+if test "x$enable_werror" = "xyes"; then
+	AM_CFLAGS="$AM_CFLAGS -Werror"
+fi
+
 # Enable debugging via mudflap.  This option will cause most libraries
 # to be built as archives which are statically linked into the applications.
 # All code, as far as possible, is compiled instrumented to catch all
@@ -139,6 +146,7 @@ if test "$use_mudflap" = fail; then
 fi
 AM_CONDITIONAL(MUDFLAP, test "$use_mudflap" = yes)
 
+AC_SUBST([AM_CFLAGS])
 AC_CONFIG_FILES([Makefile \
 		 gnhastd/Makefile \
 		 fakecoll/Makefile \
