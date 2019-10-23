@@ -41,8 +41,8 @@ typedef struct _commands_t {
  	int queue;		/**< \brief queue priority */
 } commands_t;
 
-#define ARGNM(foo)	argtable[find_arg_byid(foo)].name
-#define ARGDEV(foo)	argtable[find_arg_bydev(foo)].name
+#define ARGNM(foo)	find_arg_byid(foo) > -1 ? argtable[find_arg_byid(foo)].name : "fail"
+#define ARGDEV(foo)	find_arg_bydev(foo) > -1 ? argtable[find_arg_bydev(foo)].name : "fail"
 
 enum PT_TYPES {
 	PTDOUBLE,

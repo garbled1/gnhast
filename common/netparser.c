@@ -164,8 +164,6 @@ int find_arg_byid(int id)
 */
 int find_arg_bydev(device_t *dev)
 {
-	int i;
-
 	if (dev->type == DEVICE_DIMMER)
 		return find_arg_byid(SC_DIMMER);
 	switch (dev->subtype) {
@@ -177,6 +175,7 @@ int find_arg_bydev(device_t *dev)
 	case SUBTYPE_SPEED: return find_arg_byid(SC_SPEED); break;
 	case SUBTYPE_DIR: return find_arg_byid(SC_DIR); break;
 	case SUBTYPE_SWITCH: return find_arg_byid(SC_SWITCH); break;
+	case SUBTYPE_OUTLET: return find_arg_byid(SC_SWITCH); break;
 	case SUBTYPE_WETNESS: return find_arg_byid(SC_WETNESS); break;
 	case SUBTYPE_PH: return find_arg_byid(SC_PH); break;
 	case SUBTYPE_VOLTAGE: return find_arg_byid(SC_VOLTAGE); break;
@@ -204,6 +203,9 @@ int find_arg_bydev(device_t *dev)
 	case SUBTYPE_TRISTATE: return find_arg_byid(SC_TRISTATE); break;
 	case SUBTYPE_MOONPH: return find_arg_byid(SC_MOONPH); break;
 	}
+
+	LOG(LOG_ERROR, "find_arg_bydev got subtype/type %d/%d NOT IN TABLE",
+	    dev->subtype, dev->type);
 	return -1;
 }
 

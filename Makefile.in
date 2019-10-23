@@ -162,8 +162,8 @@ DIST_SUBDIRS = libconfuse common gnhastd fakecoll owsrvcoll rrdcoll \
 	alarmcoll balboacoll tools data gnhastweb systemd logrotate.d \
 	handlers gtk-gnhast gtk-insteonedit
 am__DIST_COMMON = $(srcdir)/Makefile.in AUTHORS COPYING INSTALL NEWS \
-	compile config.guess config.sub install-sh ltmain.sh missing \
-	ylwrap
+	compile config.guess config.sub depcomp install-sh ltmain.sh \
+	missing ylwrap
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
 top_distdir = $(distdir)
