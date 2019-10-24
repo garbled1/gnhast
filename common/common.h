@@ -133,7 +133,7 @@ void cb_timerdev_update(int fd, short what, void *arg);
 
 /* From serial_common.c */
 #include <termios.h>
-int serial_connect(char *devnode, speed_t speed, int cflags);
+int serial_connect(char *devnode, speed_t speed, tcflag_t cflags);
 void serial_eventcb(struct bufferevent *bev, short events, void *arg);
 
 /* From alarms.c */

@@ -39,15 +39,50 @@
 #include <time.h>
 #include <stdarg.h>
 #include <errno.h>
-#include <termios.h>
 #include <fcntl.h>
 #include <sys/queue.h>
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
 #include <event2/event.h>
+#include <termios.h>
+#include <unistd.h>
 
 #include "common.h"
 
+/**
+   \brief convert baud to printable int
+   \param baud
+   \return int
+
+   I'll skip some of the useless ones, just because it's annoying.
+*/
+int get_baud(speed_t speed)
+{
+    switch (speed) {
+    case B0:
+	return 0;
+    case B300:
+	return 300;
+    case B2400:
+	return 2400;
+    case B4800:
+	return 4800;
+    case B9600:
+	return 9600;
+    case B19200:
+	return 19200;
+    case B38400:
+	return 38400;
+    case B57600:
+	return 57600;
+    case B115200:
+	return 115200;
+    case B230400:
+	return 230400;
+    default:
+	return -1;
+    }
+}
 
 /**
    \brief connect to a serial device
@@ -56,7 +91,7 @@
    \param cflags control flags
 */
 
-int serial_connect(char *devnode, speed_t speed, int cflags)
+int serial_connect(char *devnode, speed_t speed, tcflag_t cflags)
 {
 	struct termios tio;
 	int sfd;
@@ -67,18 +102,18 @@ int serial_connect(char *devnode, speed_t speed, int cflags)
 	if (tcgetattr(sfd, &tio) == -1)
 		LOG(LOG_FATAL, "Cannot getattr for `%s'", devnode);
 
-	cfsetispeed(&tio, speed);
-	cfsetospeed(&tio, speed);
 	tio.c_iflag = 0;
 	tio.c_oflag = 0;
 	tio.c_cflag = cflags;
 	tio.c_lflag = 0;
+	cfsetispeed(&tio, speed);
+	cfsetospeed(&tio, speed);
 
 	if (tcsetattr(sfd, TCSANOW, &tio) == -1)
 		LOG(LOG_FATAL, "Cannot setattr for `%s'", devnode);
 
 	LOG(LOG_NOTICE, "Connected to serial device %s at %dbps", devnode,
-	    speed);
+	    get_baud(speed));
 
 	return sfd;
 }

@@ -42,9 +42,7 @@
 
 #include "config.h"
 
-#include <termios.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,6 +53,8 @@
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
 #include <event2/event.h>
+#include <termios.h>
+#include <unistd.h>
 
 #ifdef HAVE_BSD_STDLIB_H
 #include <bsd/stdlib.h>
