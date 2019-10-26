@@ -1253,6 +1253,25 @@ void plm_getconf(void)
 }
 
 /**
+   \brief Set the IM configuration
+*/
+void plm_setconf(uint8_t cfgflags)
+{
+    cmdq_t *cmd;
+
+    LOG(LOG_DEBUG, "Queuing set PLM configuration with 0x%X", cfgflags);
+    cmd = smalloc(cmdq_t);
+    cmd->cmd[0] = PLM_START;
+    cmd->cmd[1] = PLM_SETCONF;
+    cmd->cmd[2] = cfgflags;
+    cmd->msglen = 3;
+    cmd->sendcount = 0;
+    cmd->wait = CMDQ_WAITACK;
+    cmd->state = CMDQ_WAITACK|CMDQ_WAITSEND;
+    SIMPLEQ_INSERT_TAIL(&cmdfifo, cmd, entries);
+}
+
+/**
    \brief Ask the PLM for the ALDB records
    \param fl 0==first 1==last
 */
@@ -1512,7 +1531,7 @@ int plm_handle_aldb(device_t *dev, uint8_t *data)
 
 void handle_command(char plmcmd, char *data)
 {
-	uint8_t toaddr[3], fromaddr[3], extdata[14], ackbit;
+        uint8_t toaddr[3], fromaddr[3], extdata[14], ackbit, plm_cfg;
 	cmdq_t *cmd;
 	int dequeue = 0;
 
@@ -1655,7 +1674,10 @@ void handle_command(char plmcmd, char *data)
 		break;
 	case PLM_GETCONF:
 		LOG(LOG_NOTICE, "Got PLM Config bits: %X", data[2]);
-		plm_config_bits = data[2];
+		plm_cfg = plm_config_bits = data[2];
+		/* we want to set Monitor Mode in the PLM */
+		plm_cfg |= PLMCONF_MONITOR;
+		plm_setconf(plm_cfg);
 		break;
 	case PLM_LEDON:
 		LOG(LOG_ERROR, "Set PLM LED On");
